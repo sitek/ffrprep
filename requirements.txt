@@ -2,3 +2,5 @@
 argparse
 duecredit
 importlib_resources
+mne
+pandas
