@@ -1,33 +1,33 @@
 
 
-.. image:: _static/package_name_logo.png
+.. image:: _static/ffrprep_logo.png
    :align: center
    :width: 400px
 
-.. centered:: package_name: A short description of your python package.
+.. centered:: ffrprep: A standardized and robust (pre-) processing pipeline for FFR data.
 
 
-.. image:: https://github.com/YourGitHubHandle/package_name/actions/workflows/docs.yml/badge.svg
-        :target: https://github.com/YourGitHubHandle/package_name/actions/workflows/docs.yml
+.. image:: https://github.com/SPARK-CSD/ffrprep/actions/workflows/docs.yml/badge.svg
+        :target: https://github.com/SPARK-CSD/ffrprep/actions/workflows/docs.yml
  
-.. image:: https://img.shields.io/pypi/v/package_name.svg
-        :target: https://pypi.python.org/pypi/package_name
+.. image:: https://img.shields.io/pypi/v/ffrprep.svg
+        :target: https://pypi.python.org/pypi/ffrprep
 
-.. image:: https://img.shields.io/docker/pulls/YourGitHubHandle/package_name
+.. image:: https://img.shields.io/docker/pulls/SPARK-CSD/ffrprep
     :alt: Dockerpulls
-    :target: https://cloud.docker.com/u/YourGitHubHandle/repository/docker/YourGitHubHandle/package_name
+    :target: https://cloud.docker.com/u/SPARK-CSD/repository/docker/SPARK-CSD/ffrprep
 
-.. image:: https://img.shields.io/github/repo-size/YourGitHubHandle/package_name.svg
-        :target: https://github.com/YourGitHubHandle/package_name.zip
+.. image:: https://img.shields.io/github/repo-size/SPARK-CSD/ffrprep.svg
+        :target: https://github.com/SPARK-CSD/ffrprep.zip
 
-.. image:: https://img.shields.io/github/issues/YourGitHubHandle/package_name.svg
-        :target: https://github.com/YourGitHubHandle/package_name/issues
+.. image:: https://img.shields.io/github/issues/SPARK-CSD/ffrprep.svg
+        :target: https://github.com/SPARK-CSD/ffrprep/issues
 
-.. image:: https://img.shields.io/github/issues-pr/YourGitHubHandle/package_name.svg
-        :target: https://github.com/YourGitHubHandle/package_name/pulls
+.. image:: https://img.shields.io/github/issues-pr/SPARK-CSD/ffrprep.svg
+        :target: https://github.com/SPARK-CSD/ffrprep/pulls
 
-.. image:: https://img.shields.io/github/license/YourGitHubHandle/package_name.svg
-        :target: https://github.com/YourGitHubHandle/package_name
+.. image:: https://img.shields.io/github/license/SPARK-CSD/ffrprep.svg
+        :target: https://github.com/SPARK-CSD/ffrprep
 
 
 
@@ -38,12 +38,12 @@
 Introduction
 ============
 
-``package_name`` aims to provide a set of tools for ADD description here. 
+``ffrprep`` aims to provide a set of tools for ADD description here. 
 
 This documentation showcases the respective functionality and provides details concerning
 its application and modules.
 If you still have questions after going through provided here you can refer to 
-the :ref:`api_ref` or ask a question on `GitHub <https://github.com/YourGitHubHandle/package_name/issues>`_.
+the :ref:`api_ref` or ask a question on `GitHub <https://github.com/SPARK-CSD/ffrprep/issues>`_.
 
 
 Contents
