@@ -7,7 +7,7 @@ import versioneer
 # NOTE: This file must remain Python 2 compatible for the foreseeable future,
 # to ensure that we error out properly for people with outdated setuptools
 # and/or pip.
-min_version = (3, 10)
+min_version = (3, 11)
 if sys.version_info < min_version:
     error = """
 package_name does not support Python {0}.{1}.
@@ -34,25 +34,25 @@ with open(path.join(here, 'requirements.txt')) as requirements_file:
 
 
 setup(
-    name='package_name',
+    name='ffrprep',
     version=versioneer.get_version(),
     cmdclass=versioneer.get_cmdclass(),
-    description="Short description of your python package.",
+    description="A standardized and robust (pre-) processing pipeline for FFR data.",
     long_description=readme,
-    author="Name of Developer",
+    author="Kevin Sitek, Peer Herholz",
     author_email='Email Address of Developer',
-    url='https://github.com/YourGitHubHandle/package_name',
+    url='https://github.com/SPARK-CSD/ffrprep',
     python_requires='>={}'.format('.'.join(str(n) for n in min_version)),
     packages=find_packages(exclude=['docs', 'tests']),
     entry_points={
         'console_scripts': [
-            'package_name = package_name.package_name:package_name',
+            'ffrprep = ffrprep.ffrprep:ffrprep',
             # 'command = some.module:some_function',
         ],
     },
     include_package_data=True,
     package_data={
-        'package_name': [
+        'ffrprep': [
             # When adding files here, remember to update MANIFEST.in as well,
             # or else they will not be included in the distribution on PyPI!
             # 'path/to/data_file',
