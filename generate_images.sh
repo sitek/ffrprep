@@ -6,20 +6,20 @@
 
 generate_docker() {
   docker run --rm kaczmarj/neurodocker:0.7.0 generate docker \
-             --base BaseImage \
+             --base ffrprep \
              --pkg-manager apt \
              --arg DEBIAN_FRONTEND=noninteractive \
              --miniconda \
                version=latest \
-               conda_install="python=PythonVersion PythonPackages" \
-               pip_install="PythonPackages" \
-               create_env='package_name' \
+               conda_install="python=3.11 mne" \
+               pip_install="pandas seaborn" \
+               create_env='ffrprep' \
                activate=true \
-            --copy . /home/package_name \
-            --run-bash "source activate package_name && cd /home/package_name && pip install -e ." \
+            --copy . /home/ffrprep \
+            --run-bash "source activate ffrprep && cd /home/package_name && pip install -e ." \
             --env IS_DOCKER=1 \
             --workdir '/tmp/' \
-            --entrypoint "/neurodocker/startup.sh  package_name"
+            --entrypoint "/neurodocker/startup.sh  ffrprep"
 }
 
 # generate files
