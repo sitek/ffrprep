@@ -24,9 +24,9 @@ jobs:
     - name: Install dependencies
       run: |
         pip install -r requirements-dev.txt
-    - name: Install package_name
-      run: |
-        pip install ./
+    # - name: Install package_name
+    #   run: |
+    #     pip install ./
     # - name: Test code
     #   shell: bash -l {0}
     #   run: |
