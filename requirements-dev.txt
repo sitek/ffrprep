@@ -20,3 +20,9 @@ sphinx_gallery
 sphinx_design
 sphinx-jsonschema
 sphinx-tabs
+# These are dependencies for ffrprep
+argparse
+importlib_resources
+mne
+pandas
+pydra
