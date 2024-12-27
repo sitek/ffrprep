@@ -1,5 +1,5 @@
 import argparse
-
+import os
 
 # define parser to collect required inputs
 def get_parser():
