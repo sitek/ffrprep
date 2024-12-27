@@ -9,14 +9,14 @@ def get_parser():
 
 
 
-    parser = argparse.ArgumentParser(description='Add description of package here')
+    parser = argparse.ArgumentParser(description='A standardized and robust (pre-) processing pipeline for FFR data.')
     parser.add_argument('-v', '--version', action='version',
-                        version='package_name version {}'.format(__version__))
+                        version='ffrprep version {}'.format(__version__))
     return parser
 
 
 # define the CLI
-def run_package_name():
+def run_ffrprep():
 
     # get arguments from parser
     args = get_parser().parse_args()
@@ -34,4 +34,4 @@ def run_package_name():
 # run the CLI
 if __name__ == "__main__":
 
-    run_package_name()
+    run_ffrprep()
