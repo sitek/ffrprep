@@ -24,7 +24,7 @@ jobs:
     - name: Install dependencies
       run: |
         pip install -r requirements-dev.txt
-    - name: Install package_name
+    - name: Install ffrprep
       run: |
         pip install ./
     - name: Test code
