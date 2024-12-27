@@ -1,37 +1,37 @@
 .. _api_ref:
 
-.. currentmodule:: package_name
+.. currentmodule:: ffrprep
 
 Reference API
 =============
 
-.. contents:: **List of modules**
-   :local:
+.. .. contents:: **List of modules**
+..    :local:
 
-.. _ref_datasets:
+.. .. _ref_datasets:
 
-:mod:`package_name.functon_subsection` - Functionality sub-section
------------------------------------------------
-.. automodule:: package_name.functon_subsection
-   :no-members:
-   :no-inherited-members:
+.. :mod:`ffrprep.functon_subsection` - Functionality sub-section
+.. -----------------------------------------------
+.. .. automodule:: ffrprep.functon_subsection
+..    :no-members:
+..    :no-inherited-members:
 
-.. currentmodule:: package_name.functon_subsection
+.. .. currentmodule:: ffrprep.functon_subsection
 
-.. autosummary::
-   :template: function.rst
-   :toctree: generated/
+.. .. autosummary::
+..    :template: function.rst
+..    :toctree: generated/
 
-.. _ref_utils:
+.. .. _ref_utils:
 
-:mod:`package_name.utils` - Utility functions
-------------------------------------------------
-.. automodule:: package_name.utils
-   :no-members:
-   :no-inherited-members:
+.. :mod:`ffrprep.utils` - Utility functions
+.. ------------------------------------------------
+.. .. automodule:: ffrprep.utils
+..    :no-members:
+..    :no-inherited-members:
 
-.. currentmodule:: package_name.utils
+.. .. currentmodule:: ffrprep.utils
 
-.. autosummary::
-   :template: function.rst
-   :toctree: generated/
+.. .. autosummary::
+..    :template: function.rst
+..    :toctree: generated/
