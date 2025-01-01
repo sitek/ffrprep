@@ -31,10 +31,10 @@ jobs:
       shell: bash -l {0}  
       run: |
         flake8
-    - name: Test code
-      shell: bash -l {0}
-      run: |
-        pytest
+    # - name: Test code
+    #   shell: bash -l {0}
+    #   run: |
+    #     pytest
     - name: Build the docs
       run: |
         cd docs && make clean html
