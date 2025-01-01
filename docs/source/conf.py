@@ -191,7 +191,8 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
     (master_doc, 'ffrprep', 'ffrprep Documentation',
-     author, 'ffrprep', 'A standardized and robust (pre-) processing pipeline for FFR data.',
+     author, 'ffrprep', 'A standardized and robust (pre-) processing pipeline '
+                        'for FFR data.',
      'Miscellaneous'),
 ]
 
