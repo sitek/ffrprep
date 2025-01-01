@@ -27,11 +27,14 @@ jobs:
     - name: Install ffrprep
       run: |
         pip install ./
+    - name: Code formatting
+      shell: bash -l {0}  
+      run: |
+        flake8
     - name: Test code
       shell: bash -l {0}
       run: |
         pytest
-        flake8
     - name: Build the docs
       run: |
         cd docs && make clean html
