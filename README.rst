@@ -1,6 +1,6 @@
-============
+=======
 ffrprep
-============
+=======
 
 
 .. image:: https://github.com/spark-csd/ffrprep/actions/workflows/docs.yml/badge.svg
@@ -9,9 +9,9 @@ ffrprep
 .. image:: https://img.shields.io/pypi/v/ffrprep.svg
         :target: https://pypi.python.org/pypi/ffrprep
 
-.. image:: https://img.shields.io/docker/pulls/spark-csd/ffrprep
+.. image:: https://img.shields.io/docker/pulls/sparkcsd/ffrprep
     :alt: Dockerpulls
-    :target: https://cloud.docker.com/u/spark-csd/repository/docker/spark-csd/ffrprep
+    :target: https://cloud.docker.com/u/sparkcsd/repository/docker/sparkcsd/ffrprep
 
 .. image:: https://img.shields.io/github/repo-size/spark-csd/ffrprep.svg
         :target: https://img.shields.io/github/repo-size/spark-csd/ffrprep.zip
