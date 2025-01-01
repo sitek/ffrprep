@@ -10,3 +10,5 @@ __pycache__/*.pyc
 ffrprep.egg-info/*
 
 ffrprep/__pycache__/*
+
+build/*
