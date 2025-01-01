@@ -2,5 +2,5 @@
 """
 package_name example
 =====================================
-This example demonstrates how to use :mod:`package_name`.
+This example demonstrates how to use :mod:`ffrprep`.
 """
