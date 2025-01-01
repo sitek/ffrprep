@@ -6,7 +6,7 @@
 
 generate_docker() {
   docker run --rm kaczmarj/neurodocker:0.7.0 generate docker \
-             --base ffrprep \
+             --base ubuntu:22.04 \
              --pkg-manager apt \
              --arg DEBIAN_FRONTEND=noninteractive \
              --miniconda \
