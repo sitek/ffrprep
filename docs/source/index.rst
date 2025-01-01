@@ -1,8 +1,8 @@
 
 
-.. image:: _static/ffrprep_logo.png
-   :align: center
-   :width: 400px
+.. .. image:: _static/ffrprep_logo.png
+..    :align: center
+..    :width: 400px
 
 .. centered:: ffrprep: A standardized and robust (pre-) processing pipeline for FFR data.
 

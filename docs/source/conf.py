@@ -19,6 +19,7 @@
 #
 import ffrprep
 import sphinx_material
+
 # sys.path.insert(0, os.path.abspath('.'))
 
 
@@ -254,3 +255,5 @@ html_sidebars = {
     "**": ["logo-text.html", "globaltoc.html", "localtoc.html",
            "searchbox.html"]
 }
+
+suppress_warnings = ["config.cache"]
