@@ -10,7 +10,7 @@ import versioneer
 min_version = (3, 11)
 if sys.version_info < min_version:
     error = """
-package_name does not support Python {0}.{1}.
+ffrprep does not support Python {0}.{1}.
 Python {2}.{3} and above is required. Check your Python version like so:
 
 python3 --version
