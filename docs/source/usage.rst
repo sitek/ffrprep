@@ -4,26 +4,26 @@
 Usage
 ======
 
-The general usage of ``package_name`` is ADD DESCRIPTION HERE.
-The exact command to run ``package_name`` depends on the Installation method and user. Regarding the latter, ``package_name`` 
-can either be used as a ``command line tool`` or directly within ``python``. Please refer to the `Tutorial <https://YourGitHubHandle.github.io/package_name/walkthrough>`_ for a more detailed walkthrough.
+The general usage of ``ffrprep`` is ADD DESCRIPTION HERE.
+The exact command to run ``ffrprep`` depends on the Installation method and user. Regarding the latter, ``ffrprep`` 
+can either be used as a ``command line tool`` or directly within ``python``. Please refer to the `Tutorial <https://YourGitHubHandle.github.io/ffrprep/walkthrough>`_ for a more detailed walkthrough.
 
-Here's a very conceptual example of running ``package_name`` via ``CLI``: ::
+Here's a very conceptual example of running ``ffrprep`` via ``CLI``: ::
 
-    package_name 
-    package_name optional_arguments
+    ffrprep 
+    ffrprep optional_arguments
 
 and here from within ``python``: ::
 
-    from package_name import package_name_function
-    from package_name import package_name_function
+    from ffrprep import ffrprep_function
+    from ffrprep import ffrprep_function
 
-    result = package_name_function(input)
+    result = ffrprep_function(input)
 
-    result = package_name_function(input, optional_arguments)
+    result = ffrprep_function(input, optional_arguments)
 
-Below, we will focus on the ``CLI`` version. Thus, if you are interested in using ``package_name`` directly within ``python``,
-please check the `Examples <https://YourGitHubHandle.github.io/package_name/auto_examples/index>`_.
+Below, we will focus on the ``CLI`` version. Thus, if you are interested in using ``ffrprep`` directly within ``python``,
+please check the `Examples <https://YourGitHubHandle.github.io/ffrprep/auto_examples/index>`_.
 
 Sub-section of Usage focusing on CLI
 ===========================================
@@ -31,8 +31,8 @@ Sub-section of Usage focusing on CLI
 Command-Line Arguments
 ======================
 .. argparse::
-  :ref: package_name.package_name_cli.get_parser
-  :prog: package_name
+  :ref: ffrprep.ffrprep_cli.get_parser
+  :prog: ffrprep
   :nodefault:
   :nodefaultconst:
 
@@ -40,14 +40,14 @@ Example Call(s)
 ---------------
 
 Below you'll find two examples calls that hopefully help
-you to familiarize yourself with ``package_name`` and its options.
+you to familiarize yourself with ``ffrprep`` and its options.
 
 Example 1
 ~~~~~~~~~
 
 .. code-block:: bash
 
-    package_name \
+    ffrprep \
     input
     optional_arguments
 
@@ -62,7 +62,7 @@ Example 2
 
 .. code-block:: bash
 
-    package_name \
+    ffrprep \
     input
     optional_arguments
     optional_arguments
@@ -77,17 +77,17 @@ Here's what's in this call:
 Support and communication
 =========================
 
-The documentation of this project is found here: https://YourGitHubHandle.github.io/package_name.
+The documentation of this project is found here: https://YourGitHubHandle.github.io/ffrprep.
 
 All bugs, concerns and enhancement requests for this software can be submitted here:
-https://github.com/YourGitHubHandle/package_name/issues.
+https://github.com/YourGitHubHandle/ffrprep/issues.
 
-If you have a problem or would like to ask a question about how to use ``package_name``,
-please submit a question to `NeuroStars.org <http://neurostars.org/tags/package_name>`_ with an ``package_name`` tag.
+If you have a problem or would like to ask a question about how to use ``ffrprep``,
+please submit a question to `NeuroStars.org <http://neurostars.org/tags/ffrprep>`_ with an ``ffrprep`` tag.
 NeuroStars.org is a platform similar to StackOverflow but dedicated to neuroinformatics.
 
-All previous ``package_name`` questions are available here:
-http://neurostars.org/tags/package_name/
+All previous ``ffrprep`` questions are available here:
+http://neurostars.org/tags/ffrprep/
 
 Not running on a local machine? - Data transfer
 ===============================================

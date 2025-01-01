@@ -191,7 +191,7 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
     (master_doc, 'ffrprep', 'ffrprep Documentation',
-     author, 'ffrprep', 'A short description of your python package.',
+     author, 'ffrprep', 'A standardized and robust (pre-) processing pipeline for FFR data.',
      'Miscellaneous'),
 ]
 
