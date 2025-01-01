@@ -37,7 +37,8 @@ setup(
     name='ffrprep',
     version=versioneer.get_version(),
     cmdclass=versioneer.get_cmdclass(),
-    description="A standardized and robust (pre-) processing pipeline for FFR data.",
+    description="A standardized and robust (pre-) processing pipeline "
+                "for FFR data.",
     long_description=readme,
     author="Kevin Sitek, Peer Herholz",
     author_email='Email Address of Developer',

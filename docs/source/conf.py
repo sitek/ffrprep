@@ -17,8 +17,7 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-import os
-import sys
+import ffrprep
 import sphinx_material
 # sys.path.insert(0, os.path.abspath('.'))
 
@@ -82,7 +81,6 @@ author = 'Kevin Sitek & Peer Herholz'
 # |version| and |release|, also used in various other places throughout the
 # built documents.
 #
-import ffrprep
 # The short X.Y version.
 version = ffrprep.__version__
 # The full version, including alpha/beta/rc tags.
@@ -198,8 +196,6 @@ texinfo_documents = [
 ]
 
 
-
-
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3/', None),
@@ -210,10 +206,7 @@ intersphinx_mapping = {
 }
 
 sphinx_gallery_conf = {
-    'examples_dirs': '../../examples',   # path to your example scripts
-    'gallery_dirs': 'auto_examples',  # path to where to save gallery generated output
     'doc_module': 'ffrprep',
-    'backreferences_dir': os.path.join('generated', 'modules'),
     'reference_url': {
         'ffrprep': None
     },
@@ -257,5 +250,6 @@ html_theme_options = {
 }
 
 html_sidebars = {
-    "**": ["logo-text.html", "globaltoc.html", "localtoc.html", "searchbox.html"]
+    "**": ["logo-text.html", "globaltoc.html", "localtoc.html",
+           "searchbox.html"]
 }
