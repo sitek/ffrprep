@@ -45,6 +45,7 @@ matplotlib==3.10.0
 matplotlib-inline==0.1.7
 mccabe==0.7.0
 mne==1.9.0
+mne-bids
 numpy==2.2.1
 numpydoc==1.8.0
 packaging==24.2
