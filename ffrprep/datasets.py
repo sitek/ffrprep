@@ -34,7 +34,7 @@ def download_unzip_exp_data(osf_url, dataset_path=None):
     >>> download_and_unzip_osf_file(osf_url, dataset_path='/home/user/Desktop')
     """
 
-    # check if path where the file should be saved provided, 
+    # check if path where the file should be saved provided,
     # if not save it to the current directory
     if dataset_path is None:
         path = Path(os.curdir) / 'ffrprep_dataset'
