@@ -34,8 +34,8 @@ def download_unzip_exp_data(osf_url, dataset_path=None):
     >>> download_and_unzip_osf_file(osf_url, dataset_path='/home/user/Desktop')
     """
 
-    # check if path where to save the file was provided, if not
-    # save it to the current directory
+    # check if path where the file should be saved provided, 
+    # if not save it to the current directory
     if dataset_path is None:
         path = Path(os.curdir) / 'ffrprep_dataset'
     else:
@@ -80,6 +80,7 @@ def download_unzip_exp_data(osf_url, dataset_path=None):
     # Move the contents of the subdirectory to the main directory
     sub_dir_zip = Path(path / 'data-bids')
 
+    # Loop over all items in subdirectory and move them to the main directory
     for item in sub_dir_zip.iterdir():
         new_location = path / item.name
         shutil.move(str(item), str(new_location))
