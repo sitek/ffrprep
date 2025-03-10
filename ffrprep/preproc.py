@@ -146,6 +146,7 @@ def filter_data(eeg_data=None,
     >>> filtered_data = filter_data(eeg_data, low_pass=2000)
     """
 
-    eeg_data.filter(l_freq=high_pass, h_freq=low_pass)
+    eeg_data.filter(l_freq=high_pass, 
+                    h_freq=low_pass)
 
     return eeg_data
