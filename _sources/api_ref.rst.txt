@@ -5,33 +5,33 @@
 Reference API
 =============
 
-.. .. contents:: **List of modules**
-..    :local:
+.. contents:: **List of modules**
+   :local:
 
 .. .. _ref_datasets:
 
 .. :mod:`ffrprep.functon_subsection` - Functionality sub-section
 .. -----------------------------------------------
-.. .. automodule:: ffrprep.functon_subsection
+.. .. automodule:: ffrprep.function_subsection
 ..    :no-members:
 ..    :no-inherited-members:
 
-.. .. currentmodule:: ffrprep.functon_subsection
+.. .. currentmodule:: ffrprep.function_subsection
 
 .. .. autosummary::
 ..    :template: function.rst
 ..    :toctree: generated/
 
-.. .. _ref_utils:
+.. _ref_utils:
 
-.. :mod:`ffrprep.utils` - Utility functions
-.. ------------------------------------------------
-.. .. automodule:: ffrprep.utils
-..    :no-members:
-..    :no-inherited-members:
+:mod:`ffrprep.utils` - Utility functions
+------------------------------------------------
+.. automodule:: ffrprep.utils
+   :no-members:
+   :no-inherited-members:
 
-.. .. currentmodule:: ffrprep.utils
+.. currentmodule:: ffrprep.utils
 
-.. .. autosummary::
-..    :template: function.rst
-..    :toctree: generated/
+.. autosummary::
+   :template: function.rst
+   :toctree: generated/
