@@ -1,10 +1,20 @@
 name: build docs
 
+# The events/triggers when it should be run
+# Here we set that the workflow should run
+# whenever there was a push or PR to the 
+# main branch
 on:
   push:
-    branches:
-    - main
+    branches: [main]
+  pull_request:
+    branches: [main]
+  pull_request_target:
+    branches: [main]  
 
+# We define the jobs that should be run
+# and the respective runner, ie virtual machine
+# Here, the workflow runs on the latest ubuntu
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -13,20 +23,28 @@ jobs:
       matrix:
         python-version: ["3.11"]
 
+    # Below we define all steps that should be
+    # run within the workflow        
     steps:
+
+    # Step 1: Checkout the repository
     - uses: actions/checkout@v2
 
+    # Step 2: Set up Python environment
     - name: Set up Python
       uses: actions/setup-python@v1
       with:
         python-version: ${{ matrix.python-version }}
 
+    # Step 3: Install dependencies        
     - name: Install dependencies
       run: |
         pip install -r requirements-dev.txt
     - name: Install ffrprep
       run: |
         pip install ./
+
+    # Step 4: Build the docs 
     - name: Build the docs
       run: |
         cd docs && make clean html

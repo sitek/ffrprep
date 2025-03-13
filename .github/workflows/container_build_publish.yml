@@ -1,12 +1,20 @@
 name: Build and Publish Container
 
+# The events/triggers when it should be run
+# Here we set that the workflow should run
+# whenever there was a push or PR to the 
+# main branch
 on:
-  # run it on push to the default repository branch
   push:
     branches: [main]
-  # run it during pull request
   pull_request:
+    branches: [main]
+  pull_request_target:
+    branches: [main]  
 
+# We define the jobs that should be run
+# and the respective runner, ie virtual machine
+# Here, the workflow runs on the latest ubuntu
 jobs:
   # define job to build and publish docker image
   build-and-push-docker-image:
@@ -14,13 +22,15 @@ jobs:
     # run only when code is compiling and tests are passing
     runs-on: ubuntu-latest
 
+    # set permissions for the workflow
     permissions:
       contents: read
       packages: write
       attestations: write
       id-token: write
 
-    # steps to perform in job
+    # Below we define all steps that should be
+    # run within the workflow
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -30,6 +40,7 @@ jobs:
         id: buildx
         uses: docker/setup-buildx-action@v2
 
+      # login to DockerHub and GitHub Container Registry
       - name: Login to DockerHub
         uses: docker/login-action@v2
         with:
@@ -43,6 +54,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       
+      # build and push the image to DockerHub and GitHub Container Registry
       - name: Build image and push to Docker Hub and GitHub Container Registry
         uses: docker/build-push-action@v2
         with:
