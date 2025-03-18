@@ -90,12 +90,13 @@ def reference_data(eeg_data=None,
 
     >>> referenced_data = reference_data(eeg_data, ref_channels=['M1'])
     """
-    if not ref_channels:
-        # apply average reference by default
+    # apply average reference by default
+    if ref_channels is None:
         eeg_data.set_eeg_reference()
-    elif ref_channels.isinstance(str):
-        # if single channel provided as a string
+    # if single channel provided as a string
+    elif isinstance(ref_channels, str):
         eeg_data.set_eeg_reference(ref_channels=[ref_channels])
+    # if list of channels is provided
     else:
         eeg_data.set_eeg_reference(ref_channels=ref_channels)
 
