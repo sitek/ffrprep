@@ -1,9 +1,3 @@
-import os
-import mne
-import mne_bids
-import numpy as np
-import matplotlib.pyplot as plt
-
 from mne_bids import BIDSPath, read_raw_bids
 
 
@@ -43,19 +37,17 @@ def load_data(bids_root=None,
     --------
     Load an EEG-BIDS file.
 
-    >>> data = load_data(bids_root=bids_root, 
-                         sub_label=sub_label, 
+    >>> data = load_data(bids_root=bids_root,
+                         sub_label=sub_label,
                          run_label=run_label)
-
     """
-
     bids_path = BIDSPath(subject=sub_label,
                          session=session_label,
                          task=task_label,
                          run=run_label,
                          root=bids_root,
                          datatype='eeg')
-    
+
     data = read_raw_bids(bids_path=bids_path, verbose=False)
     data = data.load_data()
 
@@ -72,17 +64,16 @@ def reference_data(eeg_data=None,
     data : MNE `data` object
         MNE `data` object containing EEG data and metadata.
     ref_channels : list
-        Channels to be used as reference. If more than one channel 
-        in list, the average of the channels in `ref_channels` will 
-        be used as the reference. If `None`, all channels will be 
+        Channels to be used as reference. If more than one channel
+        in list, the average of the channels in `ref_channels` will
+        be used as the reference. If `None`, all channels will be
         averaged as the reference.
         Default = None.
 
     Returns
     -------
-
     referenced_eeg : MNE `data` object
-        MNE `data` object containing EEG data and metadata referenced 
+        MNE `data` object containing EEG data and metadata referenced
         to new provided channels.
 
     Examples
@@ -99,7 +90,6 @@ def reference_data(eeg_data=None,
 
     >>> referenced_data = reference_data(eeg_data, ref_channels=['M1'])
     """
-
     if not ref_channels:
         # apply average reference by default
         eeg_data.set_eeg_reference()
@@ -108,13 +98,13 @@ def reference_data(eeg_data=None,
         eeg_data.set_eeg_reference(ref_channels=[ref_channels])
     else:
         eeg_data.set_eeg_reference(ref_channels=ref_channels)
-            
+
     return eeg_data
 
 
 def filter_data(eeg_data=None,
                 high_pass=None,
-                low_pass=None,):
+                low_pass=None):
     """
     Re-reference the provided EEG data object.
 
@@ -130,10 +120,9 @@ def filter_data(eeg_data=None,
         Default = None.
 
     Returns
+    Returns
     -------
-    
     filtered_eeg : MNE `data` object
-        MNE `data` object containing EEG data and metadata filtered 
         to given frequency range.
 
     Examples
@@ -150,7 +139,6 @@ def filter_data(eeg_data=None,
 
     >>> filtered_data = filter_data(eeg_data, low_pass=2000)
     """
-
     eeg_data.filter(l_freq=high_pass,
                     h_freq=low_pass)
 
