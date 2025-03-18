@@ -1,7 +1,13 @@
 import shutil
+import pytest
 from ffrprep.datasets import download_unzip_exp_data
-from ffrprep.tests.test_datasets import osf_url
 from ffrprep.preproc import load_data, reference_data, filter_data
+
+
+@pytest.fixture
+def osf_url():
+    # Provide a valid OSF URL for testing
+    return "https://osf.io/download/kap3z"
 
 
 def test_load_data(tmp_path):
@@ -9,7 +15,7 @@ def test_load_data(tmp_path):
     dataset_path = tmp_path / "test_dataset"
 
     # Download and unzip the data
-    download_unzip_exp_data(osf_url(), dataset_path)
+    download_unzip_exp_data(osf_url, dataset_path)
 
     # Call the function to load correct data
     data, bids_path = load_data(bids_root=dataset_path,
@@ -33,7 +39,7 @@ def test_reference_data(tmp_path):
     dataset_path = tmp_path / "test_dataset"
 
     # Download and unzip the data
-    download_unzip_exp_data(osf_url(), dataset_path)
+    download_unzip_exp_data(osf_url, dataset_path)
 
     # Call the function to load correct data
     data, bids_path = load_data(bids_root=dataset_path,
@@ -60,7 +66,7 @@ def test_filter_data(tmp_path):
     dataset_path = tmp_path / "test_dataset"
 
     # Download and unzip the data
-    download_unzip_exp_data(osf_url(), dataset_path)
+    download_unzip_exp_data(osf_url, dataset_path)
 
     # Call the function to load correct data
     data, bids_path = load_data(bids_root=dataset_path,
