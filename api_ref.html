@@ -46,7 +46,7 @@
   
   
   
-    <title>Reference API &#8212; ffrprep 0+untagged.1.g1680743 documentation</title>
+    <title>Reference API &#8212; ffrprep 0+untagged.1.gef1b8e6 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
     <link rel="stylesheet" type="text/css" href="_static/material.css?v=79c92029" />
     <link rel="stylesheet" type="text/css" href="_static/plot_directive.css" />
@@ -56,7 +56,7 @@
     <link rel="stylesheet" type="text/css" href="_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="_static/sg_gallery-rendered-html.css?v=1277b6f3" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <script src="_static/documentation_options.js?v=ce3819ba"></script>
+    <script src="_static/documentation_options.js?v=e6ba5234"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -64,7 +64,7 @@
     <script src="_static/design-tabs.js?v=f930bc37"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Release History" href="release-history.html" />
+    <link rel="next" title="ffrprep.preproc.load_data" href="generated/ffrprep.preproc.load_data.html" />
     <link rel="prev" title="package_name example" href="auto_examples/plot_example.html" />
   
    
@@ -89,7 +89,7 @@
   <nav class="md-header-nav md-grid">
     <div class="md-flex navheader">
       <div class="md-flex__cell md-flex__cell--shrink">
-        <a href="index.html" title="ffrprep 0+untagged.1.g1680743 documentation"
+        <a href="index.html" title="ffrprep 0+untagged.1.gef1b8e6 documentation"
            class="md-header-nav__button md-logo">
           
             &nbsp;
@@ -175,7 +175,7 @@
   <nav class="md-tabs" data-md-component="tabs">
     <div class="md-tabs__inner md-grid">
       <ul class="md-tabs__list">
-          <li class="md-tabs__item"><a href="index.html" class="md-tabs__link">ffrprep 0+untagged.1.g1680743 documentation</a></li>
+          <li class="md-tabs__item"><a href="index.html" class="md-tabs__link">ffrprep 0+untagged.1.gef1b8e6 documentation</a></li>
       </ul>
     </div>
   </nav>
@@ -187,13 +187,13 @@
               <div class="md-sidebar__inner">
                 <nav class="md-nav md-nav--primary" data-md-level="0">
   <label class="md-nav__title md-nav__title--site" for="__drawer">
-    <a href="index.html" title="ffrprep 0+untagged.1.g1680743 documentation" class="md-nav__button md-logo">
+    <a href="index.html" title="ffrprep 0+untagged.1.gef1b8e6 documentation" class="md-nav__button md-logo">
       
         <img src="_static/" alt=" logo" width="48" height="48">
       
     </a>
     <a href="index.html"
-       title="ffrprep 0+untagged.1.g1680743 documentation">ffrprep</a>
+       title="ffrprep 0+untagged.1.gef1b8e6 documentation">ffrprep</a>
   </label>
     <div class="md-nav__source">
       <a href="https://github.com/spark-csd/ffrprep" title="Go to repository" class="md-source" data-md-source="github">
@@ -256,6 +256,10 @@
   <ul class="md-nav__list" data-md-scrollfix="">
         <li class="md-nav__item"><a href="#api-ref--page-root" class="md-nav__link">Reference API</a><nav class="md-nav">
               <ul class="md-nav__list">
+        <li class="md-nav__item"><a href="#module-ffrprep.preproc" class="md-nav__link"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ffrprep.preproc</span></code> - Preprocessing functions</a>
+        </li>
+        <li class="md-nav__item"><a href="#module-ffrprep.datasets" class="md-nav__link"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ffrprep.datasets</span></code> - Dataset functions</a>
+        </li>
         <li class="md-nav__item"><a href="#module-ffrprep.utils" class="md-nav__link"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ffrprep.utils</span></code> - Utility functions</a>
         </li></ul>
             </nav>
@@ -298,6 +302,10 @@
   <ul class="md-nav__list" data-md-scrollfix="">
         <li class="md-nav__item"><a href="#api-ref--page-root" class="md-nav__link">Reference API</a><nav class="md-nav">
               <ul class="md-nav__list">
+        <li class="md-nav__item"><a href="#module-ffrprep.preproc" class="md-nav__link"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ffrprep.preproc</span></code> - Preprocessing functions</a>
+        </li>
+        <li class="md-nav__item"><a href="#module-ffrprep.datasets" class="md-nav__link"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ffrprep.datasets</span></code> - Dataset functions</a>
+        </li>
         <li class="md-nav__item"><a href="#module-ffrprep.utils" class="md-nav__link"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ffrprep.utils</span></code> - Utility functions</a>
         </li></ul>
             </nav>
@@ -321,11 +329,39 @@
 <nav class="contents local" id="list-of-modules">
 <p class="topic-title"><strong>List of modules</strong></p>
 <ul class="simple">
-<li><p><a class="reference internal" href="#module-ffrprep.utils" id="id1"><a class="reference internal" href="#module-ffrprep.utils" title="ffrprep.utils"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ffrprep.utils</span></code></a> - Utility functions</a></p></li>
+<li><p><a class="reference internal" href="#module-ffrprep.preproc" id="id1"><a class="reference internal" href="#module-ffrprep.preproc" title="ffrprep.preproc"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ffrprep.preproc</span></code></a> - Preprocessing functions</a></p></li>
+<li><p><a class="reference internal" href="#module-ffrprep.datasets" id="id2"><a class="reference internal" href="#module-ffrprep.datasets" title="ffrprep.datasets"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ffrprep.datasets</span></code></a> - Dataset functions</a></p></li>
+<li><p><a class="reference internal" href="#module-ffrprep.utils" id="id3"><a class="reference internal" href="#module-ffrprep.utils" title="ffrprep.utils"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ffrprep.utils</span></code></a> - Utility functions</a></p></li>
 </ul>
 </nav>
+<section id="module-ffrprep.preproc">
+<span id="ffrprep-preproc-preprocessing-functions"></span><span id="ref-preproc"></span><h2 id="module-ffrprep.preproc"><a class="toc-backref" href="#id1" role="doc-backlink"><a class="reference internal" href="#module-ffrprep.preproc" title="ffrprep.preproc"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ffrprep.preproc</span></code></a> - Preprocessing functions</a><a class="headerlink" href="#module-ffrprep.preproc" title="Link to this heading">¶</a></h2>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/ffrprep.preproc.load_data.html#ffrprep.preproc.load_data" title="ffrprep.preproc.load_data"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_data</span></code></a>([bids_root, sub_label, ...])</p></td>
+<td><p>Identify an EEG filepath in a BIDS directory and load it.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/ffrprep.preproc.reference_data.html#ffrprep.preproc.reference_data" title="ffrprep.preproc.reference_data"><code class="xref py py-obj docutils literal notranslate"><span class="pre">reference_data</span></code></a>([eeg_data, ref_channels])</p></td>
+<td><p>Re-reference the provided EEG data object.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/ffrprep.preproc.filter_data.html#ffrprep.preproc.filter_data" title="ffrprep.preproc.filter_data"><code class="xref py py-obj docutils literal notranslate"><span class="pre">filter_data</span></code></a>([eeg_data, high_pass, low_pass])</p></td>
+<td><p>Re-reference the provided EEG data object.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="module-ffrprep.datasets">
+<span id="ffrprep-datasets-dataset-functions"></span><span id="ref-dataset"></span><h2 id="module-ffrprep.datasets"><a class="toc-backref" href="#id2" role="doc-backlink"><a class="reference internal" href="#module-ffrprep.datasets" title="ffrprep.datasets"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ffrprep.datasets</span></code></a> - Dataset functions</a><a class="headerlink" href="#module-ffrprep.datasets" title="Link to this heading">¶</a></h2>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/ffrprep.datasets.download_unzip_exp_data.html#ffrprep.datasets.download_unzip_exp_data" title="ffrprep.datasets.download_unzip_exp_data"><code class="xref py py-obj docutils literal notranslate"><span class="pre">download_unzip_exp_data</span></code></a>(osf_url[, dataset_path])</p></td>
+<td><p>Download the example dataset from from OSF and unzip it.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
 <section id="module-ffrprep.utils">
-<span id="ffrprep-utils-utility-functions"></span><span id="ref-utils"></span><h2 id="module-ffrprep.utils"><a class="toc-backref" href="#id1" role="doc-backlink"><a class="reference internal" href="#module-ffrprep.utils" title="ffrprep.utils"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ffrprep.utils</span></code></a> - Utility functions</a><a class="headerlink" href="#module-ffrprep.utils" title="Link to this heading">¶</a></h2>
+<span id="ffrprep-utils-utility-functions"></span><span id="ref-utils"></span><h2 id="module-ffrprep.utils"><a class="toc-backref" href="#id3" role="doc-backlink"><a class="reference internal" href="#module-ffrprep.utils" title="ffrprep.utils"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ffrprep.utils</span></code></a> - Utility functions</a><a class="headerlink" href="#module-ffrprep.utils" title="Link to this heading">¶</a></h2>
 <table class="autosummary longtable docutils align-default">
 <tbody>
 </tbody>
@@ -357,12 +393,12 @@
             </a>
           
           
-            <a href="release-history.html" title="Release History"
+            <a href="generated/ffrprep.preproc.load_data.html" title="ffrprep.preproc.load_data"
                class="md-flex md-footer-nav__link md-footer-nav__link--next"
                rel="next">
             <div class="md-flex__cell md-flex__cell--stretch md-footer-nav__title"><span
                 class="md-flex__ellipsis"> <span
-                class="md-footer-nav__direction"> "Next" </span> Release History </span>
+                class="md-footer-nav__direction"> "Next" </span> ffrprep.preproc.load_data </span>
             </div>
             <div class="md-flex__cell md-flex__cell--shrink"><i
                 class="md-icon md-icon--arrow-forward md-footer-nav__button"></i>

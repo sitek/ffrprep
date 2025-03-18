@@ -1,0 +1,6 @@
+﻿ffrprep.datasets.download\_unzip\_exp\_data
+===========================================
+
+.. currentmodule:: ffrprep.datasets
+
+.. autofunction:: download_unzip_exp_data

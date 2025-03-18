@@ -1,0 +1,6 @@
+﻿ffrprep.preproc.filter\_data
+============================
+
+.. currentmodule:: ffrprep.preproc
+
+.. autofunction:: filter_data

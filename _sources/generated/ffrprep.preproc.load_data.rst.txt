@@ -1,0 +1,6 @@
+﻿ffrprep.preproc.load\_data
+==========================
+
+.. currentmodule:: ffrprep.preproc
+
+.. autofunction:: load_data

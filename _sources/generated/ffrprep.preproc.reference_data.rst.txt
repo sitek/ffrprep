@@ -1,0 +1,6 @@
+﻿ffrprep.preproc.reference\_data
+===============================
+
+.. currentmodule:: ffrprep.preproc
+
+.. autofunction:: reference_data
