@@ -1,5 +1,3 @@
-from pathlib import Path
-import pytest
 import shutil
 from ffrprep.datasets import download_unzip_exp_data
 from ffrprep.tests.test_datasets import osf_url
@@ -43,7 +41,7 @@ def test_reference_data(tmp_path):
                                 session_label=None,
                                 task_label='passive',
                                 run_label=1,)
-    
+
     # Call the function to re-reference the data
     reference_data(data, ref_channels=None)
 
