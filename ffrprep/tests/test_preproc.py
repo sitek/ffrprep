@@ -9,7 +9,7 @@ def test_load_data(tmp_path):
     dataset_path = tmp_path / "test_dataset"
 
     # Download and unzip the data
-    download_unzip_exp_data(osf_url, dataset_path)
+    download_unzip_exp_data(osf_url(), dataset_path)
 
     # Call the function to load correct data
     data, bids_path = load_data(bids_root=dataset_path,
@@ -33,7 +33,7 @@ def test_reference_data(tmp_path):
     dataset_path = tmp_path / "test_dataset"
 
     # Download and unzip the data
-    download_unzip_exp_data(osf_url, dataset_path)
+    download_unzip_exp_data(osf_url(), dataset_path)
 
     # Call the function to load correct data
     data, bids_path = load_data(bids_root=dataset_path,
@@ -60,7 +60,7 @@ def test_filter_data(tmp_path):
     dataset_path = tmp_path / "test_dataset"
 
     # Download and unzip the data
-    download_unzip_exp_data(osf_url, dataset_path)
+    download_unzip_exp_data(osf_url(), dataset_path)
 
     # Call the function to load correct data
     data, bids_path = load_data(bids_root=dataset_path,
