@@ -10,16 +10,16 @@ def osf_url():
     return "https://osf.io/download/kap3z"
 
 
-def test_load_data(tmp_path):
+def test_load_data(osf_url, tmp_path):
     # Use temporary directory for testing
     dataset_path = tmp_path / "test_dataset"
 
     # Download and unzip the data
-    download_unzip_exp_data(osf_url, dataset_path)
+    data_path = download_unzip_exp_data(osf_url, dataset_path)
 
     # Call the function to load correct data
-    data, bids_path = load_data(bids_root=dataset_path,
-                                sub_label=21,
+    data, bids_path = load_data(bids_root=data_path,
+                                sub_label='21',
                                 session_label=None,
                                 task_label='passive',
                                 run_label=1,)
@@ -34,16 +34,16 @@ def test_load_data(tmp_path):
     shutil.rmtree(dataset_path)
 
 
-def test_reference_data(tmp_path):
+def test_reference_data(osf_url, tmp_path):
     # Use temporary directory for testing
     dataset_path = tmp_path / "test_dataset"
 
     # Download and unzip the data
-    download_unzip_exp_data(osf_url, dataset_path)
+    data_path = download_unzip_exp_data(osf_url, dataset_path)
 
     # Call the function to load correct data
-    data, bids_path = load_data(bids_root=dataset_path,
-                                sub_label=21,
+    data, bids_path = load_data(bids_root=data_path,
+                                sub_label='21',
                                 session_label=None,
                                 task_label='passive',
                                 run_label=1,)
@@ -61,16 +61,16 @@ def test_reference_data(tmp_path):
     shutil.rmtree(dataset_path)
 
 
-def test_filter_data(tmp_path):
+def test_filter_data(osf_url, tmp_path):
     # Use temporary directory for testing
     dataset_path = tmp_path / "test_dataset"
 
     # Download and unzip the data
-    download_unzip_exp_data(osf_url, dataset_path)
+    data_path = download_unzip_exp_data(osf_url, dataset_path)
 
     # Call the function to load correct data
-    data, bids_path = load_data(bids_root=dataset_path,
-                                sub_label=21,
+    data, bids_path = load_data(bids_root=data_path,
+                                sub_label='21',
                                 session_label=None,
                                 task_label='passive',
                                 run_label=1,)
