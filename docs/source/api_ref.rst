@@ -22,9 +22,9 @@ Reference API
    :template: function.rst
    :toctree: generated/
 
-   ffrprep.preproc.load_data
-   ffrprep.preproc.reference_data
-   ffrprep.preproc.filter_data
+   load_data
+   reference_data
+   filter_data
 
 
 .. _ref_dataset:
@@ -41,7 +41,7 @@ Reference API
    :template: function.rst
    :toctree: generated/
 
-   ffrprep.datasets.download_unzip_exp_data
+   download_unzip_exp_data
 
 .. _ref_utils:
 
