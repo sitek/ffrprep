@@ -19,6 +19,7 @@ def validate_input_dir(exec_env, bids_dir, participant_label):
         Label(s) of subject to be checked (without 'sub-').
     """
 
+    # Configuration for bids-validator
     validator_config_dict = {
         "ignore": [
             "TSV_EQUAL_ROWS",
@@ -66,16 +67,25 @@ def validate_input_dir(exec_env, bids_dir, participant_label):
 
     # Limit validation only to data from requested participants
     if participant_label:
+        # get all participant labels in bids_dir
         all_subs = set([s.name[4:] for s in bids_dir.glob('sub-*')])
+
+        # get selected participant labels
         selected_subs = set([s[4:] if s.startswith('sub-') else s
                              for s in participant_label])
+
+        # check if all selected participants exist in bids_dir
         bad_labels = selected_subs.difference(all_subs)
+
+        # raise error if any selected participant does not exist
         if bad_labels:
             error_msg = (
                 'Data for requested participant(s) label(s) not found. '
                 'Could not find data for participant(s): %s. '
             ) + 'Please verify the requested ' \
                 'participant labels.'
+
+            # Add additional error message depending on execution environment
             if exec_env == 'docker':
                 error_msg += (
                     ' This error can be caused by the input data not being '
@@ -103,9 +113,11 @@ def validate_input_dir(exec_env, bids_dir, participant_label):
         temp.write(json.dumps(validator_config_dict))
         temp.flush()
         try:
+            # run bids-validator
             subprocess.check_call([
                 'bids-validator', bids_dir, '-c', temp.name
             ])
+        # error if bids-validator is not installed
         except FileNotFoundError:
             print("bids-validator does not appear to be installed",
                   file=sys.stderr)
