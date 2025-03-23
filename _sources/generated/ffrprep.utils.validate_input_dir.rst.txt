@@ -1,6 +1,0 @@
-﻿ffrprep.utils.validate\_input\_dir
-==================================
-
-.. currentmodule:: ffrprep.utils
-
-.. autofunction:: validate_input_dir
