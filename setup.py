@@ -47,7 +47,7 @@ setup(
     packages=find_packages(exclude=['docs', 'tests']),
     entry_points={
         'console_scripts': [
-            'ffrprep = ffrprep.ffrprep:ffrprep',
+            'ffrprep = ffrprep.ffrprep_cli:run_ffrprep',
             # 'command = some.module:some_function',
         ],
     },

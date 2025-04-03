@@ -56,3 +56,5 @@ Reference API
 .. autosummary::
    :template: function.rst
    :toctree: generated/
+
+   validate_input_dir
