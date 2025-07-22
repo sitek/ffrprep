@@ -144,3 +144,100 @@ def filter_data(eeg_data=None,
                     h_freq=low_pass)
 
     return eeg_data
+
+
+def epoch_data(eeg_data=None,
+               events_file=None,
+               picks=None,
+               epoch_window=None,
+               baseline=None,
+               tmin=None,
+               tmax=None):
+    """
+    Epoch the provided EEG data object based on events.
+
+    Parameters
+    ----------
+    data : MNE `data` object
+        MNE `data` object containing EEG data and metadata.
+    baseline : float or 1-D array
+        In seconds: start of baseline period (if float); 
+        baseline window (if array).
+
+    Returns
+    -------
+    epoched_data : MNE `epoch` object
+        MNE `epoch` object containing time-locked epochs.
+
+    Examples
+    --------
+    Epoch an EEG data object with a baseline time start
+    of 50 ms before event onset.
+
+    >>> epoched_data = epoch_data(eeg_data, baseline=-0.05)
+
+    Epoch an EEG data object with a baseline window
+    of 200 to 50 ms before event onset.
+
+    >>> epoched_data = epoch_data(eeg_data, baseline=[-0.2, -0.05])
+
+    """
+    from mne import Epochs
+    
+    # events - should be able to take manual events file,
+    # or use BIDS events file
+    events = None
+    event_dict = None
+
+    # subset of electrodes to include, if any
+    picks = None
+
+    # define baseline window (in seconds)
+    if isinstance(baseline, float):
+        baseline_window = [baseline, 0]
+    else:
+        baseline_window = baseline
+
+    # define epoch time window (in seconds)
+    if not tmin:
+        tmin = baseline_window[0]
+    if not tmax:
+        tmax = 0.5
+
+    epoched_data = Epochs(eeg_data,
+                          events=events,
+                          event_id=event_dict,
+                          on_missing='warn',
+                          picks=picks,
+                          tmin=tmin, tmax=tmax,
+                          baseline=baseline_window,
+                          reject=dict(eeg=75e-6)).drop_bad()
+
+    return epoched_data
+
+
+def preproc_pipeline():
+    """
+    Preprocess raw EEG data.
+
+    Parameters
+    ----------
+    data : MNE `data` object
+        MNE `data` object containing EEG data and metadata.
+
+    Returns
+    -------
+    preprocessed_data : MNE `XXX` object
+        MNE `XXX` object.
+
+    Examples
+    --------
+    Preprocess EEG data.
+
+    >>> preprocessed_data = preproc_pipeline()
+
+
+    """
+    preprocessed_data = None
+
+    return preprocessed_data
