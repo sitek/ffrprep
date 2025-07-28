@@ -1,7 +1,8 @@
 import shutil
 import pytest
+import mne
 from ffrprep.datasets import download_unzip_exp_data
-from ffrprep.preproc import load_data, reference_data, filter_data
+from ffrprep.preproc import load_data, reference_data, filter_data, epoch_data, preproc_pipeline
 
 
 @pytest.fixture
@@ -85,6 +86,45 @@ def test_filter_data(osf_url, tmp_path):
     except ValueError:
         print('Upper edge frequency of the filter must be below '
               'the Nyquist frequency of the EEG data')
+
+    # Clean up the downloaded files after the test
+    shutil.rmtree(dataset_path)
+
+def test_epoch_data(osf_url, tmp_path):
+    # Use temporary directory for testing
+    dataset_path = tmp_path / "test_dataset"
+
+    # Download and unzip the data
+    data_path = download_unzip_exp_data(osf_url, dataset_path)
+    data, bids_path = load_data(bids_root=data_path,
+                                sub_label='21',
+                                session_label=None,
+                                task_label='passive',
+                                run_label=1)
+
+    # Using both a baseline window and a baseline float should both be accepted
+    epoch_data(eeg_data=data, baseline=[-0.2, -0.05], verbose='WARNING')
+    epoch_data(eeg_data=data, baseline=-0.05, verbose='WARNING')
+
+    # An invalid baseline should result in error
+    with pytest.raises(ValueError) as e:
+        epoch_data(eeg_data=data, baseline=999.0, verbose='WARNING')
+
+    # Clean up the downloaded files after the test
+    shutil.rmtree(dataset_path)
+
+def test_preproc_pipeline(osf_url, tmp_path):
+    # Use temporary directory for testing
+    dataset_path = tmp_path / "test_dataset"
+
+    # Download and unzip the data
+    data_path = download_unzip_exp_data(osf_url, dataset_path)
+    data = preproc_pipeline(bids_root=data_path,
+                                sub_label='21',
+                                session_label=None,
+                                task_label='passive',
+                                run_label=1,
+                                verbose=False)
 
     # Clean up the downloaded files after the test
     shutil.rmtree(dataset_path)

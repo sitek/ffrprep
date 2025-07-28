@@ -5,7 +5,7 @@ def load_data(bids_root=None,
               sub_label=None,
               session_label=None,
               task_label=None,
-              run_label=None,):
+              run_label=None):
     """
     Identify an EEG filepath in a BIDS directory and load it.
 
@@ -121,7 +121,6 @@ def filter_data(eeg_data=None,
         Default = None.
 
     Returns
-    Returns
     -------
     filtered_eeg : MNE `data` object
         to given frequency range.
@@ -144,3 +143,128 @@ def filter_data(eeg_data=None,
                     h_freq=low_pass)
 
     return eeg_data
+
+def epoch_data(eeg_data,
+               baseline,
+               events_file=None,
+               picks=None,
+               epoch_window=None,
+               tmin=None,
+               tmax=None,
+               verbose=True):
+    """
+    Epoch the provided EEG data object based on events.
+
+    Parameters
+    ----------
+    data : MNE `data` object
+        MNE `data` object containing EEG data and metadata.
+    baseline : float or 1-D array
+        In seconds: start of baseline period (if float); 
+        baseline window (if array).
+
+    Returns
+    -------
+    epoched_data : MNE `epoch` object
+        MNE `epoch` object containing time-locked epochs.
+
+    Examples
+    --------
+    Epoch an EEG data object with a baseline time start
+    of 50 ms before event onset.
+
+    >>> epoched_data = epoch_data(eeg_data, baseline=-0.05)
+
+    Epoch an EEG data object with a baseline window
+    of 200 to 50 ms before event onset.
+
+    >>> epoched_data = epoch_data(eeg_data, baseline=[-0.2, -0.05])
+
+    """
+    from mne import Epochs
+    
+    # events - should be able to take manual events file,
+    # or use BIDS events file
+    events = None
+    event_dict = None
+
+    # subset of electrodes to include, if any
+    picks = None
+
+    # define baseline window (in seconds)
+    if isinstance(baseline, float):
+        baseline_window = [baseline, 0]
+    else:
+        baseline_window = baseline
+
+    # define epoch time window (in seconds)
+    if not tmin:
+        tmin = baseline_window[0]
+    if not tmax:
+        tmax = 0.5
+
+    epoched_data = Epochs(eeg_data,
+                          events=events,
+                          event_id=event_dict,
+                          on_missing='warn',
+                          picks=picks,
+                          tmin=tmin, tmax=tmax,
+                          baseline=baseline_window,
+                          reject=dict(eeg=75e-6)).drop_bad()
+
+    return epoched_data
+
+
+def preproc_pipeline(bids_root=None,
+              sub_label=None,
+              session_label=None,
+              task_label=None,
+              run_label=None,
+              ref_channels=None,
+              high_pass=None,
+              low_pass=None,
+              events_file=None,
+              picks=None,
+              epoch_window=None,
+              baseline=None,
+              tmin=None,
+              tmax=None,
+              verbose=True):
+    """
+    Preprocess raw EEG data.
+
+    Parameters
+    ----------
+    data : MNE `data` object
+        MNE `data` object containing EEG data and metadata.
+
+    Returns
+    -------
+    preprocessed_data : MNE `XXX` object
+        MNE `XXX` object.
+
+    Examples
+    --------
+    Preprocess EEG data.
+
+    >>> preprocessed_data = preproc_pipeline()
+
+
+    """
+    eeg_data = load_data(bids_root=bids_root,
+              sub_label=sub_label,
+              session_label=session_label,
+              task_label=task_label,
+              run_label=run_label)
+    
+    eeg_data_object = eeg_data[0]
+    
+    referenced_eeg_data = reference_data(eeg_data_object, ref_channels=ref_channels)
+
+    filtered_eeg_data = filter_data(referenced_eeg_data, high_pass=high_pass, low_pass=low_pass)
+
+    preprocessed_data = epoch_data(filtered_eeg_data, -0.05, events_file=events_file,
+               picks=picks, epoch_window=epoch_window,
+               tmin=tmin, tmax=tmax, verbose=verbose)
+
+    return preprocessed_data
