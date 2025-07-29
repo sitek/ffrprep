@@ -1,6 +1,5 @@
 from mne_bids import BIDSPath, read_raw_bids
 
-
 def load_data(bids_root=None,
               sub_label=None,
               session_label=None,
@@ -212,7 +211,7 @@ def epoch_data(eeg_data,
                           baseline=baseline_window,
                           reject=dict(eeg=75e-6)).drop_bad()
 
-    return epoched_data
+    return epoched_data, (tmin, tmax)
 
 
 def preproc_pipeline(bids_root=None,
