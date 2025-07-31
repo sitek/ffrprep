@@ -78,6 +78,7 @@ def create_report(bids_root,
 def add_to_report(report_fpath, 
                   figure=None,
                   figure_title=None,
+                  figure_caption=None,
                   html_text=None,
                   html_title=None):
     """
@@ -91,6 +92,8 @@ def add_to_report(report_fpath,
         Figure to be added to the existing FFRPREP report.
     figure_title : string
         Title of the figure to be added to the existing FFRPREP report.
+    figure_caption : string
+        Caption below the figure to be added to the existing FFRPREP report.
     html_text : string
         HTML-formatted text string to be added to the existing FFRPREP report.
     html_title : String
@@ -109,7 +112,9 @@ def add_to_report(report_fpath,
     """
     with open_report(report_fpath) as report:
         if figure:
-            report.add_figure(figure=figure, title=figure_title)
+            report.add_figure(figure=figure, 
+                              title=figure_title,
+                              caption=figure_caption)
         if html_text:
             report.add_html(title=html_title, html=html_text)
         report.save(report_fpath, overwrite=True)
