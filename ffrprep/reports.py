@@ -2,7 +2,8 @@ import os
 import time
 from mne import Report, open_report
 
-def create_report(bids_root, 
+
+def create_report(bids_root,
                   out_dir=None,
                   filename=None,
                   title=None,
@@ -27,7 +28,7 @@ def create_report(bids_root,
         Whether to overwrite an existing file (`True`).
         If `False` (default) and file exists, report will be saved as
         '{filename}_1.html'.
-    
+
     Returns
     -------
     report_fpath : string
@@ -45,7 +46,7 @@ def create_report(bids_root,
     # Define and create the output directory
     if out_dir is None:
         out_dir = os.path.join(bids_root, 'derivatives')
-    
+
     if not os.path.isdir(out_dir):
         os.makedirs(out_dir)
 
@@ -75,7 +76,7 @@ def create_report(bids_root,
     return report_fpath
 
 
-def add_to_report(report_fpath, 
+def add_to_report(report_fpath,
                   figure=None,
                   figure_title=None,
                   figure_caption=None,
@@ -98,7 +99,7 @@ def add_to_report(report_fpath,
         HTML-formatted text string to be added to the existing FFRPREP report.
     html_title : String
         Title of the HTML text to be added to the existing FFRPREP report.
-    
+
     Returns
     -------
     report_fpath : string
@@ -108,15 +109,16 @@ def add_to_report(report_fpath,
     --------
     Add an html text block to an existing FFRPREP report.
 
-    >>> report_fpath = add_to_report(report_fpath, html_text=html_text, html_title='New section')
+    >>> report_fpath = add_to_report(report_fpath, html_text=html_text, 
+                                     html_title='New section')
     """
     with open_report(report_fpath) as report:
         if figure:
-            report.add_figure(figure=figure, 
+            report.add_figure(figure=figure,
                               title=figure_title,
                               caption=figure_caption)
         if html_text:
             report.add_html(title=html_title, html=html_text)
         report.save(report_fpath, overwrite=True)
-    
+
     return report_fpath
