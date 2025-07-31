@@ -109,7 +109,7 @@ def add_to_report(report_fpath,
     --------
     Add an html text block to an existing FFRPREP report.
 
-    >>> report_fpath = add_to_report(report_fpath, html_text=html_text, 
+    >>> report_fpath = add_to_report(report_fpath, html_text=html_text,
                                      html_title='New section')
     """
     with open_report(report_fpath) as report:
