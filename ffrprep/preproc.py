@@ -181,14 +181,9 @@ def epoch_data(eeg_data,
 
     """
     from mne import Epochs
-    
-    # events - should be able to take manual events file,
-    # or use BIDS events file
+
     events = None
     event_dict = None
-
-    # subset of electrodes to include, if any
-    picks = None
 
     # define baseline window (in seconds)
     if isinstance(baseline, float):
@@ -209,12 +204,14 @@ def epoch_data(eeg_data,
                           picks=picks,
                           tmin=tmin, tmax=tmax,
                           baseline=baseline_window,
+                          verbose=verbose,
                           reject=dict(eeg=75e-6)).drop_bad()
 
     return epoched_data, (tmin, tmax)
 
-
-def preproc_pipeline(bids_root=None,
+# use mne.Report for all functions, created evoked object
+def preproc_pipeline(bids_root,
+                     baseline,
               sub_label=None,
               session_label=None,
               task_label=None,
@@ -225,7 +222,6 @@ def preproc_pipeline(bids_root=None,
               events_file=None,
               picks=None,
               epoch_window=None,
-              baseline=None,
               tmin=None,
               tmax=None,
               verbose=True):
@@ -262,7 +258,7 @@ def preproc_pipeline(bids_root=None,
 
     filtered_eeg_data = filter_data(referenced_eeg_data, high_pass=high_pass, low_pass=low_pass)
 
-    preprocessed_data = epoch_data(filtered_eeg_data, -0.05, events_file=events_file,
+    preprocessed_data = epoch_data(filtered_eeg_data, baseline, events_file=events_file,
                picks=picks, epoch_window=epoch_window,
                tmin=tmin, tmax=tmax, verbose=verbose)
 
