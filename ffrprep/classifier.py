@@ -1,18 +1,19 @@
-from mne_bids import BIDSPath, read_raw_bids # type: ignore
-import matplotlib.pyplot as plt # type: ignore
-import numpy as np # type: ignore
-from sklearn.discriminant_analysis import LinearDiscriminantAnalysis # type: ignore
-from sklearn.model_selection import StratifiedKFold, cross_val_score # type: ignore
-from sklearn.pipeline import make_pipeline # type: ignore
-from sklearn.preprocessing import LabelEncoder # type: ignore
+from mne_bids import BIDSPath, read_raw_bids  
+import matplotlib.pyplot as plt  
+import numpy as np  
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis  
+from sklearn.model_selection import StratifiedKFold, cross_val_score  
+from sklearn.pipeline import make_pipeline  
+from sklearn.preprocessing import LabelEncoder  
 
-from mne import Epochs, create_info # type: ignore
-from mne.datasets import eegbci # type: ignore
-from mne.decoding import CSP # type: ignore
-from mne.io import concatenate_raws, read_raw_edf # type: ignore
-from mne.time_frequency import AverageTFRArray # type: ignore
+from mne import Epochs, create_info  
+from mne.datasets import eegbci  
+from mne.decoding import CSP  
+from mne.io import concatenate_raws, read_raw_edf  
+from mne.time_frequency import AverageTFRArray  
 
 #update parameters min freq max freq tmin tmax, make more flexible fucntion
+
 def classify_data(epochs, min_freq, max_freq, n_freqs, n_cycles, tmin, tmax):
     # take the classifier from sci-kit learn
     clf = make_pipeline(CSP(n_components = 4, reg=None, log=True, norm_trace=False),

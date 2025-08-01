@@ -246,20 +246,25 @@ def preproc_pipeline(bids_root,
 
 
     """
-    eeg_data = load_data(bids_root=bids_root,
+
+    # Load EEG data from bids_root path, with optional specification through parameters
+    # Path variable is stored for future usage
+    eeg_data, path = load_data(bids_root=bids_root,
               sub_label=sub_label,
               session_label=session_label,
               task_label=task_label,
               run_label=run_label)
     
-    eeg_data_object = eeg_data[0]
-    
-    referenced_eeg_data = reference_data(eeg_data_object, ref_channels=ref_channels)
+    # Reference the given EEG data to specific channels
+    referenced_eeg_data = reference_data(eeg_data, ref_channels=ref_channels)
 
+    # Filter the referenced EEG data using the given band-pass
     filtered_eeg_data = filter_data(referenced_eeg_data, high_pass=high_pass, low_pass=low_pass)
 
+    # Epoch the filtered data using the given baseline
     preprocessed_data = epoch_data(filtered_eeg_data, baseline, events_file=events_file,
                picks=picks, epoch_window=epoch_window,
                tmin=tmin, tmax=tmax, verbose=verbose)
 
+    # Return the epoched data
     return preprocessed_data
