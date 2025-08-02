@@ -1,6 +1,5 @@
 import shutil
 import pytest
-import mne
 from ffrprep.datasets import download_unzip_exp_data
 from ffrprep.preproc import load_data, reference_data, filter_data, epoch_data, preproc_pipeline
 
@@ -19,7 +18,7 @@ def test_load_data(osf_url, tmp_path):
     data_path = download_unzip_exp_data(osf_url, dataset_path)
 
     # Call the function to load correct data
-    data, bids_path = load_data(bids_root=data_path,
+    load_data(bids_root=data_path,
                                 sub_label='21',
                                 session_label=None,
                                 task_label='passive',
@@ -27,7 +26,7 @@ def test_load_data(osf_url, tmp_path):
 
     # Should fail if not given specific EEG file
     try:
-        data, bids_path = load_data(bids_root=dataset_path)
+        load_data(bids_root=dataset_path)
     except FileNotFoundError:
         print('BIDSPath must point to a specific EEG file')
 
@@ -43,7 +42,7 @@ def test_reference_data(osf_url, tmp_path):
     data_path = download_unzip_exp_data(osf_url, dataset_path)
 
     # Call the function to load correct data
-    data, bids_path = load_data(bids_root=data_path,
+    data, _ = load_data(bids_root=data_path,
                                 sub_label='21',
                                 session_label=None,
                                 task_label='passive',
@@ -70,7 +69,7 @@ def test_filter_data(osf_url, tmp_path):
     data_path = download_unzip_exp_data(osf_url, dataset_path)
 
     # Call the function to load correct data
-    data, bids_path = load_data(bids_root=data_path,
+    data, _ = load_data(bids_root=data_path,
                                 sub_label='21',
                                 session_label=None,
                                 task_label='passive',
@@ -90,13 +89,14 @@ def test_filter_data(osf_url, tmp_path):
     # Clean up the downloaded files after the test
     shutil.rmtree(dataset_path)
 
+
 def test_epoch_data(osf_url, tmp_path):
     # Use temporary directory for testing
     dataset_path = tmp_path / "test_dataset"
 
     # Download and unzip the data
     data_path = download_unzip_exp_data(osf_url, dataset_path)
-    data, bids_path = load_data(bids_root=data_path,
+    data, _ = load_data(bids_root=data_path,
                                 sub_label='21',
                                 session_label=None,
                                 task_label='passive',
@@ -104,15 +104,15 @@ def test_epoch_data(osf_url, tmp_path):
 
     # Using both a baseline window and a baseline float should both be accepted
     epoch_data(eeg_data=data, picks='Cz', baseline=-0.05, verbose='WARNING')
-
-    # epoch_data(eeg_data=data, picks='Cz', baseline=-0.05, verbose='WARNING')
+    epoch_data(eeg_data=data, picks='Cz', baseline=[-0.05, 0.2], verbose='WARNING')
 
     # An invalid baseline should result in error
-    # with pytest.raises(ValueError) as e:
-    #     epoch_data(eeg_data=data, picks='Cz', baseline=999.0, verbose='WARNING')
+    with pytest.raises(ValueError) as e:
+        epoch_data(eeg_data=data, picks='Cz', baseline=999.0, verbose='WARNING')
 
     # Clean up the downloaded files after the test
     shutil.rmtree(dataset_path)
+
 
 def test_preproc_pipeline(osf_url, tmp_path):
     # Use temporary directory for testing

@@ -143,6 +143,7 @@ def filter_data(eeg_data=None,
 
     return eeg_data
 
+
 def epoch_data(eeg_data,
                baseline,
                events_file=None,
@@ -212,19 +213,19 @@ def epoch_data(eeg_data,
 # use mne.Report for all functions, created evoked object
 def preproc_pipeline(bids_root,
                      baseline,
-              sub_label=None,
-              session_label=None,
-              task_label=None,
-              run_label=None,
-              ref_channels=None,
-              high_pass=None,
-              low_pass=None,
-              events_file=None,
-              picks=None,
-              epoch_window=None,
-              tmin=None,
-              tmax=None,
-              verbose=True):
+                     sub_label=None,
+                     session_label=None,
+                     task_label=None,
+                     run_label=None,
+                     ref_channels=None,
+                     high_pass=None,
+                     low_pass=None,
+                     events_file=None,
+                     picks=None,
+                     epoch_window=None,
+                     tmin=None,
+                     tmax=None,
+                     verbose=True):
     """
     Preprocess raw EEG data.
 
@@ -249,7 +250,7 @@ def preproc_pipeline(bids_root,
 
     # Load EEG data from bids_root path, with optional specification through parameters
     # Path variable is stored for future usage
-    eeg_data, path = load_data(bids_root=bids_root,
+    eeg_data, _ = load_data(bids_root=bids_root,
               sub_label=sub_label,
               session_label=session_label,
               task_label=task_label,
@@ -259,12 +260,14 @@ def preproc_pipeline(bids_root,
     referenced_eeg_data = reference_data(eeg_data, ref_channels=ref_channels)
 
     # Filter the referenced EEG data using the given band-pass
-    filtered_eeg_data = filter_data(referenced_eeg_data, high_pass=high_pass, low_pass=low_pass)
+    filtered_eeg_data = filter_data(referenced_eeg_data, high_pass=high_pass, 
+                                    low_pass=low_pass)
 
     # Epoch the filtered data using the given baseline
-    preprocessed_data = epoch_data(filtered_eeg_data, baseline, events_file=events_file,
-               picks=picks, epoch_window=epoch_window,
-               tmin=tmin, tmax=tmax, verbose=verbose)
+    preprocessed_data = epoch_data(filtered_eeg_data, baseline, 
+                                   events_file=events_file,
+                                   picks=picks, epoch_window=epoch_window,
+                                   tmin=tmin, tmax=tmax, verbose=verbose)
 
     # Return the epoched data
     return preprocessed_data

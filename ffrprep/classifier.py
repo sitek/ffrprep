@@ -30,7 +30,7 @@ def classify_data(epochs, min_freq, max_freq, n_freqs, n_cycles, tmin, tmax):
     freqs = np.linspace(min_freq, max_freq, n_freqs)  # assemble frequencies
     freq_ranges = list(zip(freqs[:-1], freqs[1:]))  # make freqs list of tuples
 
-    # init scores
+    # initialize scores
     freq_scores = np.zeros((n_freqs - 1,))
 
     # Loop through each frequency range
