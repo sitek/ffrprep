@@ -40,7 +40,13 @@ def test_classify_data(osf_url, tmp_path):
 
     epochs = preproc_data[0]
     tmin, tmax = preproc_data[1]
-    classify_data(epochs=epochs, min_freq=8.0, max_freq=20.0, n_freqs=6, n_cycles=10, tmin=tmin, tmax=tmax)
+    classify_data(epochs=epochs, 
+                  n_freqs=6, 
+                  n_cycles=10, 
+                  min_freq=8.0, 
+                  max_freq=20.0, 
+                  tmin=tmin, 
+                  tmax=tmax)
 
 
     # Clean up the downloaded files after the test

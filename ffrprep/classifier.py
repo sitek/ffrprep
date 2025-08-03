@@ -12,10 +12,55 @@ from mne.decoding import CSP
 from mne.io import concatenate_raws, read_raw_edf  
 from mne.time_frequency import AverageTFRArray  
 
-#update parameters min freq max freq tmin tmax, make more flexible fucntion
 
-def classify_data(epochs, min_freq, max_freq, n_freqs, n_cycles, tmin, tmax):
+def classify_data(epochs, 
+                  n_freqs, 
+                  n_cycles, 
+                  min_freq, 
+                  max_freq, 
+                  tmin, 
+                  tmax):
+    """
+    Use cross-validation to score model performance across frequency and time ranges.
+
+    Parameters
+    ----------
+    epochs : mne.Epochs object
+        MNE Epochs object created from epoching raw MNE data.
+    n_freqs : int
+        Number of bins to separate frequencies into for analysis.
+    n_cycles : int
+        Number of bins to separate time into for analysis.
+    min_freq : float
+        Lower bound for frequency in evaluation.
+    max_freq : float
+        Upper bound for frequency in evaluation.
+    tmin : float 
+        Lower bound for time in evaluation.
+    tmax : float
+        Upper bound for time in evaluation.
+
+    Returns
+    -------
+    None
+
+    Examples
+    --------
+    Evaluate the model performance on the given Epochs data object 
+    with the given time and frequency ranges.
+
+    >>> classify_data(epochs=epochs, 
+                      n_freqs=6, 
+                      n_cycles=10, 
+                      min_freq=8.0, 
+                      max_freq=20.0, 
+                      tmin=tmin, 
+                      tmax=tmax)
+
+    """
+
     # take the classifier from sci-kit learn
+    #update parameters min freq max freq tmin tmax, make more flexible fucntion
     clf = make_pipeline(CSP(n_components = 4, reg=None, log=True, norm_trace=False),
         LinearDiscriminantAnalysis()
     )

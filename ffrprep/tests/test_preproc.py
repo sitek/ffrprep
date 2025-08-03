@@ -109,6 +109,7 @@ def test_epoch_data(osf_url, tmp_path):
     # An invalid baseline should result in error
     with pytest.raises(ValueError) as e:
         epoch_data(eeg_data=data, picks='Cz', baseline=999.0, verbose='WARNING')
+        print("Successfully caught error: " + e)
 
     # Clean up the downloaded files after the test
     shutil.rmtree(dataset_path)
