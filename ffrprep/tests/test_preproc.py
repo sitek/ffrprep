@@ -3,6 +3,7 @@ import pytest
 import mne
 from ffrprep.datasets import download_unzip_exp_data
 from ffrprep.preproc import load_data, reference_data, filter_data, epoch_data, preproc_pipeline
+from ffrprep.preproc import make_evoked
 
 
 @pytest.fixture
@@ -125,6 +126,29 @@ def test_preproc_pipeline(osf_url, tmp_path):
                                 task_label='passive',
                                 run_label=1,
                                 verbose=False)
+
+    # Clean up the downloaded files after the test
+    shutil.rmtree(dataset_path)
+
+
+def test_make_evoked(osf_url, tmp_path):
+    # Use temporary directory for testing
+    dataset_path = tmp_path / "test_dataset"
+
+    # Download and unzip the data
+    data_path = download_unzip_exp_data(osf_url, dataset_path)
+    data = preproc_pipeline(bids_root=data_path,
+                            sub_label='21',
+                            session_label=None,
+                            task_label='passive',
+                            run_label=1,
+                            verbose=False)
+
+    #epoch the data
+    epoched_data = epoch_data(eeg_data=data, baseline=[-0.2, -0.05], verbose='WARNING')
+
+    #run make_evoked on the epoched data
+    make_evoked(epoched_data)
 
     # Clean up the downloaded files after the test
     shutil.rmtree(dataset_path)

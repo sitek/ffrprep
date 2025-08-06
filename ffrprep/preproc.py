@@ -292,6 +292,8 @@ def make_evoked(epochs):
 
 
     """
+    #average the epochs
     evoked = epochs.average()
 
+    #return the averaged epochs
     return evoked
