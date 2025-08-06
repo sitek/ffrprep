@@ -1,7 +1,8 @@
 import shutil
 import pytest
 from ffrprep.datasets import download_unzip_exp_data
-from ffrprep.preproc import load_data, reference_data, filter_data, epoch_data, preproc_pipeline
+from ffrprep.preproc import load_data, reference_data
+from ffrprep.preproc import filter_data, epoch_data, preproc_pipeline
 
 
 @pytest.fixture
@@ -19,10 +20,10 @@ def test_load_data(osf_url, tmp_path):
 
     # Call the function to load correct data
     load_data(bids_root=data_path,
-                                sub_label='21',
-                                session_label=None,
-                                task_label='passive',
-                                run_label=1,)
+              sub_label='21',
+              session_label=None,
+              task_label='passive',
+              run_label=1,)
 
     # Should fail if not given specific EEG file
     try:
@@ -43,10 +44,10 @@ def test_reference_data(osf_url, tmp_path):
 
     # Call the function to load correct data
     data, _ = load_data(bids_root=data_path,
-                                sub_label='21',
-                                session_label=None,
-                                task_label='passive',
-                                run_label=1,)
+                        sub_label='21',
+                        session_label=None,
+                        task_label='passive',
+                        run_label=1,)
 
     # Call the function to re-reference the data
     reference_data(data, ref_channels=None)
@@ -70,10 +71,10 @@ def test_filter_data(osf_url, tmp_path):
 
     # Call the function to load correct data
     data, _ = load_data(bids_root=data_path,
-                                sub_label='21',
-                                session_label=None,
-                                task_label='passive',
-                                run_label=1,)
+                        sub_label='21',
+                        session_label=None,
+                        task_label='passive',
+                        run_label=1,)
 
     # Call the function to filter the data
     filter_data(data, high_pass=80, low_pass=1000)
@@ -97,18 +98,20 @@ def test_epoch_data(osf_url, tmp_path):
     # Download and unzip the data
     data_path = download_unzip_exp_data(osf_url, dataset_path)
     data, _ = load_data(bids_root=data_path,
-                                sub_label='21',
-                                session_label=None,
-                                task_label='passive',
-                                run_label=1)
+                        sub_label='21',
+                        session_label=None,
+                        task_label='passive',
+                        run_label=1)
 
     # Using both a baseline window and a baseline float should both be accepted
     epoch_data(eeg_data=data, picks='Cz', baseline=-0.05, verbose='WARNING')
-    epoch_data(eeg_data=data, picks='Cz', baseline=[-0.05, 0.2], verbose='WARNING')
+    epoch_data(eeg_data=data, picks='Cz', baseline=[-0.05, 0.2],
+               verbose='WARNING')
 
     # An invalid baseline should result in error
     with pytest.raises(ValueError) as e:
-        epoch_data(eeg_data=data, picks='Cz', baseline=999.0, verbose='WARNING')
+        epoch_data(eeg_data=data, picks='Cz', baseline=999.0,
+                   verbose='WARNING')
         print("Successfully caught error: " + e)
 
     # Clean up the downloaded files after the test
@@ -122,17 +125,17 @@ def test_preproc_pipeline(osf_url, tmp_path):
     # Download and unzip the data
     data_path = download_unzip_exp_data(osf_url, dataset_path)
     data = preproc_pipeline(bids_root=data_path,
-                                baseline=-0.05,
-                                sub_label='21',
-                                session_label=None,
-                                task_label='passive',
-                                run_label=1,
-                                ref_channels=['M1'],
-                                picks='Cz',
-                                high_pass=80,
-                                low_pass=2000,
-                                verbose=False)
-    
+                            baseline=-0.05,
+                            sub_label='21',
+                            session_label=None,
+                            task_label='passive',
+                            run_label=1,
+                            ref_channels=['M1'],
+                            picks='Cz',
+                            high_pass=80,
+                            low_pass=2000,
+                            verbose=False)
+
     print(data[0])
 
     # Clean up the downloaded files after the test

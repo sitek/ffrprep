@@ -1,5 +1,6 @@
 from mne_bids import BIDSPath, read_raw_bids
 
+
 def load_data(bids_root=None,
               sub_label=None,
               session_label=None,
@@ -160,7 +161,7 @@ def epoch_data(eeg_data,
     data : MNE `data` object
         MNE `data` object containing EEG data and metadata.
     baseline : float or 1-D array
-        In seconds: start of baseline period (if float); 
+        In seconds: start of baseline period (if float);
         baseline window (if array).
 
     Returns
@@ -210,6 +211,7 @@ def epoch_data(eeg_data,
 
     return epoched_data, (tmin, tmax)
 
+
 # use mne.Report for all functions, created evoked object
 def preproc_pipeline(bids_root,
                      baseline,
@@ -248,23 +250,24 @@ def preproc_pipeline(bids_root,
 
     """
 
-    # Load EEG data from bids_root path, with optional specification through parameters
+    # Load EEG data from bids_root path, with optional specification through
+    # parameters
     # Path variable is stored for future usage
     eeg_data, _ = load_data(bids_root=bids_root,
-              sub_label=sub_label,
-              session_label=session_label,
-              task_label=task_label,
-              run_label=run_label)
-    
+                            sub_label=sub_label,
+                            session_label=session_label,
+                            task_label=task_label,
+                            run_label=run_label)
+
     # Reference the given EEG data to specific channels
     referenced_eeg_data = reference_data(eeg_data, ref_channels=ref_channels)
 
     # Filter the referenced EEG data using the given band-pass
-    filtered_eeg_data = filter_data(referenced_eeg_data, high_pass=high_pass, 
+    filtered_eeg_data = filter_data(referenced_eeg_data, high_pass=high_pass,
                                     low_pass=low_pass)
 
     # Epoch the filtered data using the given baseline
-    preprocessed_data = epoch_data(filtered_eeg_data, baseline, 
+    preprocessed_data = epoch_data(filtered_eeg_data, baseline,
                                    events_file=events_file,
                                    picks=picks, epoch_window=epoch_window,
                                    tmin=tmin, tmax=tmax, verbose=verbose)

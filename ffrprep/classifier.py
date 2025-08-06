@@ -1,27 +1,25 @@
-from mne_bids import BIDSPath, read_raw_bids  
-import matplotlib.pyplot as plt  
-import numpy as np  
-from sklearn.discriminant_analysis import LinearDiscriminantAnalysis  
-from sklearn.model_selection import StratifiedKFold, cross_val_score  
-from sklearn.pipeline import make_pipeline  
-from sklearn.preprocessing import LabelEncoder  
+import matplotlib.pyplot as plt
+import numpy as np
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.model_selection import StratifiedKFold, cross_val_score
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import LabelEncoder
 
-from mne import Epochs, create_info  
-from mne.datasets import eegbci  
-from mne.decoding import CSP  
-from mne.io import concatenate_raws, read_raw_edf  
-from mne.time_frequency import AverageTFRArray  
+from mne import create_info
+from mne.decoding import CSP
+from mne.time_frequency import AverageTFRArray
 
 
-def classify_data(epochs, 
-                  n_freqs, 
-                  n_cycles, 
-                  min_freq, 
-                  max_freq, 
-                  tmin, 
+def classify_data(epochs,
+                  n_freqs,
+                  n_cycles,
+                  min_freq,
+                  max_freq,
+                  tmin,
                   tmax):
     """
-    Use cross-validation to score model performance across frequency and time ranges.
+    Use cross-validation to score model performance across frequency and time
+    ranges.
 
     Parameters
     ----------
@@ -35,35 +33,33 @@ def classify_data(epochs,
         Lower bound for frequency in evaluation.
     max_freq : float
         Upper bound for frequency in evaluation.
-    tmin : float 
+    tmin : float
         Lower bound for time in evaluation.
     tmax : float
         Upper bound for time in evaluation.
 
     Returns
     -------
-    None
+    av_tfr : average nic
 
     Examples
     --------
-    Evaluate the model performance on the given Epochs data object 
+    Evaluate the model performance on the given Epochs data object
     with the given time and frequency ranges.
 
-    >>> classify_data(epochs=epochs, 
-                      n_freqs=6, 
-                      n_cycles=10, 
-                      min_freq=8.0, 
-                      max_freq=20.0, 
-                      tmin=tmin, 
+    >>> classify_data(epochs=epochs,
+                      n_freqs=6,
+                      n_cycles=10,
+                      min_freq=8.0,
+                      max_freq=20.0,
+                      tmin=tmin,
                       tmax=tmax)
 
     """
 
-    # take the classifier from sci-kit learn
-    #update parameters min freq max freq tmin tmax, make more flexible fucntion
-    clf = make_pipeline(CSP(n_components = 4, reg=None, log=True, norm_trace=False),
-        LinearDiscriminantAnalysis()
-    )
+    # Use classifier from sci-kit learn
+    clf = make_pipeline(CSP(n_components=4, reg=None, log=True,
+                            norm_trace=False), LinearDiscriminantAnalysis())
 
     sfreq = epochs.info["sfreq"]
     n_splits = 3  # for cross-validation
@@ -86,8 +82,8 @@ def classify_data(epochs,
 
         # Save mean scores over folds for each frequency and time window
         freq_scores[freq] = np.mean(
-            cross_val_score(estimator=clf, X=X, y=y, scoring="roc_auc", cv=cv), axis=0
-        )
+            cross_val_score(estimator=clf, X=X, y=y, scoring="roc_auc", cv=cv),
+            axis=0)
 
     # Infer window spacing from the max freq and number of cycles to avoid gaps
     window_spacing = n_cycles / np.max(freqs) / 2.0
@@ -111,11 +107,12 @@ def classify_data(epochs,
             # Crop data into time-window of interest
             X = epochs.get_data(tmin=w_tmin, tmax=w_tmax, copy=False)
 
-            # Save mean scores using roc auc over folds for each frequency and time window
+            # Save mean scores using roc auc over folds for each frequency and
+            # time window
             tf_scores[freq, t] = np.mean(
-                cross_val_score(estimator=clf, X=X, y=y, scoring="roc_auc", cv=cv), axis=0
-            )
-    
+                cross_val_score(estimator=clf, X=X, y=y, scoring="roc_auc",
+                                cv=cv), axis=0)
+
     # Set up time frequency object for graphing
     av_tfr = AverageTFRArray(
         info=create_info(["freq"], sfreq),
@@ -127,5 +124,7 @@ def classify_data(epochs,
 
     chance = np.mean(y)  # set chance level to white in the plot
     av_tfr.plot(
-        [0], vlim=(chance, None), title="Time-Frequency Decoding Scores", cmap=plt.cm.Reds
-    )
+        [0], vlim=(chance, None), title="Time-Frequency Decoding Scores",
+        cmap=plt.cm.Reds)
+
+    return av_tfr
