@@ -8,10 +8,11 @@ from ffrprep.classifier import classify_data
 @pytest.fixture
 def osf_url():
     # Provide a valid OSF URL for testing
-    return "https://osf.io/download/kap3z"
+    return "https://osf.io/download/ge4xm"
 
 
 def test_classify_data(osf_url, tmp_path):
+    # add a second run of preproc for active and passive
     dataset_path = tmp_path / "test_dataset"
 
     # Download and unzip the data
