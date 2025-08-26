@@ -144,6 +144,7 @@ def filter_data(eeg_data=None,
 
     return eeg_data
 
+
 def epoch_data(eeg_data,
                baseline,
                events_file=None,
@@ -160,7 +161,7 @@ def epoch_data(eeg_data,
     data : MNE `data` object
         MNE `data` object containing EEG data and metadata.
     baseline : float or 1-D array
-        In seconds: start of baseline period (if float); 
+        In seconds: start of baseline period (if float);
         baseline window (if array).
 
     Returns
@@ -182,14 +183,9 @@ def epoch_data(eeg_data,
 
     """
     from mne import Epochs
-    
-    # events - should be able to take manual events file,
-    # or use BIDS events file
+
     events = None
     event_dict = None
-
-    # subset of electrodes to include, if any
-    picks = None
 
     # define baseline window (in seconds)
     if isinstance(baseline, float):
@@ -210,26 +206,28 @@ def epoch_data(eeg_data,
                           picks=picks,
                           tmin=tmin, tmax=tmax,
                           baseline=baseline_window,
+                          verbose=verbose,
                           reject=dict(eeg=75e-6)).drop_bad()
 
-    return epoched_data
+    return epoched_data, (tmin, tmax)
 
 
-def preproc_pipeline(bids_root=None,
-              sub_label=None,
-              session_label=None,
-              task_label=None,
-              run_label=None,
-              ref_channels=None,
-              high_pass=None,
-              low_pass=None,
-              events_file=None,
-              picks=None,
-              epoch_window=None,
-              baseline=None,
-              tmin=None,
-              tmax=None,
-              verbose=True):
+# use mne.Report for all functions, created evoked object
+def preproc_pipeline(bids_root,
+                     baseline,
+                     sub_label=None,
+                     session_label=None,
+                     task_label=None,
+                     run_label=None,
+                     ref_channels=None,
+                     high_pass=None,
+                     low_pass=None,
+                     events_file=None,
+                     picks=None,
+                     epoch_window=None,
+                     tmin=None,
+                     tmax=None,
+                     verbose=True):
     """
     Preprocess raw EEG data.
 
@@ -251,20 +249,28 @@ def preproc_pipeline(bids_root=None,
 
 
     """
-    eeg_data = load_data(bids_root=bids_root,
-              sub_label=sub_label,
-              session_label=session_label,
-              task_label=task_label,
-              run_label=run_label)
-    
-    eeg_data_object = eeg_data[0]
-    
-    referenced_eeg_data = reference_data(eeg_data_object, ref_channels=ref_channels)
 
-    filtered_eeg_data = filter_data(referenced_eeg_data, high_pass=high_pass, low_pass=low_pass)
+    # Load EEG data from bids_root path, with optional specification through
+    # parameters
+    # Path variable is stored for future usage
+    eeg_data, _ = load_data(bids_root=bids_root,
+                            sub_label=sub_label,
+                            session_label=session_label,
+                            task_label=task_label,
+                            run_label=run_label)
 
-    preprocessed_data = epoch_data(filtered_eeg_data, -0.05, events_file=events_file,
-               picks=picks, epoch_window=epoch_window,
-               tmin=tmin, tmax=tmax, verbose=verbose)
+    # Reference the given EEG data to specific channels
+    referenced_eeg_data = reference_data(eeg_data, ref_channels=ref_channels)
 
+    # Filter the referenced EEG data using the given band-pass
+    filtered_eeg_data = filter_data(referenced_eeg_data, high_pass=high_pass,
+                                    low_pass=low_pass)
+
+    # Epoch the filtered data using the given baseline
+    preprocessed_data = epoch_data(filtered_eeg_data, baseline,
+                                   events_file=events_file,
+                                   picks=picks, epoch_window=epoch_window,
+                                   tmin=tmin, tmax=tmax, verbose=verbose)
+
+    # Return the epoched data
     return preprocessed_data
