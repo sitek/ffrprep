@@ -148,7 +148,8 @@ def test_make_evoked(osf_url, tmp_path):
     epoched_data = epoch_data(eeg_data=data, baseline=[-0.2, -0.05], verbose='WARNING')
 
     #run make_evoked on the epoched data
-    make_evoked(epoched_data)
+    assert isinstance(make_evoked(epoched_data, True), list), "output must be list"
+    assert isinstance(make_evoked(epoched_data, False), mne.Evoked), "output must be evoked object"
 
     # Clean up the downloaded files after the test
     shutil.rmtree(dataset_path)

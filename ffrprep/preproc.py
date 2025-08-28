@@ -269,7 +269,7 @@ def preproc_pipeline(bids_root=None,
 
     return preprocessed_data
 
-def make_evoked(epochs):
+def make_evoked(epochs, by_event_type: bool):
 
     """
     Makes an estimate of all epochs.
@@ -278,6 +278,9 @@ def make_evoked(epochs):
     ----------
     epochs : MNE `Epochs` object
         MNE `Epochs` object containing time-locked epochs.
+
+    epochs : Boolean
+        Boolean containing whether to sort epochs by event type
 
     Returns
     -------
@@ -293,7 +296,7 @@ def make_evoked(epochs):
 
     """
     #average the epochs
-    evoked = epochs.average()
+    evoked = epochs.average(by_event_type)
 
     #return the averaged epochs
     return evoked
