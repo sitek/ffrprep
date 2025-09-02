@@ -3,7 +3,7 @@ from numpy import mean, sqrt, square
 import mne
 
 
-def compute_power(avg_evoked, f_low, f_high, t_low, t_high):
+def compute_power(avg_evoked, f_low=90, f_high=110, t_low=0.1, t_high=0.2):
     """
     Compute the average oscillatory power of a given frequency band.
 
@@ -94,9 +94,11 @@ def rms_snr(evoked, response_lower=0.100, response_upper=0.200):
         [response_lower, response_upper])
 
     evoked_baseline = evoked.data[0,
-                                  baseline_ind_bounds[0]:baseline_ind_bounds[1]]
+                                  baseline_ind_bounds[0]:
+                                  baseline_ind_bounds[1]]
     evoked_response = evoked.data[0,
-                                  response_ind_bounds[0]:response_ind_bounds[1]]
+                                  response_ind_bounds[0]:
+                                  response_ind_bounds[1]]
     rms_baseline = sqrt(mean(square(evoked_baseline)))
     rms_response = sqrt(mean(square(evoked_response)))
 
