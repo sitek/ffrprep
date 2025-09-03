@@ -274,3 +274,29 @@ def preproc_pipeline(bids_root,
 
     # Return the epoched data
     return preprocessed_data
+
+
+def make_evoked(epochs, by_event_type: bool):
+
+    """
+    Makes an estimate of all epochs.
+    Parameters
+    ----------
+    epochs : MNE `Epochs` object
+        MNE `Epochs` object containing time-locked epochs.
+    epochs : Boolean
+        Boolean containing whether to sort epochs by event type
+    Returns
+    -------
+    evoked : MNE `Evoked` object
+        MNE `Evoked` object containing the average epoch.
+    Examples
+    --------
+    Evoke an EEG Epochs object.
+    >>> evoked_data = make_evoked(epoched_data)
+    """
+    # average the epochs
+    evoked = epochs.average(by_event_type)
+
+    # return the averaged epochs
+    return evoked
