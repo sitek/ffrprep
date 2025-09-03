@@ -295,8 +295,8 @@ def make_evoked(epochs, by_event_type: bool):
     Evoke an EEG Epochs object.
     >>> evoked_data = make_evoked(epoched_data)
     """
-    #average the epochs
+    # average the epochs
     evoked = epochs.average(by_event_type)
 
-    #return the averaged epochs
+    # return the averaged epochs
     return evoked
