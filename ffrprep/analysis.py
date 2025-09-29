@@ -1,6 +1,7 @@
 import numpy as np
 from numpy import mean, sqrt, square
 import mne
+import statsmodels as sm
 
 
 def compute_power(avg_evoked, f_low=90, f_high=110, t_low=0.1, t_high=0.2):
@@ -104,3 +105,13 @@ def rms_snr(evoked, response_lower=0.100, response_upper=0.200):
 
     rms_snr = rms_response / rms_baseline
     return rms_snr
+
+
+def autocorrelation(evoked):
+    acf, confidence_interval = sm.tsa.stattools.acf(
+        evoked,
+        nlags=len(evoked) - 1,
+        alpha=0.05
+    )
+
+    return acf, confidence_interval
