@@ -1,0 +1,6 @@
+﻿ffrprep.datasets.download\_epoch\_data
+======================================
+
+.. currentmodule:: ffrprep.datasets
+
+.. autofunction:: download_epoch_data

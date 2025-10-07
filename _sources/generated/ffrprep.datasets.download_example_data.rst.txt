@@ -1,0 +1,6 @@
+﻿ffrprep.datasets.download\_example\_data
+========================================
+
+.. currentmodule:: ffrprep.datasets
+
+.. autofunction:: download_example_data
