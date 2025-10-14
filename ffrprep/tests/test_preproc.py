@@ -1,22 +1,16 @@
 import shutil
 import pytest
-from ffrprep.datasets import download_unzip_exp_data
+from ffrprep.datasets import download_example_data
 from ffrprep.preproc import load_data, reference_data
 from ffrprep.preproc import filter_data, epoch_data, preproc_pipeline
 
 
-@pytest.fixture
-def osf_url():
-    # Provide a valid OSF URL for testing
-    return "https://osf.io/download/kap3z"
-
-
-def test_load_data(osf_url, tmp_path):
+def test_load_data(tmp_path):
     # Use temporary directory for testing
     dataset_path = tmp_path / "test_dataset"
 
-    # Download and unzip the data
-    data_path = download_unzip_exp_data(osf_url, dataset_path)
+    # Download example data
+    data_path = download_example_data(dataset_path)
 
     # Call the function to load correct data
     load_data(bids_root=data_path,
@@ -35,12 +29,12 @@ def test_load_data(osf_url, tmp_path):
     shutil.rmtree(dataset_path)
 
 
-def test_reference_data(osf_url, tmp_path):
+def test_reference_data(tmp_path):
     # Use temporary directory for testing
     dataset_path = tmp_path / "test_dataset"
 
-    # Download and unzip the data
-    data_path = download_unzip_exp_data(osf_url, dataset_path)
+    # Download example data
+    data_path = download_example_data(dataset_path)
 
     # Call the function to load correct data
     data, _ = load_data(bids_root=data_path,
@@ -62,12 +56,12 @@ def test_reference_data(osf_url, tmp_path):
     shutil.rmtree(dataset_path)
 
 
-def test_filter_data(osf_url, tmp_path):
+def test_filter_data(tmp_path):
     # Use temporary directory for testing
     dataset_path = tmp_path / "test_dataset"
 
-    # Download and unzip the data
-    data_path = download_unzip_exp_data(osf_url, dataset_path)
+    # Download example data
+    data_path = download_example_data(dataset_path)
 
     # Call the function to load correct data
     data, _ = load_data(bids_root=data_path,
