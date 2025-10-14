@@ -146,11 +146,24 @@ def test_make_evoked(osf_url, tmp_path):
 
     # Download and unzip the data
     data_path = download_unzip_exp_data(osf_url, dataset_path)
+
     data = preproc_pipeline(bids_root=data_path,
                             sub_label='21',
                             session_label=None,
                             task_label='passive',
                             run_label=1,
+                            verbose=False, baseline=[-0.1, 0.5])
+
+    # epoch the data
+    epoched_data = epoch_data(eeg_data=data, baseline=[-0.2, -0.05],
+                              verbose='WARNING')
+
+    # run make_evoked on the epoched data
+    assert isinstance(make_evoked(epoched_data, True), list), \
+        "output must be list"
+    assert isinstance(make_evoked(epoched_data, False), mne.Evoked), \
+        "output must be evoked object"
+
                             verbose=False)
 
     #epoch the data
