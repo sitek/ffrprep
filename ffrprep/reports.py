@@ -27,7 +27,7 @@ def create_report(bids_root,
         will write the report to '{bidsroot}/derivatives/'.
     filename : string
         Filename for the report. If `None` (default),
-        will write the report as 'ffrprep_report_{YYYY:MM:DD:HH:MM:SS}.html'.
+        will write the report as 'ffrprep_report_{YYYY:MM:DD:HH:MM:SS}.hdf5'.
     title : string
         Title for the report. If `None` (default),
         will write the title as 'FFRPREP report {YYYY:MM:DD:HH:MM:SS}'.
@@ -166,7 +166,7 @@ def add_to_report(report_fpath,
 def save_report(report_fpath, overwrite=True):
     """
     Save the existing FFRPREP report to an HTML file.
-    
+
     Parameters
     ----------
     report_fpath : string
@@ -175,12 +175,12 @@ def save_report(report_fpath, overwrite=True):
         Whether to overwrite an existing HTML file (`True`).
         If `False` (default) and file exists, report will be saved as
         '{filename}_1.html'.
-    
+
     Returns
     -------
     html_fpath : string
         Full filepath to the saved HTML report file.
-    
+
     Examples
     --------
     Save an existing FFRPREP report to an HTML file.
@@ -192,7 +192,7 @@ def save_report(report_fpath, overwrite=True):
             fname_base, fname_ext = os.path.splitext(html_fpath)
             new_filename = f'{fname_base}_1{fname_ext}'
             html_fpath = new_filename
-        
+
     with open_report(report_fpath) as report:
         report.save(html_fpath, overwrite=True)
     return html_fpath
