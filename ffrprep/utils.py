@@ -1,3 +1,5 @@
+"""Utility functions for validating BIDS directories and related operations."""
+
 import sys
 import tempfile
 import subprocess
@@ -7,6 +9,7 @@ import json
 def validate_input_dir(exec_env, bids_dir, participant_label):
     """
     Validate BIDS directory and structure via the BIDS-validator.
+
     Functionality copied from fmriprep.
 
     Parameters
@@ -18,7 +21,6 @@ def validate_input_dir(exec_env, bids_dir, participant_label):
     participant_label: str
         Label(s) of subject to be checked (without 'sub-').
     """
-
     # Configuration for bids-validator
     validator_config_dict = {
         "ignore": [
