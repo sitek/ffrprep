@@ -1,3 +1,5 @@
+"""Unit tests for ffrprep.datasets download functions."""
+
 import pytest
 import shutil
 from pathlib import Path
@@ -13,7 +15,7 @@ def test_dataset_path(tmp_path):
 
 @pytest.fixture
 def expected_raw_files():
-    """Expected files after downloading raw data (1 subject)."""
+    """Return expected files after downloading raw data (1 subject)."""
     return [
         "ffrprep_raw_data/dataset_description.json",
         "ffrprep_raw_data/participants.json",
@@ -103,7 +105,7 @@ def test_download_raw_data_invalid_subjects(test_dataset_path,
     """Test raw data download with invalid subject IDs."""
     # Test with completely invalid subjects
     invalid_subjects = ['99', '100']
-    
+
     with pytest.raises(ValueError, match="No valid subjects specified"):
         download_raw_data(subjects=invalid_subjects,
                           dataset_path=test_dataset_path)
@@ -112,7 +114,7 @@ def test_download_raw_data_invalid_subjects(test_dataset_path,
     mixed_subjects = ['03', '99', '21']
     data_path = download_raw_data(subjects=mixed_subjects,
                                   dataset_path=test_dataset_path)
-    
+
     # Should succeed with valid subjects only
     assert data_path is not None
     assert data_path.exists()
@@ -193,7 +195,7 @@ def test_download_epoch_data_invalid_subjects(test_dataset_path):
     """Test epoched data download with invalid subject IDs."""
     # Test with completely invalid subjects
     invalid_subjects = ['99', '100']
-    
+
     with pytest.raises(ValueError, match="No valid subjects specified"):
         download_epoch_data(subjects=invalid_subjects,
                             dataset_path=test_dataset_path)
@@ -236,7 +238,7 @@ def test_all_functions_return_path_objects(test_dataset_path):
     for path in [path1, path2]:
         if path and path.exists():
             shutil.rmtree(path)
-    
+
     # Clean up epoch data (different structure)
     if path3 and path3.exists():
         base_path = path3.parent.parent
@@ -260,7 +262,7 @@ def test_default_parameters(test_dataset_path):
     for path in [path1, path2]:
         if path and path.exists():
             shutil.rmtree(path)
-    
+
     if path3 and path3.exists():
         base_path = path3.parent.parent
         if base_path.name == 'ffrprep_raw_data':

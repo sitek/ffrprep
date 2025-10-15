@@ -1,3 +1,10 @@
+"""
+Preprocessing utilities for EEG data in BIDS format.
+
+Includes loading, referencing, filtering, epoching,
+and evoked response calculation.
+"""
+
 from mne_bids import BIDSPath, read_raw_bids
 
 
@@ -249,7 +256,6 @@ def preproc_pipeline(bids_root,
 
 
     """
-
     # Load EEG data from bids_root path, with optional specification through
     # parameters
     # Path variable is stored for future usage
@@ -277,9 +283,8 @@ def preproc_pipeline(bids_root,
 
 
 def make_evoked(epochs, by_event_type: bool):
-
     """
-    Makes an estimate of all epochs.
+    Make an estimate of all epochs.
 
     Parameters
     ----------
@@ -304,18 +309,4 @@ def make_evoked(epochs, by_event_type: bool):
     evoked = epochs.average(by_event_type)
 
     # return the averaged epochs
-    return evoked
-
-    Examples
-    --------
-    Evoke an EEG Epochs object.
-
-    >>> evoked_data = make_evoked(epoched_data)
-
-
-    """
-    #average the epochs
-    evoked = epochs.average(by_event_type)
-
-    #return the averaged epochs
     return evoked
