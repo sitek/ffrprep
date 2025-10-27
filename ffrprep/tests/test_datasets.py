@@ -1,7 +1,8 @@
 import pytest
 import shutil
 from pathlib import Path
-from ffrprep.datasets import download_example_data, download_raw_data, download_epoch_data
+from ffrprep.datasets import (download_example_data, download_raw_data, 
+                              download_epoch_data)
 
 
 @pytest.fixture
@@ -64,7 +65,8 @@ def test_download_example_data_basic(test_dataset_path):
 @pytest.mark.parametrize("n_subjects", [1, 2, 3])
 def test_download_raw_data_by_number(test_dataset_path, n_subjects):
     """Test downloading raw data by specifying number of subjects."""
-    data_path = download_raw_data(subjects=n_subjects, dataset_path=test_dataset_path)
+    data_path = download_raw_data(subjects=n_subjects, 
+                                  dataset_path=test_dataset_path)
 
     # Verify basic structure
     assert data_path is not None, "Download should return a path"
@@ -76,10 +78,12 @@ def test_download_raw_data_by_number(test_dataset_path, n_subjects):
         shutil.rmtree(data_path)
 
 
-@pytest.mark.parametrize("subject_list", [["03"], ["21"], ["03", "21"], ["05", "11", "15"]])
+@pytest.mark.parametrize("subject_list", [["03"], ["21"], ["03", "21"], 
+                                          ["05", "11", "15"]])
 def test_download_raw_data_by_list(test_dataset_path, subject_list):
     """Test downloading raw data by specifying subject list."""
-    data_path = download_raw_data(subjects=subject_list, dataset_path=test_dataset_path)
+    data_path = download_raw_data(subjects=subject_list, 
+                                  dataset_path=test_dataset_path)
 
     # Verify basic structure
     assert data_path is not None, "Download should return a path"
@@ -90,17 +94,20 @@ def test_download_raw_data_by_list(test_dataset_path, subject_list):
         shutil.rmtree(data_path)
 
 
-def test_download_raw_data_invalid_subjects(test_dataset_path, available_raw_subjects):
+def test_download_raw_data_invalid_subjects(test_dataset_path,
+                                            available_raw_subjects):
     """Test raw data download with invalid subject IDs."""
     # Test with completely invalid subjects
     invalid_subjects = ["99", "100"]
 
     with pytest.raises(ValueError, match="No valid subjects specified"):
-        download_raw_data(subjects=invalid_subjects, dataset_path=test_dataset_path)
+        download_raw_data(subjects=invalid_subjects,
+                          dataset_path=test_dataset_path)
 
     # Test with mix of valid and invalid subjects
     mixed_subjects = ["03", "99", "21"]
-    data_path = download_raw_data(subjects=mixed_subjects, dataset_path=test_dataset_path)
+    data_path = download_raw_data(subjects=mixed_subjects,
+                                  dataset_path=test_dataset_path)
 
     # Should succeed with valid subjects only
     assert data_path is not None
@@ -114,7 +121,7 @@ def test_download_raw_data_invalid_subjects(test_dataset_path, available_raw_sub
 def test_download_raw_data_too_many_subjects(test_dataset_path):
     """Test raw data download requesting more subjects than available."""
     # Request more subjects than available
-    data_path = download_raw_data(subjects=10, dataset_path=test_dataset_path)  # More than available
+    data_path = download_raw_data(subjects=10, dataset_path=test_dataset_path)
 
     # Should succeed with warning and download all available
     assert data_path is not None
@@ -128,13 +135,15 @@ def test_download_raw_data_too_many_subjects(test_dataset_path):
 def test_download_raw_data_invalid_input_type(test_dataset_path):
     """Test raw data download with invalid input type."""
     with pytest.raises(TypeError, match="subjects must be an integer or list"):
-        download_raw_data(subjects="invalid_string", dataset_path=test_dataset_path)
+        download_raw_data(subjects="invalid_string", 
+                          dataset_path=test_dataset_path)
 
 
 @pytest.mark.parametrize("n_subjects", [1, 2])
 def test_download_epoch_data_by_number(test_dataset_path, n_subjects):
     """Test downloading epoched data by specifying number of subjects."""
-    data_path = download_epoch_data(subjects=n_subjects, dataset_path=test_dataset_path)
+    data_path = download_epoch_data(subjects=n_subjects, 
+                                    dataset_path=test_dataset_path)
 
     # Verify BIDS derivatives structure
     assert data_path is not None, "Download should return a path"
@@ -151,7 +160,8 @@ def test_download_epoch_data_by_number(test_dataset_path, n_subjects):
 @pytest.mark.parametrize("subject_list", [["03"], ["21"], ["03", "30"]])
 def test_download_epoch_data_by_list(test_dataset_path, subject_list):
     """Test downloading epoched data by specifying subject list."""
-    data_path = download_epoch_data(subjects=subject_list, dataset_path=test_dataset_path)
+    data_path = download_epoch_data(subjects=subject_list,
+                                    dataset_path=test_dataset_path)
 
     # Verify BIDS derivatives structure
     assert data_path is not None, "Download should return a path"
@@ -175,12 +185,14 @@ def test_download_epoch_data_invalid_subjects(test_dataset_path):
     invalid_subjects = ["99", "100"]
 
     with pytest.raises(ValueError, match="No valid subjects specified"):
-        download_epoch_data(subjects=invalid_subjects, dataset_path=test_dataset_path)
+        download_epoch_data(subjects=invalid_subjects,
+                            dataset_path=test_dataset_path)
 
 
 def test_download_epoch_data_bids_structure(test_dataset_path):
     """Test that epoched data follows proper BIDS derivatives structure."""
-    data_path = download_epoch_data(subjects=["03"], dataset_path=test_dataset_path)
+    data_path = download_epoch_data(subjects=["03"],
+                                    dataset_path=test_dataset_path)
 
     # Verify BIDS derivatives structure
     base_path = data_path.parent.parent  # ffrprep_raw_data
