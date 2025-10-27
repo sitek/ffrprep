@@ -33,23 +33,23 @@ import sphinx_material
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'sphinx.ext.autodoc',
-    'sphinx.ext.autosummary',
-    'sphinx.ext.githubpages',
-    'sphinx.ext.intersphinx',
-    'sphinx.ext.napoleon',
-    'sphinx.ext.mathjax',
-    'sphinx.ext.viewcode',
-    'IPython.sphinxext.ipython_directive',
-    'IPython.sphinxext.ipython_console_highlighting',
-    'matplotlib.sphinxext.plot_directive',
-    'numpydoc',
-    'sphinx_copybutton',
-    'sphinx_gallery.gen_gallery',
-    'sphinxarg.ext',
-    'sphinx_design',
-    'sphinx-jsonschema',
-    'sphinx_tabs.tabs'
+    "sphinx.ext.autodoc",
+    "sphinx.ext.autosummary",
+    "sphinx.ext.githubpages",
+    "sphinx.ext.intersphinx",
+    "sphinx.ext.napoleon",
+    "sphinx.ext.mathjax",
+    "sphinx.ext.viewcode",
+    "IPython.sphinxext.ipython_directive",
+    "IPython.sphinxext.ipython_console_highlighting",
+    "matplotlib.sphinxext.plot_directive",
+    "numpydoc",
+    "sphinx_copybutton",
+    "sphinx_gallery.gen_gallery",
+    "sphinxarg.ext",
+    "sphinx_design",
+    "sphinx-jsonschema",
+    "sphinx_tabs.tabs",
 ]
 
 # Configuration options for plot_directive. See:
@@ -62,21 +62,21 @@ autosummary_generate = True
 numpydoc_show_class_members = False
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ['_templates']
+templates_path = ["_templates"]
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
 #
 # source_suffix = ['.rst', '.md']
-source_suffix = '.rst'
+source_suffix = ".rst"
 
 # The master toctree document.
-master_doc = 'index'
+master_doc = "index"
 
 # General information about the project.
-project = 'ffrprep'
-copyright = '2024, Kevin Sitek & Peer Herholz'
-author = 'Kevin Sitek & Peer Herholz'
+project = "ffrprep"
+copyright = "2024, Kevin Sitek & Peer Herholz"
+author = "Kevin Sitek & Peer Herholz"
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -100,7 +100,7 @@ language = "en"
 exclude_patterns = []
 
 # The name of the Pygments (syntax highlighting) style to use.
-pygments_style = 'default'
+pygments_style = "default"
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = False
@@ -111,10 +111,10 @@ todo_include_todos = False
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-extensions.append('sphinx_material')
+extensions.append("sphinx_material")
 html_theme_path = sphinx_material.html_theme_path()
 html_context = sphinx_material.get_html_context()
-html_theme = 'sphinx_material'
+html_theme = "sphinx_material"
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -125,7 +125,7 @@ html_theme = 'sphinx_material'
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+html_static_path = ["_static"]
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
@@ -133,9 +133,9 @@ html_static_path = ['_static']
 # This is required for the alabaster theme
 # refs: http://alabaster.readthedocs.io/en/latest/installation.html#sidebars
 html_sidebars = {
-    '**': [
-        'relations.html',  # needs 'show_related': True theme option to display
-        'searchbox.html',
+    "**": [
+        "relations.html",  # needs 'show_related': True theme option to display
+        "searchbox.html",
     ]
 }
 
@@ -143,7 +143,7 @@ html_sidebars = {
 # -- Options for HTMLHelp output ------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'ffrprep'
+htmlhelp_basename = "ffrprep"
 
 
 # -- Options for LaTeX output ---------------------------------------------
@@ -152,15 +152,12 @@ latex_elements = {
     # The paper size ('letterpaper' or 'a4paper').
     #
     # 'papersize': 'letterpaper',
-
     # The font size ('10pt', '11pt' or '12pt').
     #
     # 'pointsize': '10pt',
-
     # Additional stuff for the LaTeX preamble.
     #
     # 'preamble': '',
-
     # Latex figure (float) alignment
     #
     # 'figure_align': 'htbp',
@@ -170,8 +167,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'ffrprep.tex', 'ffrprep Documentation',
-     'Contributors', 'manual'),
+    (master_doc, "ffrprep.tex", "ffrprep Documentation", "Contributors", "manual"),
 ]
 
 
@@ -179,10 +175,7 @@ latex_documents = [
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [
-    (master_doc, 'ffrprep', 'ffrprep Documentation',
-     [author], 1)
-]
+man_pages = [(master_doc, "ffrprep", "ffrprep Documentation", [author], 1)]
 
 
 # -- Options for Texinfo output -------------------------------------------
@@ -191,69 +184,64 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'ffrprep', 'ffrprep Documentation',
-     author, 'ffrprep', 'A standardized and robust (pre-) processing pipeline '
-                        'for FFR data.',
-     'Miscellaneous'),
+    (
+        master_doc,
+        "ffrprep",
+        "ffrprep Documentation",
+        author,
+        "ffrprep",
+        "A standardized and robust (pre-) processing pipeline " "for FFR data.",
+        "Miscellaneous",
+    ),
 ]
 
 
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {
-    'python': ('https://docs.python.org/3/', None),
-    'numpy': ('https://numpy.org/doc/stable/', None),
-    'scipy': ('https://docs.scipy.org/doc/scipy/reference/', None),
-    'pandas': ('https://pandas.pydata.org/pandas-docs/stable', None),
-    'matplotlib': ('https://matplotlib.org/stable', None),
+    "python": ("https://docs.python.org/3/", None),
+    "numpy": ("https://numpy.org/doc/stable/", None),
+    "scipy": ("https://docs.scipy.org/doc/scipy/reference/", None),
+    "pandas": ("https://pandas.pydata.org/pandas-docs/stable", None),
+    "matplotlib": ("https://matplotlib.org/stable", None),
 }
 
 sphinx_gallery_conf = {
-    'doc_module': 'ffrprep',
-    'reference_url': {
-        'ffrprep': None
-    },
-    'thumbnail_size': (250, 250),
-    'ignore_pattern': r'/wip.*\.py',
+    "doc_module": "ffrprep",
+    "reference_url": {"ffrprep": None},
+    "thumbnail_size": (250, 250),
+    "ignore_pattern": r"/wip.*\.py",
     # path to your example scripts
-    'examples_dirs': ['../../examples'],
+    "examples_dirs": ["../../examples"],
     # path to where to save gallery generated output
-    'gallery_dirs': ['auto_examples'],
+    "gallery_dirs": ["auto_examples"],
     # specify that examples should be ordered according to filename
     # directory where function granular galleries are stored
-    'backreferences_dir': 'gen_modules/backreferences',
+    "backreferences_dir": "gen_modules/backreferences",
     # Modules for which function level galleries are created.  In
     # this case sphinx_gallery and numpy in a tuple of strings.
-    'doc_module': ('ffrprep'),
+    "doc_module": ("ffrprep"),
 }
 
 html_theme_options = {
-
     # Set the name of the project to appear in the navigation.
-    'nav_title': 'ffrprep',
-
+    "nav_title": "ffrprep",
     # Specify a base_url used to generate sitemap.xml. If not
     # specified, then no sitemap will be built.
-    'base_url': 'https://spark-csd.github.io/ffrprep',
-
+    "base_url": "https://spark-csd.github.io/ffrprep",
     # Set the color and the accent color
-    'color_primary': 'deep-purple',
-    'color_accent': 'purple',
-
+    "color_primary": "deep-purple",
+    "color_accent": "purple",
     # Set the repo location to get a badge with stats
-    'repo_url': 'https://github.com/spark-csd/ffrprep',
-    'repo_name': 'ffrprep',
-
+    "repo_url": "https://github.com/spark-csd/ffrprep",
+    "repo_name": "ffrprep",
     # Visible levels of the global TOC; -1 means unlimited
-    'globaltoc_depth': 1,
+    "globaltoc_depth": 1,
     # If False, expand all TOC entries
-    'globaltoc_collapse': False,
+    "globaltoc_collapse": False,
     # If True, show hidden TOC entries
-    'globaltoc_includehidden': False,
+    "globaltoc_includehidden": False,
 }
 
-html_sidebars = {
-    "**": ["logo-text.html", "globaltoc.html", "localtoc.html",
-           "searchbox.html"]
-}
+html_sidebars = {"**": ["logo-text.html", "globaltoc.html", "localtoc.html", "searchbox.html"]}
 
 suppress_warnings = ["config.cache"]
