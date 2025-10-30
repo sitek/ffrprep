@@ -314,8 +314,8 @@ def git_pieces_from_vcs(tag_prefix, root, verbose, run_command=run_command):
 
     # commit date: see ISO-8601 comment in git_versions_from_keywords()
     date = run_command(GITS, ["show", "-s", "--format=%ci", "HEAD"],
-                       cwd=root)
-    pieces["date"] = date.strip().replace(" ", "T", 1).replace(" ", "", 1)
+                       cwd=root)[0].strip()
+    pieces["date"] = date.replace(" ", "T", 1).replace(" ", "", 1)
 
     return pieces
 
