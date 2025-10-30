@@ -83,7 +83,7 @@ def test_add_to_report(tmp_path):
 
     # Add both a figure and HTML text
     add_to_report(
-        report_fpath, figure=fig, figure_title="test title", 
+        report_fpath, figure=fig, figure_title="test title",
         html_text=html_text, html_title="test title"
     )
 
