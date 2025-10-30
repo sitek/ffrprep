@@ -37,11 +37,11 @@ def test_create_report(tmp_path):
     test_path = create_report(tmp_path, filename="test.h5")
     assert op.exists(test_path)
 
-    # Existing filename, don't overwrite (should create test_1.h5)
+    # Existing filename, don't overwrite (should create test.h5_1.hdf5)
     test_path_no_overwrite = create_report(tmp_path, filename="test.h5",
                                            overwrite=False)
     assert op.exists(test_path_no_overwrite)
-    assert "test_1.h5" in test_path_no_overwrite
+    assert "test.h5_1.hdf5" in test_path_no_overwrite
 
     # Existing filename, do overwrite (should overwrite test.h5)
     test_path_overwrite = create_report(tmp_path, filename="test.h5",
@@ -83,7 +83,7 @@ def test_add_to_report(tmp_path):
 
     # Add both a figure and HTML text
     add_to_report(
-        report_fpath, figure=fig, figure_title="test title",
+        report_fpath, figure=fig, figure_title="test title", 
         html_text=html_text, html_title="test title"
     )
 
