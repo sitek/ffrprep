@@ -1,10 +1,3 @@
-"""
-Preprocessing utilities for EEG data in BIDS format.
-
-Includes loading, referencing, filtering, epoching,
-and evoked response calculation.
-"""
-
 from mne_bids import BIDSPath, read_raw_bids
 from mne import Epochs
 from bids import BIDSLayout
@@ -735,14 +728,60 @@ def setup_derivatives_directories(bids_root, subject,
     derivatives_info : dict
         Dictionary containing paths to derivatives directories.
     """
-    # Load EEG data from bids_root path, with optional specification through
-    # parameters
-    # Path variable is stored for future usage
-    eeg_data, _ = load_data(bids_root=bids_root,
-                            sub_label=sub_label,
-                            session_label=session_label,
-                            task_label=task_label,
-                            run_label=run_label)
+    from pathlib import Path
+
+    bids_root = Path(bids_root)
+    derivatives_root = bids_root / "derivatives"
+
+    # Create main derivatives directory if it doesn't exist
+    derivatives_root.mkdir(exist_ok=True)
+
+    # Set up preprocessing derivatives
+    preproc_dir = None
+    if create_preprocessing:
+        preproc_dir = derivatives_root / "ffrprep-preprocessing"
+        preproc_subject_dir = preproc_dir / f"sub-{subject}"
+        preproc_subject_dir.mkdir(parents=True, exist_ok=True)
+
+    # Set up analysis derivatives
+    analysis_dir = None
+    if create_analysis:
+        analysis_dir = derivatives_root / "ffrprep-analysis"
+        analysis_subject_dir = analysis_dir / f"sub-{subject}"
+        analysis_subject_dir.mkdir(parents=True, exist_ok=True)
+
+    return {
+        "derivatives_root": derivatives_root,
+        "preprocessing_dir": preproc_dir,
+        "analysis_dir": analysis_dir,
+        "preprocessing_subject_dir": (
+            preproc_dir / f"sub-{subject}" if preproc_dir else None
+        ),
+        "analysis_subject_dir": (
+            analysis_dir / f"sub-{subject}" if analysis_dir else None
+        ),
+    }
+
+
+def check_preprocessing_exists(bids_root, subject):
+    """
+    Check if preprocessing outputs exist for a given subject.
+
+    Parameters
+    ----------
+    bids_root : str or pathlib.Path
+        Path to the BIDS dataset root directory.
+    subject : str
+        Subject label (without 'sub-' prefix).
+
+    Returns
+    -------
+    exists : bool
+        Whether preprocessing outputs exist for the subject.
+    preproc_files : list
+        List of found preprocessing files.
+    """
+    from pathlib import Path
 
     bids_root = Path(bids_root)
     preproc_dir = (
@@ -770,10 +809,11 @@ def setup_derivatives_directories(bids_root, subject,
 
     return len(found_files) > 0, found_files
 
-  
-def make_evoked(epochs, by_event_type: bool):
+
+def save_preprocessing_outputs(epochs, bids_root, subject, task,
+                               session=None, run=None):
     """
-    Make an estimate of all epochs.
+    Save preprocessing outputs to BIDS derivatives structure.
 
     Parameters
     ----------
@@ -925,5 +965,150 @@ def save_analysis_outputs(evoked, bids_root, subject, task,
     """
     Save analysis outputs to BIDS derivatives structure.
 
-    # return the averaged epochs
-    return evoked
+    Parameters
+    ----------
+    evoked : mne.Evoked or dict of mne.Evoked
+        Evoked data to save.
+    bids_root : str or pathlib.Path
+        Path to the BIDS dataset root directory.
+    subject : str
+        Subject label (without 'sub-' prefix).
+    task : str
+        Task label (without 'task-' prefix). Required for BIDS compliance.
+    session : str, optional
+        Session label (without 'ses-' prefix).
+    run : str or int, optional
+        Run label (without 'run-' prefix).
+    analysis_type : str
+        Type of analysis output ('evoked', 'spectrum', etc.).
+
+    Returns
+    -------
+    output_paths : list of pathlib.Path
+        Paths to the saved files.
+    """
+
+    # Set up derivatives directory
+    derivatives_info = setup_derivatives_directories(
+        bids_root, subject, create_preprocessing=False, create_analysis=True
+    )
+
+    output_paths = []
+    
+    # Build base filename with task (required) and session/run (optional)
+    filename_base_parts = [f"sub-{subject}"]
+    
+    # Session is optional
+    if session:
+        filename_base_parts.append(f"ses-{session}")
+        
+    # Task is required for BIDS compliance
+    filename_base_parts.append(f"task-{task}")
+    
+    # Run is optional
+    if run:
+        filename_base_parts.append(f"run-{run}")
+    
+    filename_base = "_".join(filename_base_parts)
+
+    if isinstance(evoked, dict):
+        # Multiple conditions - save each separately
+        for condition, evoked_data in evoked.items():
+            # Format condition name with proper capitalization
+            condition_formatted = str(condition).capitalize()
+            filename = (
+                f"{filename_base}_desc-{analysis_type}"
+                f"{condition_formatted}.fif"
+            )
+            output_path = derivatives_info["analysis_subject_dir"] / filename
+            evoked_data.save(output_path)
+            output_paths.append(output_path)
+    else:
+        # Single evoked response
+        filename = f"{filename_base}_desc-{analysis_type}.fif"
+        output_path = derivatives_info["analysis_subject_dir"] / filename
+        evoked.save(output_path)
+        output_paths.append(output_path)
+
+    # Create dataset_description.json if it doesn't exist
+    dataset_desc_path = (
+        derivatives_info["analysis_dir"] / "dataset_description.json"
+    )
+    if not dataset_desc_path.exists():
+        import json
+
+        dataset_desc = {
+            "Name": "ffrprep analysis outputs",
+            "BIDSVersion": "1.6.0",
+            "GeneratedBy": [
+                {"Name": "ffrprep", "Description": "Frequency-following response analysis pipeline"}  # noqa: E501
+            ],
+        }
+        with open(dataset_desc_path, "w") as f:
+            json.dump(dataset_desc, f, indent=2)
+
+    return output_paths
+
+
+def save_preprocessing_node(epochs, bids_root, subject, task,
+                            session=None, run=None):
+    """
+    Nipype-compatible function to save preprocessing outputs.
+
+    Parameters
+    ----------
+    epochs : mne.Epochs
+        Epoched data to save.
+    bids_root : str
+        Path to the BIDS dataset root directory.
+    subject : str
+        Subject label (without 'sub-' prefix).
+    task : str
+        Task label (without 'task-' prefix). Required for BIDS compliance.
+    session : str, optional
+        Session label (without 'ses-' prefix).
+    run : str or int, optional
+        Run label (without 'run-' prefix).
+
+    Returns
+    -------
+    output_path : str
+        Path to the saved epochs file.
+    """
+    output_path = save_preprocessing_outputs(
+        epochs, bids_root, subject, task, session, run
+    )
+    return str(output_path)
+
+
+def save_analysis_node(evoked, bids_root, subject, task,
+                       session=None, run=None, analysis_type="evoked"):
+    """
+    Nipype-compatible function to save analysis outputs.
+
+    Parameters
+    ----------
+    evoked : mne.Evoked or dict of mne.Evoked
+        Evoked data to save.
+    bids_root : str
+        Path to the BIDS dataset root directory.
+    subject : str
+        Subject label (without 'sub-' prefix).
+    task : str
+        Task label (without 'task-' prefix). Required for BIDS compliance.
+    session : str, optional
+        Session label (without 'ses-' prefix).
+    run : str or int, optional
+        Run label (without 'run-' prefix).
+    analysis_type : str
+        Type of analysis output ('evoked', 'spectrum', etc.).
+
+    Returns
+    -------
+    output_paths : list of str
+        Paths to the saved files.
+    """
+    output_paths = save_analysis_outputs(
+        evoked, bids_root, subject, task, session, run, analysis_type
+    )
+    return [str(p) for p in output_paths]
