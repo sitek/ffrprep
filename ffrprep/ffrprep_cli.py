@@ -22,19 +22,22 @@ def get_parser():
 
     # define parser description
     parser = argparse.ArgumentParser(
-        description="ffrprep: A BIDS-App for standardized FFR preprocessing and analysis",
+        description=("ffrprep: A BIDS-App for standardized FFR preprocessing "
+                     "and analysis"),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
     # add parser argument for version
-    parser.add_argument("-v", "--version", action="version", version="ffrprep version {}".format(__version__))
+    parser.add_argument("-v", "--version", action="version",
+                        version="ffrprep version {}".format(__version__))
 
     # BIDS-App standard arguments
     parser.add_argument(
         "bids_dir",
         action="store",
         type=Path,
-        help="The directory with the input dataset " "formatted according to the BIDS standard.",
+        help=("The directory with the input dataset "
+              "formatted according to the BIDS standard."),
     )
     parser.add_argument(
         "output_dir",
@@ -72,7 +75,8 @@ def get_parser():
         "--stage",
         choices=["preprocessing", "analysis", "both"],
         default="both",
-        help="Processing stage to run: preprocessing only, " "analysis only, or both stages sequentially.",
+        help=("Processing stage to run: preprocessing only, "
+              "analysis only, or both stages sequentially."),
     )
 
     # Preprocessing parameters
@@ -85,39 +89,50 @@ def get_parser():
         default="average",
     )
     preproc_group.add_argument(
-        "--high_pass", type=float, help="High-pass filter cutoff frequency in Hz.", default=1.0
+        "--high_pass", type=float,
+        help="High-pass filter cutoff frequency in Hz.", default=1.0
     )
     preproc_group.add_argument(
-        "--low_pass", type=float, help="Low-pass filter cutoff frequency in Hz.", default=40.0
+        "--low_pass", type=float,
+        help="Low-pass filter cutoff frequency in Hz.", default=40.0
     )
     preproc_group.add_argument(
         "--baseline",
-        help="Baseline correction period. Format: start,end " '(e.g., "-0.2,0" for -200ms to 0ms).',
+        help=("Baseline correction period. Format: start,end "
+              '(e.g., "-0.2,0" for -200ms to 0ms).'),
         default="-0.2,0",
     )
     preproc_group.add_argument(
-        "--tmin", type=float, help="Start time of epochs relative to event onset (s).", default=-0.2
+        "--tmin", type=float,
+        help="Start time of epochs relative to event onset (s).", default=-0.2
     )
     preproc_group.add_argument(
-        "--tmax", type=float, help="End time of epochs relative to event onset (s).", default=0.6
+        "--tmax", type=float,
+        help="End time of epochs relative to event onset (s).", default=0.6
     )
 
     # Analysis parameters
     analysis_group = parser.add_argument_group("Analysis options")
     analysis_group.add_argument(
-        "--by_event_type", action="store_true", help="Create separate evoked responses for each event type."
+        "--by_event_type", action="store_true", help=(
+            "Create separate evoked responses for each event type.")
     )
 
     # General options
     parser.add_argument(
         "--skip_bids_validation",
         action="store_true",
-        help="Assume the input dataset is BIDS compliant " "and skip the validation.",
+        help=("Assume the input dataset is BIDS compliant "
+              "and skip the validation."),
     )
     parser.add_argument(
-        "--n_procs", type=int, default=1, help="Number of processors to use for parallel execution."
+        "--n_procs", type=int, default=1, help=(
+            "Number of processors to use for parallel execution.")
     )
-    parser.add_argument("--work_dir", type=Path, help="Path where intermediate results should be stored.")
+    parser.add_argument("--work_dir",
+                        type=Path,
+                        help="Path where intermediate results should be "
+                             "stored.")
 
     return parser
 
@@ -162,7 +177,8 @@ def run_ffrprep():
     if args.skip_bids_validation:
         print("Input data will not be checked for BIDS compliance.")
     else:
-        print("Making sure the input data is BIDS compliant " "(warnings can be ignored in most cases).")
+        print("Making sure the input data is BIDS compliant "
+              "(warnings can be ignored in most cases).")
         validate_input_dir(exec_env, args.bids_dir, args.participant_label)
 
     # Only run participant-level analysis for now
@@ -199,7 +215,10 @@ def run_ffrprep():
             create_analysis=args.stage in ["analysis", "both"],
         )
 
-        print(f"Derivatives will be stored in: " f"{derivatives_info['derivatives_root']}")
+        print(
+            f"Derivatives will be stored in: "
+            f"{derivatives_info['derivatives_root']}"
+        )
 
         # Create workflow based on stage
         if args.stage in ["preprocessing", "both"]:
@@ -212,7 +231,8 @@ def run_ffrprep():
             if args.work_dir:
                 work_dir = args.work_dir / f"sub-{subject}" / "preprocessing"
             else:
-                work_dir = derivatives_info["preprocessing_dir"] / "work" / f"sub-{subject}"
+                work_dir = (derivatives_info["preprocessing_dir"] / "work" /
+                            f"sub-{subject}")
 
             preproc_wf.base_dir = str(work_dir)
 
@@ -227,12 +247,14 @@ def run_ffrprep():
             preproc_wf.inputs.inputnode.tmax = args.tmax
 
             # Set output directory for results
-            preproc_wf.inputs.inputnode.output_dir = str(derivatives_info["preprocessing_subject_dir"])
+            preproc_wf.inputs.inputnode.output_dir = str(
+                    derivatives_info["preprocessing_subject_dir"])
 
             # Run preprocessing workflow
             preproc_wf.run()
             print(
-                f"Preprocessing completed. Outputs saved to: " f"{derivatives_info['preprocessing_subject_dir']}"
+                f"Preprocessing completed. Outputs saved to: "
+                f"{derivatives_info['preprocessing_subject_dir']}"
             )
 
         if args.stage in ["analysis", "both"]:
@@ -240,17 +262,26 @@ def run_ffrprep():
 
             # Check if preprocessing outputs exist (required for analysis)
             if args.stage == "analysis":  # Analysis-only mode
-                preproc_exists, preproc_files = check_preprocessing_exists(args.bids_dir, subject)
+                preproc_exists, preproc_files = check_preprocessing_exists(
+                        args.bids_dir, subject)
 
                 if not preproc_exists:
-                    print(f"ERROR: No preprocessing outputs found for " f"subject {subject}.")
                     print(
-                        f"Expected location: {args.bids_dir}/derivatives/" f"ffrprep-preprocessing/sub-{subject}/"
+                        f"ERROR: No preprocessing outputs found for "
+                        f"subject {subject}."
                     )
-                    print("Please run preprocessing stage first or use " "'both' stage.")
+                    print(
+                        f"Expected location: {args.bids_dir}/derivatives/"
+                        f"ffrprep-preprocessing/sub-{subject}/"
+                    )
+                    print("Please run preprocessing stage first or use "
+                          "'both' stage.")
                     continue
                 else:
-                    print(f"Found preprocessing outputs: " f"{[f.name for f in preproc_files]}")
+                    print(
+                        f"Found preprocessing outputs: "
+                        f"{[f.name for f in preproc_files]}"
+                    )
 
             # Create analysis workflow
             analysis_wf = create_analysis_workflow()
@@ -259,7 +290,8 @@ def run_ffrprep():
             if args.work_dir:
                 work_dir = args.work_dir / f"sub-{subject}" / "analysis"
             else:
-                work_dir = derivatives_info["analysis_dir"] / "work" / f"sub-{subject}"
+                work_dir = (derivatives_info["analysis_dir"] / "work" /
+                            f"sub-{subject}")
 
             analysis_wf.base_dir = str(work_dir)
 
@@ -269,11 +301,15 @@ def run_ffrprep():
             analysis_wf.inputs.inputnode.subject = subject
 
             # Set output directory for analysis results
-            analysis_wf.inputs.inputnode.output_dir = str(derivatives_info["analysis_subject_dir"])
+            analysis_wf.inputs.inputnode.output_dir = str(
+                derivatives_info["analysis_subject_dir"])
 
             # Run analysis workflow
             analysis_wf.run()
-            print(f"Analysis completed. Outputs saved to: " f"{derivatives_info['analysis_subject_dir']}")
+            print(
+                f"Analysis completed. Outputs saved to: "
+                f"{derivatives_info['analysis_subject_dir']}"
+            )
 
     print("ffrprep processing completed successfully!")
 

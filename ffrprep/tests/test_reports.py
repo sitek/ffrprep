@@ -25,7 +25,8 @@ def test_create_report(tmp_path):
     assert op.exists(report1_path)
 
     # Create another report with different title and filename
-    report2_path = create_report(tmp_path, filename="report2.h5", title="Test report")
+    report2_path = create_report(tmp_path, filename="report2.h5",
+                                 title="Test report")
     assert op.exists(report2_path)
 
     # Create report in subdirectory
@@ -37,12 +38,14 @@ def test_create_report(tmp_path):
     assert op.exists(test_path)
 
     # Existing filename, don't overwrite (should create test_1.h5)
-    test_path_no_overwrite = create_report(tmp_path, filename="test.h5", overwrite=False)
+    test_path_no_overwrite = create_report(tmp_path, filename="test.h5",
+                                           overwrite=False)
     assert op.exists(test_path_no_overwrite)
     assert "test_1.h5" in test_path_no_overwrite
 
     # Existing filename, do overwrite (should overwrite test.h5)
-    test_path_overwrite = create_report(tmp_path, filename="test.h5", overwrite=True)
+    test_path_overwrite = create_report(tmp_path, filename="test.h5",
+                                        overwrite=True)
     assert op.exists(test_path_overwrite)
     assert test_path_overwrite == test_path
 
@@ -63,7 +66,8 @@ def test_add_to_report(tmp_path):
 
     add_to_report(report_fpath, figure=fig)
     add_to_report(report_fpath, figure=fig, figure_title="test title")
-    add_to_report(report_fpath, figure=fig, figure_title="test title", figure_caption="test caption")
+    add_to_report(report_fpath, figure=fig, figure_title="test title",
+                  figure_caption="test caption")
 
     # Add HTML text to the existing report
     html_text = """
@@ -79,7 +83,8 @@ def test_add_to_report(tmp_path):
 
     # Add both a figure and HTML text
     add_to_report(
-        report_fpath, figure=fig, figure_title="test title", html_text=html_text, html_title="test title"
+        report_fpath, figure=fig, figure_title="test title",
+        html_text=html_text, html_title="test title"
     )
 
     # Close the figure to clean up

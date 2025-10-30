@@ -38,7 +38,8 @@ def _download_single_file(osf_url, output_path):
 
             # implement progress bar via tqdm
             desc = f"Downloading {file_name}"
-            with tqdm.wrapattr(file.raw, "read", total=file_size, desc=desc) as raw:
+            with tqdm.wrapattr(file.raw, "read", total=file_size,
+                               desc=desc) as raw:
                 # save the output to the file specified before
                 with open(file_path, "wb") as output:
                     shutil.copyfileobj(raw, output)
@@ -131,7 +132,8 @@ def download_raw_data(subjects=1, dataset_path=None):
         invalid_subjects = [s for s in subjects if s not in available_subjects]
         if invalid_subjects:
             warning_msg = (
-                f"Warning: Subjects {invalid_subjects} not " f"available. Available: {available_subjects}"
+                f"Warning: Subjects {invalid_subjects} not "
+                f"available. Available: {available_subjects}"
             )
             print(warning_msg)
         subjects_to_download = [s for s in subjects if s in available_subjects]
@@ -185,7 +187,9 @@ def download_raw_data(subjects=1, dataset_path=None):
     print(f"Downloading data for {len(subjects_to_download)} subjects...")
     for subject in subjects_to_download:
         placeholder_id = f"sub{subject}_osf_id"
-        if subject in subject_urls and subject_urls[subject] != placeholder_id:  # Skip placeholders
+        # Skip placeholders
+        if (subject in subject_urls and
+                subject_urls[subject] != placeholder_id):
             osf_url = f"{base_url}{subject_urls[subject]}"
             zip_path = _download_single_file(osf_url, path)
 
@@ -261,7 +265,8 @@ def download_epoch_data(subjects=1, dataset_path=None):
         invalid_subjects = [s for s in subjects if s not in available_subjects]
         if invalid_subjects:
             warning_msg = (
-                f"Warning: Subjects {invalid_subjects} not " f"available. Available: {available_subjects}"
+                f"Warning: Subjects {invalid_subjects} not "
+                f"available. Available: {available_subjects}"
             )
             print(warning_msg)
         subjects_to_download = [s for s in subjects if s in available_subjects]
@@ -313,7 +318,8 @@ def download_epoch_data(subjects=1, dataset_path=None):
                     continue
 
                 osf_url = f"{base_url}{osf_id}"
-                filename = f"sub-{subject}_task-{task}_run-all_" f"event-stimtrack_epochs.fif"
+                filename = (f"sub-{subject}_task-{task}_run-all_"
+                            f"event-stimtrack_epochs.fif")
                 file_path = eeg_dir / filename
 
                 # Download the file directly to the BIDS structure
@@ -322,7 +328,8 @@ def download_epoch_data(subjects=1, dataset_path=None):
                     with requests.get(osf_url, stream=True) as file:
                         file_size = int(file.headers.get("Content-Length", 0))
                         desc = f"Downloading {filename}"
-                        with tqdm.wrapattr(file.raw, "read", total=file_size, desc=desc) as raw:
+                        with tqdm.wrapattr(file.raw, "read", total=file_size,
+                                           desc=desc) as raw:
                             with open(file_path, "wb") as output:
                                 shutil.copyfileobj(raw, output)
                 else:

@@ -3,7 +3,7 @@ from mne import Epochs
 from bids import BIDSLayout
 
 
-def load_data(bids_root=None, sub_label=None, session_label=None, 
+def load_data(bids_root=None, sub_label=None, session_label=None,
               task_label=None, run_label=None):
     """
     Identify and load EEG data from a BIDS directory using pybids for querying.
@@ -362,7 +362,7 @@ def epoch_data(eeg_data, baseline, events_file=None, picks=None, tmin=None,
 
     Load events from external file:
 
-    >>> epoched_data = epoch_data(eeg_data, baseline=[-0.2, -0.05], 
+    >>> epoched_data = epoch_data(eeg_data, baseline=[-0.2, -0.05],
     ...                          events_file='/path/to/events.tsv')
 
     """
@@ -372,14 +372,14 @@ def epoch_data(eeg_data, baseline, events_file=None, picks=None, tmin=None,
         # Load events from external file (e.g., BIDS events.tsv)
         import pandas as pd
         import numpy as np
-        
+
         # Read events file
         events_df = pd.read_csv(events_file, sep='\t')
-        
+
         # Convert onset times to sample indices
         sfreq = eeg_data.info['sfreq']
         onset_samples = (events_df['onset'] * sfreq).astype(int)
-        
+
         # Create MNE events array [sample, prev_sample, event_id]
         events = np.column_stack([
             onset_samples,
@@ -844,18 +844,18 @@ def save_preprocessing_outputs(epochs, bids_root, subject, task,
     # Build BIDS-compliant filename with task (required)
     # and session/run (optional)
     filename_parts = [f"sub-{subject}"]
-    
+
     # Session is optional
     if session:
         filename_parts.append(f"ses-{session}")
-        
+
     # Task is required for BIDS compliance
     filename_parts.append(f"task-{task}")
-    
+
     # Run is optional
     if run:
         filename_parts.append(f"run-{run}")
-    
+
     # Add descriptor and extension
     filename_parts.append("desc-preproc.fif")
     filename = "_".join(filename_parts)
@@ -994,21 +994,21 @@ def save_analysis_outputs(evoked, bids_root, subject, task,
     )
 
     output_paths = []
-    
+
     # Build base filename with task (required) and session/run (optional)
     filename_base_parts = [f"sub-{subject}"]
-    
+
     # Session is optional
     if session:
         filename_base_parts.append(f"ses-{session}")
-        
+
     # Task is required for BIDS compliance
     filename_base_parts.append(f"task-{task}")
-    
+
     # Run is optional
     if run:
         filename_base_parts.append(f"run-{run}")
-    
+
     filename_base = "_".join(filename_base_parts)
 
     if isinstance(evoked, dict):

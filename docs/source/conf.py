@@ -167,7 +167,8 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, "ffrprep.tex", "ffrprep Documentation", "Contributors", "manual"),
+    (master_doc, "ffrprep.tex", "ffrprep Documentation", "Contributors",
+     "manual"),
 ]
 
 
@@ -190,7 +191,8 @@ texinfo_documents = [
         "ffrprep Documentation",
         author,
         "ffrprep",
-        "A standardized and robust (pre-) processing pipeline " "for FFR data.",
+        ("A standardized and robust (pre-) processing pipeline "
+         "for FFR data."),
         "Miscellaneous",
     ),
 ]
@@ -242,6 +244,7 @@ html_theme_options = {
     "globaltoc_includehidden": False,
 }
 
-html_sidebars = {"**": ["logo-text.html", "globaltoc.html", "localtoc.html", "searchbox.html"]}
+html_sidebars = {"**": ["logo-text.html", "globaltoc.html",
+                        "localtoc.html", "searchbox.html"]}
 
 suppress_warnings = ["config.cache"]

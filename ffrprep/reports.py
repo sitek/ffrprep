@@ -10,7 +10,8 @@ import time
 from mne import Report, open_report
 
 
-def create_report(bids_root, out_dir=None, filename=None, title=None, overwrite=False):
+def create_report(bids_root, out_dir=None, filename=None, title=None,
+                  overwrite=False):
     """
     Initialize an MNE report.
 
@@ -146,7 +147,8 @@ def add_to_report(
                 # Use correct signature for add_figure
                 title = figure_title if figure_title is not None else "Figure"
                 if figure_caption is not None:
-                    report.add_figure(figure, title=title, caption=figure_caption)
+                    report.add_figure(figure, title=title,
+                                      caption=figure_caption)
                 else:
                     report.add_figure(figure, title=title)
             if html_text:
@@ -161,13 +163,15 @@ def add_to_report(
 
     except (OSError, ValueError, IOError) as e:
         # If opening fails, create a new report and add content
-        print(f"Warning: Could not open existing report ({e}). " "Creating new report.")
+        print(f"Warning: Could not open existing report ({e}). "
+              "Creating new report.")
         report = Report(title="Updated Report")
         if figure:
             # Use correct signature for add_figure
             title = figure_title if figure_title is not None else "Figure"
             if figure_caption is not None:
-                report.add_figure(figure, title=title, caption=figure_caption)
+                report.add_figure(figure, title=title,
+                                  caption=figure_caption)
             else:
                 report.add_figure(figure, title=title)
         if html_text:

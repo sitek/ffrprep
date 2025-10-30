@@ -3,7 +3,7 @@
 import pytest
 import shutil
 from pathlib import Path
-from ffrprep.datasets import (download_example_data, download_raw_data, 
+from ffrprep.datasets import (download_example_data, download_raw_data,
                               download_epoch_data)
 
 
@@ -67,7 +67,7 @@ def test_download_example_data_basic(test_dataset_path):
 @pytest.mark.parametrize("n_subjects", [1, 2, 3])
 def test_download_raw_data_by_number(test_dataset_path, n_subjects):
     """Test downloading raw data by specifying number of subjects."""
-    data_path = download_raw_data(subjects=n_subjects, 
+    data_path = download_raw_data(subjects=n_subjects,
                                   dataset_path=test_dataset_path)
 
     # Verify basic structure
@@ -80,11 +80,11 @@ def test_download_raw_data_by_number(test_dataset_path, n_subjects):
         shutil.rmtree(data_path)
 
 
-@pytest.mark.parametrize("subject_list", [["03"], ["21"], ["03", "21"], 
+@pytest.mark.parametrize("subject_list", [["03"], ["21"], ["03", "21"],
                                           ["05", "11", "15"]])
 def test_download_raw_data_by_list(test_dataset_path, subject_list):
     """Test downloading raw data by specifying subject list."""
-    data_path = download_raw_data(subjects=subject_list, 
+    data_path = download_raw_data(subjects=subject_list,
                                   dataset_path=test_dataset_path)
 
     # Verify basic structure
@@ -137,14 +137,14 @@ def test_download_raw_data_too_many_subjects(test_dataset_path):
 def test_download_raw_data_invalid_input_type(test_dataset_path):
     """Test raw data download with invalid input type."""
     with pytest.raises(TypeError, match="subjects must be an integer or list"):
-        download_raw_data(subjects="invalid_string", 
+        download_raw_data(subjects="invalid_string",
                           dataset_path=test_dataset_path)
 
 
 @pytest.mark.parametrize("n_subjects", [1, 2])
 def test_download_epoch_data_by_number(test_dataset_path, n_subjects):
     """Test downloading epoched data by specifying number of subjects."""
-    data_path = download_epoch_data(subjects=n_subjects, 
+    data_path = download_epoch_data(subjects=n_subjects,
                                     dataset_path=test_dataset_path)
 
     # Verify BIDS derivatives structure
