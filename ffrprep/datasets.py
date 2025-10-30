@@ -207,6 +207,7 @@ def download_raw_data(subjects=1, dataset_path=None):
 def download_epoch_data(subjects=1, dataset_path=None):
     """
     Download epoched EEG data for specified subjects from OSF.
+
     Data will be organized following BIDS derivatives structure within
     the raw dataset directory.
 

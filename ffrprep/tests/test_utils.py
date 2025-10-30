@@ -1,3 +1,5 @@
+"""Unit tests for ffrprep utility functions."""
+
 import pytest
 import shutil
 from ffrprep.datasets import download_example_data

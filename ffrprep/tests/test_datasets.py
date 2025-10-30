@@ -1,3 +1,5 @@
+"""Unit tests for ffrprep.datasets download functions."""
+
 import pytest
 import shutil
 from pathlib import Path
@@ -13,7 +15,7 @@ def test_dataset_path(tmp_path):
 
 @pytest.fixture
 def expected_raw_files():
-    """Expected files after downloading raw data (1 subject)."""
+    """Return expected files after downloading raw data (1 subject)."""
     return [
         "ffrprep_raw_data/dataset_description.json",
         "ffrprep_raw_data/participants.json",
