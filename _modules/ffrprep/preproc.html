@@ -45,7 +45,7 @@
   
   
   
-    <title>ffrprep.preproc &#8212; ffrprep 0+untagged.1.g41e9ad5 documentation</title>
+    <title>ffrprep.preproc &#8212; ffrprep 0+untagged.1.g8e4cd7e documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
     <link rel="stylesheet" type="text/css" href="../../_static/material.css?v=79c92029" />
     <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
@@ -55,7 +55,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
-    <script src="../../_static/documentation_options.js?v=2b038070"></script>
+    <script src="../../_static/documentation_options.js?v=60463a80"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -86,7 +86,7 @@
   <nav class="md-header-nav md-grid">
     <div class="md-flex navheader">
       <div class="md-flex__cell md-flex__cell--shrink">
-        <a href="../../index.html" title="ffrprep 0+untagged.1.g41e9ad5 documentation"
+        <a href="../../index.html" title="ffrprep 0+untagged.1.g8e4cd7e documentation"
            class="md-header-nav__button md-logo">
           
             &nbsp;
@@ -172,7 +172,7 @@
   <nav class="md-tabs" data-md-component="tabs">
     <div class="md-tabs__inner md-grid">
       <ul class="md-tabs__list">
-          <li class="md-tabs__item"><a href="../../index.html" class="md-tabs__link">ffrprep 0+untagged.1.g41e9ad5 documentation</a></li>
+          <li class="md-tabs__item"><a href="../../index.html" class="md-tabs__link">ffrprep 0+untagged.1.g8e4cd7e documentation</a></li>
           <li class="md-tabs__item"><a href="../index.html" class="md-tabs__link">Module code</a></li>
       </ul>
     </div>
@@ -185,13 +185,13 @@
               <div class="md-sidebar__inner">
                 <nav class="md-nav md-nav--primary" data-md-level="0">
   <label class="md-nav__title md-nav__title--site" for="__drawer">
-    <a href="../../index.html" title="ffrprep 0+untagged.1.g41e9ad5 documentation" class="md-nav__button md-logo">
+    <a href="../../index.html" title="ffrprep 0+untagged.1.g8e4cd7e documentation" class="md-nav__button md-logo">
       
         <img src="../../_static/" alt=" logo" width="48" height="48">
       
     </a>
     <a href="../../index.html"
-       title="ffrprep 0+untagged.1.g41e9ad5 documentation">ffrprep</a>
+       title="ffrprep 0+untagged.1.g8e4cd7e documentation">ffrprep</a>
   </label>
     <div class="md-nav__source">
       <a href="https://github.com/spark-csd/ffrprep" title="Go to repository" class="md-source" data-md-source="github">
@@ -288,20 +288,25 @@
           <article class="md-content__inner md-typeset" role="main">
             
   <h1 id="modules-ffrprep-preproc--page-root">Source code for ffrprep.preproc</h1><div class="highlight"><pre>
-<span></span><span class="kn">from</span> <span class="nn">mne_bids</span> <span class="kn">import</span> <span class="n">BIDSPath</span><span class="p">,</span> <span class="n">read_raw_bids</span>
-<span class="kn">from</span> <span class="nn">mne</span> <span class="kn">import</span> <span class="n">Epochs</span>
-<span class="kn">from</span> <span class="nn">bids</span> <span class="kn">import</span> <span class="n">BIDSLayout</span>
+<span></span><span class="sd">"""</span>
+<span class="sd">Preprocessing utilities for EEG data in BIDS format.</span>
+
+<span class="sd">Includes loading, referencing, filtering, epoching,</span>
+<span class="sd">and evoked response calculation.</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span> <span class="nn">mne_bids</span> <span class="kn">import</span> <span class="n">BIDSPath</span><span class="p">,</span> <span class="n">read_raw_bids</span>
 
 
 <div class="viewcode-block" id="load_data">
 <a class="viewcode-back" href="../../generated/ffrprep.preproc.load_data.html#ffrprep.preproc.load_data">[docs]</a>
-<span class="k">def</span> <span class="nf">load_data</span><span class="p">(</span><span class="n">bids_root</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sub_label</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">session_label</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-              <span class="n">task_label</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">run_label</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">load_data</span><span class="p">(</span><span class="n">bids_root</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+              <span class="n">sub_label</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+              <span class="n">session_label</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+              <span class="n">task_label</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+              <span class="n">run_label</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""</span>
-<span class="sd">    Identify and load EEG data from a BIDS directory using pybids for querying.</span>
-
-<span class="sd">    This function uses pybids to robustly query the BIDS dataset and find</span>
-<span class="sd">    the appropriate EEG files, then uses MNE-BIDS to load the data.</span>
+<span class="sd">    Identify an EEG filepath in a BIDS directory and load it.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -335,192 +340,24 @@
 <span class="sd">                         sub_label=sub_label,</span>
 <span class="sd">                         run_label=run_label)</span>
 <span class="sd">    """</span>
-    <span class="c1"># Create BIDSLayout for robust querying</span>
-    <span class="n">layout</span> <span class="o">=</span> <span class="n">BIDSLayout</span><span class="p">(</span><span class="n">bids_root</span><span class="p">,</span> <span class="n">validate</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">bids_path</span> <span class="o">=</span> <span class="n">BIDSPath</span><span class="p">(</span><span class="n">subject</span><span class="o">=</span><span class="n">sub_label</span><span class="p">,</span>
+                         <span class="n">session</span><span class="o">=</span><span class="n">session_label</span><span class="p">,</span>
+                         <span class="n">task</span><span class="o">=</span><span class="n">task_label</span><span class="p">,</span>
+                         <span class="n">run</span><span class="o">=</span><span class="n">run_label</span><span class="p">,</span>
+                         <span class="n">root</span><span class="o">=</span><span class="n">bids_root</span><span class="p">,</span>
+                         <span class="n">datatype</span><span class="o">=</span><span class="s1">'eeg'</span><span class="p">)</span>
 
-    <span class="c1"># Build query parameters, filtering out None values</span>
-    <span class="n">query_params</span> <span class="o">=</span> <span class="p">{</span>
-        <span class="s2">"subject"</span><span class="p">:</span> <span class="n">sub_label</span><span class="p">,</span>
-        <span class="s2">"datatype"</span><span class="p">:</span> <span class="s2">"eeg"</span><span class="p">,</span>
-        <span class="s2">"extension"</span><span class="p">:</span> <span class="s2">".edf"</span><span class="p">,</span>  <span class="c1"># Common EEG format, adjust as needed</span>
-    <span class="p">}</span>
-
-    <span class="c1"># Add optional parameters if provided</span>
-    <span class="k">if</span> <span class="n">session_label</span><span class="p">:</span>
-        <span class="n">query_params</span><span class="p">[</span><span class="s2">"session"</span><span class="p">]</span> <span class="o">=</span> <span class="n">session_label</span>
-    <span class="k">if</span> <span class="n">task_label</span><span class="p">:</span>
-        <span class="n">query_params</span><span class="p">[</span><span class="s2">"task"</span><span class="p">]</span> <span class="o">=</span> <span class="n">task_label</span>
-    <span class="k">if</span> <span class="n">run_label</span><span class="p">:</span>
-        <span class="n">query_params</span><span class="p">[</span><span class="s2">"run"</span><span class="p">]</span> <span class="o">=</span> <span class="n">run_label</span>
-
-    <span class="c1"># Query for EEG files using pybids</span>
-    <span class="n">eeg_files</span> <span class="o">=</span> <span class="n">layout</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="o">**</span><span class="n">query_params</span><span class="p">)</span>
-
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">eeg_files</span><span class="p">:</span>
-        <span class="c1"># Try alternative extensions if .edf not found</span>
-        <span class="k">for</span> <span class="n">ext</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">".bdf"</span><span class="p">,</span> <span class="s2">".vhdr"</span><span class="p">,</span> <span class="s2">".fif"</span><span class="p">,</span> <span class="s2">".set"</span><span class="p">]:</span>
-            <span class="n">query_params</span><span class="p">[</span><span class="s2">"extension"</span><span class="p">]</span> <span class="o">=</span> <span class="n">ext</span>
-            <span class="n">eeg_files</span> <span class="o">=</span> <span class="n">layout</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="o">**</span><span class="n">query_params</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">eeg_files</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">eeg_files</span><span class="p">)</span><span class="si">}</span><span class="s2"> EEG files with extension </span><span class="si">{</span><span class="n">ext</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-                <span class="k">break</span>
-
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">eeg_files</span><span class="p">:</span>
-        <span class="c1"># Provide helpful error message with available options</span>
-        <span class="n">all_eeg_files</span> <span class="o">=</span> <span class="n">layout</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">subject</span><span class="o">=</span><span class="n">sub_label</span><span class="p">,</span> <span class="n">datatype</span><span class="o">=</span><span class="s2">"eeg"</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">all_eeg_files</span><span class="p">:</span>
-            <span class="n">available_entities</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
-            <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">all_eeg_files</span><span class="p">:</span>
-                <span class="n">entities</span> <span class="o">=</span> <span class="n">layout</span><span class="o">.</span><span class="n">parse_file_entities</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
-                <span class="n">available_entities</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">"task-</span><span class="si">{</span><span class="n">entities</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'task'</span><span class="p">,</span><span class="w"> </span><span class="s1">'N/A'</span><span class="p">)</span><span class="si">}</span><span class="s2">, "</span>
-                    <span class="sa">f</span><span class="s2">"run-</span><span class="si">{</span><span class="n">entities</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'run'</span><span class="p">,</span><span class="w"> </span><span class="s1">'N/A'</span><span class="p">)</span><span class="si">}</span><span class="s2">, "</span>
-                    <span class="sa">f</span><span class="s2">"ses-</span><span class="si">{</span><span class="n">entities</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'session'</span><span class="p">,</span><span class="w"> </span><span class="s1">'N/A'</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span>
-                <span class="p">)</span>
-            <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">"No EEG files found for subject </span><span class="si">{</span><span class="n">sub_label</span><span class="si">}</span><span class="s2"> with the "</span>
-                <span class="sa">f</span><span class="s2">"specified parameters. Available files have: "</span>
-                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="s1">'; '</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">available_entities</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span>
-            <span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">"No EEG files found for subject </span><span class="si">{</span><span class="n">sub_label</span><span class="si">}</span><span class="s2"> "</span>
-                <span class="sa">f</span><span class="s2">"in </span><span class="si">{</span><span class="n">bids_root</span><span class="si">}</span><span class="s2">"</span>
-            <span class="p">)</span>
-
-    <span class="c1"># Use the first file if multiple matches (warn if multiple)  # noqa: E501</span>
-    <span class="n">eeg_file</span> <span class="o">=</span> <span class="n">eeg_files</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">eeg_files</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Warning: Multiple files found, using: </span><span class="si">{</span><span class="n">eeg_file</span><span class="o">.</span><span class="n">filename</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Available files: </span><span class="si">{</span><span class="p">[</span><span class="n">f</span><span class="o">.</span><span class="n">filename</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">f</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">eeg_files</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-
-    <span class="c1"># Extract BIDS entities from the found file</span>
-    <span class="n">entities</span> <span class="o">=</span> <span class="n">layout</span><span class="o">.</span><span class="n">parse_file_entities</span><span class="p">(</span><span class="n">eeg_file</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
-
-    <span class="c1"># Create a BIDS path object using the found file's entities</span>
-    <span class="n">bids_path</span> <span class="o">=</span> <span class="n">BIDSPath</span><span class="p">(</span>
-        <span class="n">subject</span><span class="o">=</span><span class="n">entities</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"subject"</span><span class="p">),</span>
-        <span class="n">session</span><span class="o">=</span><span class="n">entities</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"session"</span><span class="p">),</span>
-        <span class="n">task</span><span class="o">=</span><span class="n">entities</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"task"</span><span class="p">),</span>
-        <span class="n">run</span><span class="o">=</span><span class="n">entities</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"run"</span><span class="p">),</span>
-        <span class="n">root</span><span class="o">=</span><span class="n">bids_root</span><span class="p">,</span>
-        <span class="n">datatype</span><span class="o">=</span><span class="s2">"eeg"</span><span class="p">,</span>
-    <span class="p">)</span>
-
-    <span class="c1"># Read the raw data from the BIDS structure</span>
     <span class="n">data</span> <span class="o">=</span> <span class="n">read_raw_bids</span><span class="p">(</span><span class="n">bids_path</span><span class="o">=</span><span class="n">bids_path</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-
-    <span class="c1"># Load the data into memory for processing</span>
     <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">load_data</span><span class="p">()</span>
 
-    <span class="c1"># Store original filename information for derivatives naming</span>
-    <span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+    <span class="k">return</span> <span class="n">data</span><span class="p">,</span> <span class="n">bids_path</span></div>
 
-    <span class="n">original_filename</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">eeg_file</span><span class="o">.</span><span class="n">filename</span><span class="p">)</span><span class="o">.</span><span class="n">stem</span>  <span class="c1"># Remove extension</span>
-
-    <span class="c1"># Return data, bids_path, and original filename info</span>
-    <span class="k">return</span> <span class="n">data</span><span class="p">,</span> <span class="n">bids_path</span><span class="p">,</span> <span class="n">original_filename</span></div>
-
-
-
-<span class="k">def</span> <span class="nf">get_participants</span><span class="p">(</span><span class="n">bids_root</span><span class="p">,</span> <span class="n">participant_label</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">"""</span>
-<span class="sd">    Get list of participants from BIDS dataset using pybids.</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    bids_root : str or pathlib.Path</span>
-<span class="sd">        Path to the BIDS dataset root directory.</span>
-<span class="sd">    participant_label : list of str, optional</span>
-<span class="sd">        List of participant labels to filter. If None, returns all participants</span>
-<span class="sd">        with EEG data.</span>
-
-<span class="sd">    Returns</span>
-<span class="sd">    -------</span>
-<span class="sd">    participants : list of str</span>
-<span class="sd">        List of participant labels (without 'sub-' prefix).</span>
-
-<span class="sd">    Examples</span>
-<span class="sd">    --------</span>
-<span class="sd">    Get all participants with EEG data:</span>
-
-<span class="sd">    &gt;&gt;&gt; participants = get_participants('/path/to/bids')</span>
-
-<span class="sd">    Get specific participants:</span>
-
-<span class="sd">    &gt;&gt;&gt; participants = get_participants('/path/to/bids', ['01', '02'])</span>
-<span class="sd">    """</span>
-    <span class="c1"># Create BIDSLayout for querying</span>
-    <span class="n">layout</span> <span class="o">=</span> <span class="n">BIDSLayout</span><span class="p">(</span><span class="n">bids_root</span><span class="p">,</span> <span class="n">validate</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-
-    <span class="c1"># Query for all participants with EEG data</span>
-    <span class="n">eeg_participants</span> <span class="o">=</span> <span class="n">layout</span><span class="o">.</span><span class="n">get_subjects</span><span class="p">(</span><span class="n">datatype</span><span class="o">=</span><span class="s2">"eeg"</span><span class="p">)</span>
-
-    <span class="k">if</span> <span class="n">participant_label</span><span class="p">:</span>
-        <span class="c1"># Filter to requested participants</span>
-        <span class="n">available_participants</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">participant_label</span> <span class="k">if</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">eeg_participants</span>
-        <span class="p">]</span>
-
-        <span class="c1"># Warn about missing participants</span>
-        <span class="n">missing_participants</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">participant_label</span> <span class="k">if</span> <span class="n">p</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">eeg_participants</span>
-        <span class="p">]</span>
-        <span class="k">if</span> <span class="n">missing_participants</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">"Warning: Participants </span><span class="si">{</span><span class="n">missing_participants</span><span class="si">}</span><span class="s2"> not found "</span>
-                <span class="sa">f</span><span class="s2">"or have no EEG data in </span><span class="si">{</span><span class="n">bids_root</span><span class="si">}</span><span class="s2">"</span>
-            <span class="p">)</span>
-
-        <span class="k">return</span> <span class="n">available_participants</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">eeg_participants</span>
-
-
-<span class="k">def</span> <span class="nf">get_sessions_tasks_runs</span><span class="p">(</span><span class="n">bids_root</span><span class="p">,</span> <span class="n">subject</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">"""</span>
-<span class="sd">    Get available sessions, tasks, and runs for a specific participant.</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    bids_root : str or pathlib.Path</span>
-<span class="sd">        Path to the BIDS dataset root directory.</span>
-<span class="sd">    subject : str</span>
-<span class="sd">        Subject label (without 'sub-' prefix).</span>
-
-<span class="sd">    Returns</span>
-<span class="sd">    -------</span>
-<span class="sd">    metadata : dict</span>
-<span class="sd">        Dictionary containing available sessions, tasks,</span>
-<span class="sd">        and runs for the subject.</span>
-
-<span class="sd">    Examples</span>
-<span class="sd">    --------</span>
-<span class="sd">    Get metadata for a subject:</span>
-
-<span class="sd">    &gt;&gt;&gt; metadata = get_sessions_tasks_runs('/path/to/bids', '01')</span>
-<span class="sd">    """</span>
-    <span class="n">layout</span> <span class="o">=</span> <span class="n">BIDSLayout</span><span class="p">(</span><span class="n">bids_root</span><span class="p">,</span> <span class="n">validate</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-
-    <span class="c1"># Query for sessions</span>
-    <span class="n">sessions</span> <span class="o">=</span> <span class="n">layout</span><span class="o">.</span><span class="n">get_sessions</span><span class="p">(</span><span class="n">subject</span><span class="o">=</span><span class="n">subject</span><span class="p">,</span> <span class="n">datatype</span><span class="o">=</span><span class="s2">"eeg"</span><span class="p">)</span>
-
-    <span class="c1"># Query for tasks</span>
-    <span class="n">tasks</span> <span class="o">=</span> <span class="n">layout</span><span class="o">.</span><span class="n">get_tasks</span><span class="p">(</span><span class="n">subject</span><span class="o">=</span><span class="n">subject</span><span class="p">,</span> <span class="n">datatype</span><span class="o">=</span><span class="s2">"eeg"</span><span class="p">)</span>
-
-    <span class="c1"># Query for runs</span>
-    <span class="n">runs</span> <span class="o">=</span> <span class="n">layout</span><span class="o">.</span><span class="n">get_runs</span><span class="p">(</span><span class="n">subject</span><span class="o">=</span><span class="n">subject</span><span class="p">,</span> <span class="n">datatype</span><span class="o">=</span><span class="s2">"eeg"</span><span class="p">)</span>
-
-    <span class="k">return</span> <span class="p">{</span>
-        <span class="s2">"sessions"</span><span class="p">:</span> <span class="n">sessions</span> <span class="k">if</span> <span class="n">sessions</span> <span class="k">else</span> <span class="p">[</span><span class="kc">None</span><span class="p">],</span>
-        <span class="s2">"tasks"</span><span class="p">:</span> <span class="n">tasks</span> <span class="k">if</span> <span class="n">tasks</span> <span class="k">else</span> <span class="p">[</span><span class="kc">None</span><span class="p">],</span>
-        <span class="s2">"runs"</span><span class="p">:</span> <span class="n">runs</span> <span class="k">if</span> <span class="n">runs</span> <span class="k">else</span> <span class="p">[</span><span class="kc">None</span><span class="p">],</span>
-    <span class="p">}</span>
 
 
 <div class="viewcode-block" id="reference_data">
 <a class="viewcode-back" href="../../generated/ffrprep.preproc.reference_data.html#ffrprep.preproc.reference_data">[docs]</a>
-<span class="k">def</span> <span class="nf">reference_data</span><span class="p">(</span><span class="n">eeg_data</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">ref_channels</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">reference_data</span><span class="p">(</span><span class="n">eeg_data</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                   <span class="n">ref_channels</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Re-reference the provided EEG data object.</span>
 
@@ -555,30 +392,31 @@
 
 <span class="sd">    &gt;&gt;&gt; referenced_data = reference_data(eeg_data, ref_channels=['M1'])</span>
 <span class="sd">    """</span>
-    <span class="c1"># Apply average reference by default (all channels averaged)</span>
+    <span class="c1"># apply average reference by default</span>
     <span class="k">if</span> <span class="n">ref_channels</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">eeg_data</span><span class="o">.</span><span class="n">set_eeg_reference</span><span class="p">()</span>
-    <span class="c1"># If single channel provided as a string, convert to list</span>
+    <span class="c1"># if single channel provided as a string</span>
     <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">ref_channels</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
         <span class="n">eeg_data</span><span class="o">.</span><span class="n">set_eeg_reference</span><span class="p">(</span><span class="n">ref_channels</span><span class="o">=</span><span class="p">[</span><span class="n">ref_channels</span><span class="p">])</span>
-    <span class="c1"># If list of channels is provided, use them directly</span>
+    <span class="c1"># if list of channels is provided</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">eeg_data</span><span class="o">.</span><span class="n">set_eeg_reference</span><span class="p">(</span><span class="n">ref_channels</span><span class="o">=</span><span class="n">ref_channels</span><span class="p">)</span>
 
-    <span class="c1"># Return the re-referenced data</span>
     <span class="k">return</span> <span class="n">eeg_data</span></div>
 
 
 
 <div class="viewcode-block" id="filter_data">
 <a class="viewcode-back" href="../../generated/ffrprep.preproc.filter_data.html#ffrprep.preproc.filter_data">[docs]</a>
-<span class="k">def</span> <span class="nf">filter_data</span><span class="p">(</span><span class="n">eeg_data</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">high_pass</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">low_pass</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">filter_data</span><span class="p">(</span><span class="n">eeg_data</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                <span class="n">high_pass</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                <span class="n">low_pass</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""</span>
-<span class="sd">    Apply frequency filters to the provided EEG data object.</span>
+<span class="sd">    Re-reference the provided EEG data object.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    eeg_data : MNE `data` object</span>
+<span class="sd">    data : MNE `data` object</span>
 <span class="sd">        MNE `data` object containing EEG data and metadata.</span>
 <span class="sd">    high_pass : float</span>
 <span class="sd">        Lower passband edge (in Hertz).</span>
@@ -590,57 +428,47 @@
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    filtered_eeg : MNE `data` object</span>
-<span class="sd">        EEG data filtered to given frequency range.</span>
+<span class="sd">        to given frequency range.</span>
 
 <span class="sd">    Examples</span>
 <span class="sd">    --------</span>
-<span class="sd">    Filter an EEG data object with a band-pass filter (1-40 Hz).</span>
+<span class="sd">    Filter an EEG data object with a band-pass filter.</span>
 
-<span class="sd">    &gt;&gt;&gt; filtered_data = filter_data(eeg_data, high_pass=1.0, low_pass=40.0)</span>
+<span class="sd">    &gt;&gt;&gt; filtered_data = filter_data(eeg_data, high_pass=50, low_pass=2000)</span>
 
-<span class="sd">    Filter an EEG data object with a high-pass filter (0.1 Hz).</span>
+<span class="sd">    Filter an EEG data object with a high-pass filter.</span>
 
-<span class="sd">    &gt;&gt;&gt; filtered_data = filter_data(eeg_data, high_pass=0.1)</span>
+<span class="sd">    &gt;&gt;&gt; filtered_data = filter_data(eeg_data, high_pass=50)</span>
 
-<span class="sd">    Filter an EEG data object with a low-pass filter (100 Hz).</span>
+<span class="sd">        Filter an EEG data object with a low-pass filter.</span>
 
-<span class="sd">    &gt;&gt;&gt; filtered_data = filter_data(eeg_data, low_pass=100.0)</span>
+<span class="sd">    &gt;&gt;&gt; filtered_data = filter_data(eeg_data, low_pass=2000)</span>
 <span class="sd">    """</span>
-    <span class="c1"># Create a copy of the data to avoid modifying the original</span>
-    <span class="n">filtered_eeg</span> <span class="o">=</span> <span class="n">eeg_data</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">eeg_data</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">l_freq</span><span class="o">=</span><span class="n">high_pass</span><span class="p">,</span>
+                    <span class="n">h_freq</span><span class="o">=</span><span class="n">low_pass</span><span class="p">)</span>
 
-    <span class="c1"># Apply filtering using MNE's filter method</span>
-    <span class="c1"># l_freq is low-frequency cutoff (high-pass), h_freq is high-frequency cutoff (low-pass)  # noqa: E501</span>
-    <span class="n">filtered_eeg</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">l_freq</span><span class="o">=</span><span class="n">high_pass</span><span class="p">,</span> <span class="n">h_freq</span><span class="o">=</span><span class="n">low_pass</span><span class="p">)</span>
-
-    <span class="c1"># Return the filtered data</span>
-    <span class="k">return</span> <span class="n">filtered_eeg</span></div>
+    <span class="k">return</span> <span class="n">eeg_data</span></div>
 
 
 
-<span class="k">def</span> <span class="nf">epoch_data</span><span class="p">(</span><span class="n">eeg_data</span><span class="p">,</span> <span class="n">baseline</span><span class="p">,</span> <span class="n">events_file</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">picks</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">tmin</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-               <span class="n">tmax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">epoch_data</span><span class="p">(</span><span class="n">eeg_data</span><span class="p">,</span>
+               <span class="n">baseline</span><span class="p">,</span>
+               <span class="n">events_file</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+               <span class="n">picks</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+               <span class="n">epoch_window</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+               <span class="n">tmin</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+               <span class="n">tmax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+               <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Epoch the provided EEG data object based on events.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    eeg_data : MNE `data` object</span>
+<span class="sd">    data : MNE `data` object</span>
 <span class="sd">        MNE `data` object containing EEG data and metadata.</span>
 <span class="sd">    baseline : float or 1-D array</span>
 <span class="sd">        In seconds: start of baseline period (if float);</span>
 <span class="sd">        baseline window (if array).</span>
-<span class="sd">    events_file : str, optional</span>
-<span class="sd">        Path to events file. If provided, events will be loaded from file.</span>
-<span class="sd">        If None, events will be found from the data annotations or triggers.</span>
-<span class="sd">    picks : list, optional</span>
-<span class="sd">        Channels to include in epochs.</span>
-<span class="sd">    tmin : float, optional</span>
-<span class="sd">        Start time before event (in seconds).</span>
-<span class="sd">    tmax : float, optional</span>
-<span class="sd">        End time after event (in seconds).</span>
-<span class="sd">    verbose : bool</span>
-<span class="sd">        Whether to print verbose output.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -659,758 +487,128 @@
 
 <span class="sd">    &gt;&gt;&gt; epoched_data = epoch_data(eeg_data, baseline=[-0.2, -0.05])</span>
 
-<span class="sd">    Load events from external file:</span>
-
-<span class="sd">    &gt;&gt;&gt; epoched_data = epoch_data(eeg_data, baseline=[-0.2, -0.05],</span>
-<span class="sd">    ...                          events_file='/path/to/events.tsv')</span>
-
 <span class="sd">    """</span>
+    <span class="kn">from</span> <span class="nn">mne</span> <span class="kn">import</span> <span class="n">Epochs</span>
 
-    <span class="c1"># Load events from file or extract from data</span>
-    <span class="k">if</span> <span class="n">events_file</span><span class="p">:</span>
-        <span class="c1"># Load events from external file (e.g., BIDS events.tsv)</span>
-        <span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
-        <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+    <span class="n">events</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">event_dict</span> <span class="o">=</span> <span class="kc">None</span>
 
-        <span class="c1"># Read events file</span>
-        <span class="n">events_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">events_file</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s1">'</span><span class="se">\t</span><span class="s1">'</span><span class="p">)</span>
-
-        <span class="c1"># Convert onset times to sample indices</span>
-        <span class="n">sfreq</span> <span class="o">=</span> <span class="n">eeg_data</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s1">'sfreq'</span><span class="p">]</span>
-        <span class="n">onset_samples</span> <span class="o">=</span> <span class="p">(</span><span class="n">events_df</span><span class="p">[</span><span class="s1">'onset'</span><span class="p">]</span> <span class="o">*</span> <span class="n">sfreq</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
-
-        <span class="c1"># Create MNE events array [sample, prev_sample, event_id]</span>
-        <span class="n">events</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">column_stack</span><span class="p">([</span>
-            <span class="n">onset_samples</span><span class="p">,</span>
-            <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">onset_samples</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">),</span>  <span class="c1"># previous sample</span>
-            <span class="n">events_df</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'trial_type'</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>  <span class="c1"># event codes</span>
-        <span class="p">])</span>
-
-        <span class="c1"># Create event dictionary from trial types</span>
-        <span class="k">if</span> <span class="s1">'trial_type'</span> <span class="ow">in</span> <span class="n">events_df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
-            <span class="n">unique_types</span> <span class="o">=</span> <span class="n">events_df</span><span class="p">[</span><span class="s1">'trial_type'</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span>
-            <span class="n">event_dict</span> <span class="o">=</span> <span class="p">{</span>
-                <span class="nb">str</span><span class="p">(</span><span class="n">trial_type</span><span class="p">):</span> <span class="n">idx</span> <span class="o">+</span> <span class="mi">1</span>
-                <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">trial_type</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">unique_types</span><span class="p">)</span>
-            <span class="p">}</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">event_dict</span> <span class="o">=</span> <span class="p">{</span><span class="s1">'event'</span><span class="p">:</span> <span class="mi">1</span><span class="p">}</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="c1"># Try to find events from data annotations or triggers</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="kn">from</span> <span class="nn">mne</span> <span class="kn">import</span> <span class="n">find_events</span>
-            <span class="n">events</span> <span class="o">=</span> <span class="n">find_events</span><span class="p">(</span><span class="n">eeg_data</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">)</span>
-            <span class="n">event_dict</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># Will use default event IDs</span>
-        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
-            <span class="c1"># If no events found, create dummy events for demonstration</span>
-            <span class="c1"># This should be replaced with proper event detection</span>
-            <span class="n">events</span> <span class="o">=</span> <span class="kc">None</span>
-            <span class="n">event_dict</span> <span class="o">=</span> <span class="kc">None</span>
-
-    <span class="c1"># Define baseline window (in seconds)</span>
+    <span class="c1"># define baseline window (in seconds)</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">baseline</span><span class="p">,</span> <span class="nb">float</span><span class="p">):</span>
-        <span class="c1"># If single float provided, use it as start time with 0 as end time</span>
-        <span class="n">baseline_window</span> <span class="o">=</span> <span class="p">(</span><span class="n">baseline</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">baseline_window</span> <span class="o">=</span> <span class="p">[</span><span class="n">baseline</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="c1"># If array provided, use it directly as baseline window</span>
-        <span class="n">baseline_window</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">baseline</span><span class="p">)</span>
+        <span class="n">baseline_window</span> <span class="o">=</span> <span class="n">baseline</span>
 
-    <span class="c1"># Define epoch time window (in seconds)</span>
+    <span class="c1"># define epoch time window (in seconds)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">tmin</span><span class="p">:</span>
-        <span class="c1"># If no tmin specified, start from baseline start time</span>
         <span class="n">tmin</span> <span class="o">=</span> <span class="n">baseline_window</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">tmax</span><span class="p">:</span>
-        <span class="c1"># Default epoch end time is 0.5 seconds after event</span>
         <span class="n">tmax</span> <span class="o">=</span> <span class="mf">0.5</span>
 
-    <span class="c1"># Create epochs with specified parameters</span>
-    <span class="n">epoched_data</span> <span class="o">=</span> <span class="n">Epochs</span><span class="p">(</span>
-        <span class="n">eeg_data</span><span class="p">,</span>
-        <span class="n">events</span><span class="o">=</span><span class="n">events</span><span class="p">,</span>
-        <span class="n">event_id</span><span class="o">=</span><span class="n">event_dict</span><span class="p">,</span>
-        <span class="n">on_missing</span><span class="o">=</span><span class="s2">"warn"</span><span class="p">,</span>  <span class="c1"># Warn about missing events</span>
-        <span class="n">picks</span><span class="o">=</span><span class="n">picks</span><span class="p">,</span>
-        <span class="n">tmin</span><span class="o">=</span><span class="n">tmin</span><span class="p">,</span>
-        <span class="n">tmax</span><span class="o">=</span><span class="n">tmax</span><span class="p">,</span>
-        <span class="n">baseline</span><span class="o">=</span><span class="n">baseline_window</span><span class="p">,</span>
-        <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">,</span>
-        <span class="n">reject</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">eeg</span><span class="o">=</span><span class="mf">75e-6</span><span class="p">),</span>
-    <span class="p">)</span><span class="o">.</span><span class="n">drop_bad</span><span class="p">()</span>  <span class="c1"># Reject bad epochs  # noqa: E501</span>
+    <span class="n">epoched_data</span> <span class="o">=</span> <span class="n">Epochs</span><span class="p">(</span><span class="n">eeg_data</span><span class="p">,</span>
+                          <span class="n">events</span><span class="o">=</span><span class="n">events</span><span class="p">,</span>
+                          <span class="n">event_id</span><span class="o">=</span><span class="n">event_dict</span><span class="p">,</span>
+                          <span class="n">on_missing</span><span class="o">=</span><span class="s1">'warn'</span><span class="p">,</span>
+                          <span class="n">picks</span><span class="o">=</span><span class="n">picks</span><span class="p">,</span>
+                          <span class="n">tmin</span><span class="o">=</span><span class="n">tmin</span><span class="p">,</span> <span class="n">tmax</span><span class="o">=</span><span class="n">tmax</span><span class="p">,</span>
+                          <span class="n">baseline</span><span class="o">=</span><span class="n">baseline_window</span><span class="p">,</span>
+                          <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">,</span>
+                          <span class="n">reject</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">eeg</span><span class="o">=</span><span class="mf">75e-6</span><span class="p">))</span><span class="o">.</span><span class="n">drop_bad</span><span class="p">()</span>
 
     <span class="k">return</span> <span class="n">epoched_data</span><span class="p">,</span> <span class="p">(</span><span class="n">tmin</span><span class="p">,</span> <span class="n">tmax</span><span class="p">)</span>
 
 
-<span class="k">def</span> <span class="nf">make_evoked</span><span class="p">(</span><span class="n">epochs</span><span class="p">,</span> <span class="n">by_event_type</span><span class="p">:</span> <span class="nb">bool</span><span class="p">):</span>
+<span class="c1"># use mne.Report for all functions, created evoked object</span>
+<span class="k">def</span> <span class="nf">preproc_pipeline</span><span class="p">(</span><span class="n">bids_root</span><span class="p">,</span>
+                     <span class="n">baseline</span><span class="p">,</span>
+                     <span class="n">sub_label</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                     <span class="n">session_label</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                     <span class="n">task_label</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                     <span class="n">run_label</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                     <span class="n">ref_channels</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                     <span class="n">high_pass</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                     <span class="n">low_pass</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                     <span class="n">events_file</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                     <span class="n">picks</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                     <span class="n">epoch_window</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                     <span class="n">tmin</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                     <span class="n">tmax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                     <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""</span>
-<span class="sd">    Create evoked responses by averaging epochs.</span>
-
-<span class="sd">    This function computes the average response across all epochs,</span>
-<span class="sd">    optionally grouping by event type to create separate evoked</span>
-<span class="sd">    responses for different experimental conditions.</span>
+<span class="sd">    Preprocess raw EEG data.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    epochs : mne.Epochs</span>
-<span class="sd">        MNE `Epochs` object containing time-locked epochs.</span>
-<span class="sd">    by_event_type : bool</span>
-<span class="sd">        Whether to sort epochs by event type when averaging.</span>
-<span class="sd">        If True, creates separate evoked responses for each event type.</span>
-<span class="sd">        If False, averages all epochs together.</span>
+<span class="sd">    data : MNE `data` object</span>
+<span class="sd">        MNE `data` object containing EEG data and metadata.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    evoked : mne.Evoked or dict of mne.Evoked</span>
-<span class="sd">        If by_event_type is False: single MNE `Evoked` object containing</span>
-<span class="sd">        the average across all epochs.</span>
-<span class="sd">        If by_event_type is True: dictionary with event names as keys and</span>
-<span class="sd">        corresponding `Evoked` objects as values.</span>
+<span class="sd">    preprocessed_data : MNE `XXX` object</span>
+<span class="sd">        MNE `XXX` object.</span>
 
 <span class="sd">    Examples</span>
 <span class="sd">    --------</span>
-<span class="sd">    Average all epochs together:</span>
+<span class="sd">    Preprocess EEG data.</span>
 
-<span class="sd">    &gt;&gt;&gt; evoked_data = make_evoked(epoched_data, by_event_type=False)</span>
+<span class="sd">    &gt;&gt;&gt; preprocessed_data = preproc_pipeline()</span>
 
-<span class="sd">    Create separate evoked responses for each event type:</span>
 
-<span class="sd">    &gt;&gt;&gt; evoked_by_condition = make_evoked(epoched_data, by_event_type=True)</span>
 <span class="sd">    """</span>
-    <span class="k">if</span> <span class="n">by_event_type</span><span class="p">:</span>
-        <span class="c1"># Create separate evoked responses for each event type</span>
-        <span class="n">evoked</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
-        <span class="k">for</span> <span class="n">event_name</span><span class="p">,</span> <span class="n">event_id</span> <span class="ow">in</span> <span class="n">epochs</span><span class="o">.</span><span class="n">event_id</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="n">epochs_subset</span> <span class="o">=</span> <span class="n">epochs</span><span class="p">[</span><span class="n">event_name</span><span class="p">]</span>
-            <span class="n">evoked</span><span class="p">[</span><span class="n">event_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">epochs_subset</span><span class="o">.</span><span class="n">average</span><span class="p">()</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="c1"># Average all epochs together</span>
-        <span class="n">evoked</span> <span class="o">=</span> <span class="n">epochs</span><span class="o">.</span><span class="n">average</span><span class="p">()</span>
+    <span class="c1"># Load EEG data from bids_root path, with optional specification through</span>
+    <span class="c1"># parameters</span>
+    <span class="c1"># Path variable is stored for future usage</span>
+    <span class="n">eeg_data</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">load_data</span><span class="p">(</span><span class="n">bids_root</span><span class="o">=</span><span class="n">bids_root</span><span class="p">,</span>
+                            <span class="n">sub_label</span><span class="o">=</span><span class="n">sub_label</span><span class="p">,</span>
+                            <span class="n">session_label</span><span class="o">=</span><span class="n">session_label</span><span class="p">,</span>
+                            <span class="n">task_label</span><span class="o">=</span><span class="n">task_label</span><span class="p">,</span>
+                            <span class="n">run_label</span><span class="o">=</span><span class="n">run_label</span><span class="p">)</span>
 
-    <span class="c1"># Return the averaged epochs (evoked responses)</span>
+    <span class="c1"># Reference the given EEG data to specific channels</span>
+    <span class="n">referenced_eeg_data</span> <span class="o">=</span> <span class="n">reference_data</span><span class="p">(</span><span class="n">eeg_data</span><span class="p">,</span> <span class="n">ref_channels</span><span class="o">=</span><span class="n">ref_channels</span><span class="p">)</span>
+
+    <span class="c1"># Filter the referenced EEG data using the given band-pass</span>
+    <span class="n">filtered_eeg_data</span> <span class="o">=</span> <span class="n">filter_data</span><span class="p">(</span><span class="n">referenced_eeg_data</span><span class="p">,</span> <span class="n">high_pass</span><span class="o">=</span><span class="n">high_pass</span><span class="p">,</span>
+                                    <span class="n">low_pass</span><span class="o">=</span><span class="n">low_pass</span><span class="p">)</span>
+
+    <span class="c1"># Epoch the filtered data using the given baseline</span>
+    <span class="n">preprocessed_data</span> <span class="o">=</span> <span class="n">epoch_data</span><span class="p">(</span><span class="n">filtered_eeg_data</span><span class="p">,</span> <span class="n">baseline</span><span class="p">,</span>
+                                   <span class="n">events_file</span><span class="o">=</span><span class="n">events_file</span><span class="p">,</span>
+                                   <span class="n">picks</span><span class="o">=</span><span class="n">picks</span><span class="p">,</span> <span class="n">epoch_window</span><span class="o">=</span><span class="n">epoch_window</span><span class="p">,</span>
+                                   <span class="n">tmin</span><span class="o">=</span><span class="n">tmin</span><span class="p">,</span> <span class="n">tmax</span><span class="o">=</span><span class="n">tmax</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">)</span>
+
+    <span class="c1"># Return the epoched data</span>
+    <span class="k">return</span> <span class="n">preprocessed_data</span>
+
+
+<span class="k">def</span> <span class="nf">make_evoked</span><span class="p">(</span><span class="n">epochs</span><span class="p">,</span> <span class="n">by_event_type</span><span class="p">:</span> <span class="nb">bool</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Make an estimate of all epochs.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    epochs : MNE `Epochs` object</span>
+<span class="sd">        MNE `Epochs` object containing time-locked epochs.</span>
+<span class="sd">    epochs : Boolean</span>
+<span class="sd">        Boolean containing whether to sort epochs by event type</span>
+
+<span class="sd">    epochs : Boolean</span>
+<span class="sd">        Boolean containing whether to sort epochs by event type</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    evoked : MNE `Evoked` object</span>
+<span class="sd">        MNE `Evoked` object containing the average epoch.</span>
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    Evoke an EEG Epochs object.</span>
+<span class="sd">    &gt;&gt;&gt; evoked_data = make_evoked(epoched_data)</span>
+<span class="sd">    """</span>
+    <span class="c1"># average the epochs</span>
+    <span class="n">evoked</span> <span class="o">=</span> <span class="n">epochs</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">by_event_type</span><span class="p">)</span>
+
+    <span class="c1"># return the averaged epochs</span>
     <span class="k">return</span> <span class="n">evoked</span>
-
-
-<span class="k">def</span> <span class="nf">create_preprocessing_workflow</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">"ffrprep_preproc"</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">"""</span>
-<span class="sd">    Create nipype workflow for FFR preprocessing.</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    name : str</span>
-<span class="sd">        Name of the workflow</span>
-
-<span class="sd">    Returns</span>
-<span class="sd">    -------</span>
-<span class="sd">    workflow : nipype.Workflow</span>
-<span class="sd">        Preprocessing workflow</span>
-<span class="sd">    """</span>
-    <span class="kn">from</span> <span class="nn">nipype</span> <span class="kn">import</span> <span class="n">Workflow</span><span class="p">,</span> <span class="n">Node</span><span class="p">,</span> <span class="n">Function</span>
-    <span class="kn">from</span> <span class="nn">nipype.interfaces</span> <span class="kn">import</span> <span class="n">utility</span> <span class="k">as</span> <span class="n">niu</span>
-
-    <span class="n">workflow</span> <span class="o">=</span> <span class="n">Workflow</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
-
-    <span class="c1"># Input node to specify subject parameters</span>
-    <span class="n">inputnode</span> <span class="o">=</span> <span class="n">Node</span><span class="p">(</span>
-        <span class="n">niu</span><span class="o">.</span><span class="n">IdentityInterface</span><span class="p">(</span>
-            <span class="n">fields</span><span class="o">=</span><span class="p">[</span>
-                <span class="s2">"bids_root"</span><span class="p">,</span>
-                <span class="s2">"sub_label"</span><span class="p">,</span>
-                <span class="s2">"session_label"</span><span class="p">,</span>
-                <span class="s2">"task_label"</span><span class="p">,</span>
-                <span class="s2">"run_label"</span><span class="p">,</span>
-                <span class="s2">"ref_channels"</span><span class="p">,</span>
-                <span class="s2">"high_pass"</span><span class="p">,</span>
-                <span class="s2">"low_pass"</span><span class="p">,</span>
-                <span class="s2">"baseline"</span><span class="p">,</span>
-                <span class="s2">"tmin"</span><span class="p">,</span>
-                <span class="s2">"tmax"</span><span class="p">,</span>
-                <span class="s2">"output_dir"</span><span class="p">,</span>
-            <span class="p">]</span>
-        <span class="p">),</span>
-        <span class="n">name</span><span class="o">=</span><span class="s2">"inputnode"</span><span class="p">,</span>
-    <span class="p">)</span>
-
-    <span class="c1"># Output node to collect results</span>
-    <span class="n">outputnode</span> <span class="o">=</span> <span class="n">Node</span><span class="p">(</span>
-        <span class="n">niu</span><span class="o">.</span><span class="n">IdentityInterface</span><span class="p">(</span><span class="n">fields</span><span class="o">=</span><span class="p">[</span><span class="s2">"epochs"</span><span class="p">,</span> <span class="s2">"preprocessing_report"</span><span class="p">,</span>
-                                      <span class="s2">"original_filename"</span><span class="p">]),</span> <span class="n">name</span><span class="o">=</span><span class="s2">"outputnode"</span>
-    <span class="p">)</span>
-
-    <span class="c1"># Load data node</span>
-    <span class="n">load_node</span> <span class="o">=</span> <span class="n">Node</span><span class="p">(</span>
-        <span class="n">Function</span><span class="p">(</span>
-            <span class="n">input_names</span><span class="o">=</span><span class="p">[</span><span class="s2">"bids_root"</span><span class="p">,</span> <span class="s2">"sub_label"</span><span class="p">,</span> <span class="s2">"session_label"</span><span class="p">,</span>
-                         <span class="s2">"task_label"</span><span class="p">,</span> <span class="s2">"run_label"</span><span class="p">],</span>
-            <span class="n">output_names</span><span class="o">=</span><span class="p">[</span><span class="s2">"eeg_data"</span><span class="p">,</span> <span class="s2">"bids_path"</span><span class="p">,</span> <span class="s2">"original_filename"</span><span class="p">],</span>
-            <span class="n">function</span><span class="o">=</span><span class="n">load_data</span><span class="p">,</span>
-        <span class="p">),</span>
-        <span class="n">name</span><span class="o">=</span><span class="s2">"load_data"</span><span class="p">,</span>
-    <span class="p">)</span>
-
-    <span class="c1"># Reference data node</span>
-    <span class="n">reference_node</span> <span class="o">=</span> <span class="n">Node</span><span class="p">(</span>
-        <span class="n">Function</span><span class="p">(</span>
-            <span class="n">input_names</span><span class="o">=</span><span class="p">[</span><span class="s2">"eeg_data"</span><span class="p">,</span> <span class="s2">"ref_channels"</span><span class="p">],</span>
-            <span class="n">output_names</span><span class="o">=</span><span class="p">[</span><span class="s2">"referenced_data"</span><span class="p">],</span> <span class="n">function</span><span class="o">=</span><span class="n">reference_data</span>
-        <span class="p">),</span>
-        <span class="n">name</span><span class="o">=</span><span class="s2">"reference_data"</span><span class="p">,</span>
-    <span class="p">)</span>
-
-    <span class="c1"># Filter data node</span>
-    <span class="n">filter_node</span> <span class="o">=</span> <span class="n">Node</span><span class="p">(</span>
-        <span class="n">Function</span><span class="p">(</span>
-            <span class="n">input_names</span><span class="o">=</span><span class="p">[</span><span class="s2">"eeg_data"</span><span class="p">,</span> <span class="s2">"high_pass"</span><span class="p">,</span> <span class="s2">"low_pass"</span><span class="p">],</span>
-            <span class="n">output_names</span><span class="o">=</span><span class="p">[</span><span class="s2">"filtered_data"</span><span class="p">],</span> <span class="n">function</span><span class="o">=</span><span class="n">filter_data</span>
-        <span class="p">),</span>
-        <span class="n">name</span><span class="o">=</span><span class="s2">"filter_data"</span><span class="p">,</span>
-    <span class="p">)</span>
-
-    <span class="c1"># Epoch data node</span>
-    <span class="n">epoch_node</span> <span class="o">=</span> <span class="n">Node</span><span class="p">(</span>
-        <span class="n">Function</span><span class="p">(</span>
-            <span class="n">input_names</span><span class="o">=</span><span class="p">[</span><span class="s2">"eeg_data"</span><span class="p">,</span> <span class="s2">"baseline"</span><span class="p">,</span> <span class="s2">"tmin"</span><span class="p">,</span> <span class="s2">"tmax"</span><span class="p">],</span>
-            <span class="n">output_names</span><span class="o">=</span><span class="p">[</span><span class="s2">"epochs"</span><span class="p">,</span> <span class="s2">"time_window"</span><span class="p">],</span>
-            <span class="n">function</span><span class="o">=</span><span class="n">epoch_data</span><span class="p">,</span>
-        <span class="p">),</span>
-        <span class="n">name</span><span class="o">=</span><span class="s2">"epoch_data"</span><span class="p">,</span>
-    <span class="p">)</span>
-
-    <span class="c1"># Save preprocessing outputs node</span>
-    <span class="n">save_node</span> <span class="o">=</span> <span class="n">Node</span><span class="p">(</span>
-        <span class="n">Function</span><span class="p">(</span>
-            <span class="n">input_names</span><span class="o">=</span><span class="p">[</span><span class="s2">"epochs"</span><span class="p">,</span> <span class="s2">"bids_root"</span><span class="p">,</span> <span class="s2">"sub_label"</span><span class="p">,</span>
-                         <span class="s2">"original_filename"</span><span class="p">],</span>
-            <span class="n">output_names</span><span class="o">=</span><span class="p">[</span><span class="s2">"output_path"</span><span class="p">],</span>
-            <span class="n">function</span><span class="o">=</span><span class="n">save_preprocessing_node</span><span class="p">,</span>
-        <span class="p">),</span>
-        <span class="n">name</span><span class="o">=</span><span class="s2">"save_preprocessing"</span><span class="p">,</span>
-    <span class="p">)</span>
-
-    <span class="c1"># Connect workflow nodes</span>
-    <span class="n">workflow</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span>
-        <span class="p">[</span>
-            <span class="c1"># Connect inputs to load node</span>
-            <span class="p">(</span>
-                <span class="n">inputnode</span><span class="p">,</span>
-                <span class="n">load_node</span><span class="p">,</span>
-                <span class="p">[</span>
-                    <span class="p">(</span><span class="s2">"bids_root"</span><span class="p">,</span> <span class="s2">"bids_root"</span><span class="p">),</span>
-                    <span class="p">(</span><span class="s2">"sub_label"</span><span class="p">,</span> <span class="s2">"sub_label"</span><span class="p">),</span>
-                    <span class="p">(</span><span class="s2">"session_label"</span><span class="p">,</span> <span class="s2">"session_label"</span><span class="p">),</span>
-                    <span class="p">(</span><span class="s2">"task_label"</span><span class="p">,</span> <span class="s2">"task_label"</span><span class="p">),</span>
-                    <span class="p">(</span><span class="s2">"run_label"</span><span class="p">,</span> <span class="s2">"run_label"</span><span class="p">),</span>
-                <span class="p">],</span>
-            <span class="p">),</span>
-            <span class="c1"># Connect load to reference</span>
-            <span class="p">(</span><span class="n">load_node</span><span class="p">,</span> <span class="n">reference_node</span><span class="p">,</span> <span class="p">[(</span><span class="s2">"eeg_data"</span><span class="p">,</span> <span class="s2">"eeg_data"</span><span class="p">)]),</span>
-            <span class="p">(</span><span class="n">inputnode</span><span class="p">,</span> <span class="n">reference_node</span><span class="p">,</span> <span class="p">[(</span><span class="s2">"ref_channels"</span><span class="p">,</span> <span class="s2">"ref_channels"</span><span class="p">)]),</span>
-            <span class="c1"># Connect reference to filter</span>
-            <span class="p">(</span><span class="n">reference_node</span><span class="p">,</span> <span class="n">filter_node</span><span class="p">,</span> <span class="p">[(</span><span class="s2">"referenced_data"</span><span class="p">,</span> <span class="s2">"eeg_data"</span><span class="p">)]),</span>
-            <span class="p">(</span><span class="n">inputnode</span><span class="p">,</span> <span class="n">filter_node</span><span class="p">,</span> <span class="p">[(</span><span class="s2">"high_pass"</span><span class="p">,</span> <span class="s2">"high_pass"</span><span class="p">),</span>
-                                      <span class="p">(</span><span class="s2">"low_pass"</span><span class="p">,</span> <span class="s2">"low_pass"</span><span class="p">)]),</span>
-            <span class="c1"># Connect filter to epoch</span>
-            <span class="p">(</span><span class="n">filter_node</span><span class="p">,</span> <span class="n">epoch_node</span><span class="p">,</span> <span class="p">[(</span><span class="s2">"filtered_data"</span><span class="p">,</span> <span class="s2">"eeg_data"</span><span class="p">)]),</span>
-            <span class="p">(</span><span class="n">inputnode</span><span class="p">,</span> <span class="n">epoch_node</span><span class="p">,</span> <span class="p">[(</span><span class="s2">"baseline"</span><span class="p">,</span> <span class="s2">"baseline"</span><span class="p">),</span>
-                                     <span class="p">(</span><span class="s2">"tmin"</span><span class="p">,</span> <span class="s2">"tmin"</span><span class="p">),</span> <span class="p">(</span><span class="s2">"tmax"</span><span class="p">,</span> <span class="s2">"tmax"</span><span class="p">)]),</span>
-            <span class="c1"># Connect to save node</span>
-            <span class="p">(</span><span class="n">epoch_node</span><span class="p">,</span> <span class="n">save_node</span><span class="p">,</span> <span class="p">[(</span><span class="s2">"epochs"</span><span class="p">,</span> <span class="s2">"epochs"</span><span class="p">)]),</span>
-            <span class="p">(</span>
-                <span class="n">inputnode</span><span class="p">,</span>
-                <span class="n">save_node</span><span class="p">,</span>
-                <span class="p">[(</span><span class="s2">"bids_root"</span><span class="p">,</span> <span class="s2">"bids_root"</span><span class="p">),</span> <span class="p">(</span><span class="s2">"sub_label"</span><span class="p">,</span> <span class="s2">"sub_label"</span><span class="p">)],</span>
-            <span class="p">),</span>
-            <span class="p">(</span><span class="n">load_node</span><span class="p">,</span> <span class="n">save_node</span><span class="p">,</span> <span class="p">[(</span><span class="s2">"original_filename"</span><span class="p">,</span>
-                                     <span class="s2">"original_filename"</span><span class="p">)]),</span>
-            <span class="c1"># Connect to output</span>
-            <span class="p">(</span><span class="n">epoch_node</span><span class="p">,</span> <span class="n">outputnode</span><span class="p">,</span> <span class="p">[(</span><span class="s2">"epochs"</span><span class="p">,</span> <span class="s2">"epochs"</span><span class="p">)]),</span>
-            <span class="p">(</span><span class="n">load_node</span><span class="p">,</span> <span class="n">outputnode</span><span class="p">,</span> <span class="p">[(</span><span class="s2">"original_filename"</span><span class="p">,</span>
-                                      <span class="s2">"original_filename"</span><span class="p">)]),</span>
-        <span class="p">]</span>
-    <span class="p">)</span>
-
-    <span class="k">return</span> <span class="n">workflow</span>
-
-
-<span class="k">def</span> <span class="nf">create_analysis_workflow</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">"ffrprep_analysis"</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">"""</span>
-<span class="sd">    Create nipype workflow for FFR analysis.</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    name : str</span>
-<span class="sd">        Name of the workflow</span>
-
-<span class="sd">    Returns</span>
-<span class="sd">    -------</span>
-<span class="sd">    workflow : nipype.Workflow</span>
-<span class="sd">        Analysis workflow</span>
-<span class="sd">    """</span>
-    <span class="kn">from</span> <span class="nn">nipype</span> <span class="kn">import</span> <span class="n">Workflow</span><span class="p">,</span> <span class="n">Node</span><span class="p">,</span> <span class="n">Function</span>
-    <span class="kn">from</span> <span class="nn">nipype.interfaces</span> <span class="kn">import</span> <span class="n">utility</span> <span class="k">as</span> <span class="n">niu</span>
-
-    <span class="n">workflow</span> <span class="o">=</span> <span class="n">Workflow</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
-
-    <span class="c1"># Input node</span>
-    <span class="n">inputnode</span> <span class="o">=</span> <span class="n">Node</span><span class="p">(</span>
-        <span class="n">niu</span><span class="o">.</span><span class="n">IdentityInterface</span><span class="p">(</span>
-            <span class="n">fields</span><span class="o">=</span><span class="p">[</span><span class="s2">"epochs"</span><span class="p">,</span> <span class="s2">"by_event_type"</span><span class="p">,</span> <span class="s2">"bids_root"</span><span class="p">,</span> <span class="s2">"subject"</span><span class="p">,</span>
-                    <span class="s2">"output_dir"</span><span class="p">,</span> <span class="s2">"original_filename"</span><span class="p">]</span>
-        <span class="p">),</span>
-        <span class="n">name</span><span class="o">=</span><span class="s2">"inputnode"</span><span class="p">,</span>
-    <span class="p">)</span>
-
-    <span class="c1"># Output node</span>
-    <span class="n">outputnode</span> <span class="o">=</span> <span class="n">Node</span><span class="p">(</span><span class="n">niu</span><span class="o">.</span><span class="n">IdentityInterface</span><span class="p">(</span><span class="n">fields</span><span class="o">=</span><span class="p">[</span><span class="s2">"evoked"</span><span class="p">,</span>
-                                                    <span class="s2">"analysis_report"</span><span class="p">]),</span>
-                      <span class="n">name</span><span class="o">=</span><span class="s2">"outputnode"</span><span class="p">)</span>
-
-    <span class="c1"># Make evoked node</span>
-    <span class="n">evoked_node</span> <span class="o">=</span> <span class="n">Node</span><span class="p">(</span>
-        <span class="n">Function</span><span class="p">(</span><span class="n">input_names</span><span class="o">=</span><span class="p">[</span><span class="s2">"epochs"</span><span class="p">,</span> <span class="s2">"by_event_type"</span><span class="p">],</span>
-                 <span class="n">output_names</span><span class="o">=</span><span class="p">[</span><span class="s2">"evoked"</span><span class="p">],</span> <span class="n">function</span><span class="o">=</span><span class="n">make_evoked</span><span class="p">),</span>
-        <span class="n">name</span><span class="o">=</span><span class="s2">"make_evoked"</span><span class="p">,</span>
-    <span class="p">)</span>
-
-    <span class="c1"># Save analysis outputs node</span>
-    <span class="n">save_analysis_node_func</span> <span class="o">=</span> <span class="n">Node</span><span class="p">(</span>
-        <span class="n">Function</span><span class="p">(</span>
-            <span class="n">input_names</span><span class="o">=</span><span class="p">[</span><span class="s2">"evoked"</span><span class="p">,</span> <span class="s2">"bids_root"</span><span class="p">,</span> <span class="s2">"subject"</span><span class="p">,</span>
-                         <span class="s2">"original_filename"</span><span class="p">],</span>
-            <span class="n">output_names</span><span class="o">=</span><span class="p">[</span><span class="s2">"output_paths"</span><span class="p">],</span>
-            <span class="n">function</span><span class="o">=</span><span class="n">save_analysis_node</span><span class="p">,</span>
-        <span class="p">),</span>
-        <span class="n">name</span><span class="o">=</span><span class="s2">"save_analysis"</span><span class="p">,</span>
-    <span class="p">)</span>
-
-    <span class="c1"># Connect workflow</span>
-    <span class="n">workflow</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span>
-        <span class="p">[</span>
-            <span class="p">(</span><span class="n">inputnode</span><span class="p">,</span> <span class="n">evoked_node</span><span class="p">,</span> <span class="p">[(</span><span class="s2">"epochs"</span><span class="p">,</span> <span class="s2">"epochs"</span><span class="p">),</span>
-                                      <span class="p">(</span><span class="s2">"by_event_type"</span><span class="p">,</span> <span class="s2">"by_event_type"</span><span class="p">)]),</span>
-            <span class="c1"># Connect to save node</span>
-            <span class="p">(</span><span class="n">evoked_node</span><span class="p">,</span> <span class="n">save_analysis_node_func</span><span class="p">,</span> <span class="p">[(</span><span class="s2">"evoked"</span><span class="p">,</span> <span class="s2">"evoked"</span><span class="p">)]),</span>
-            <span class="p">(</span>
-                <span class="n">inputnode</span><span class="p">,</span>
-                <span class="n">save_analysis_node_func</span><span class="p">,</span>
-                <span class="p">[</span>
-                    <span class="p">(</span><span class="s2">"bids_root"</span><span class="p">,</span> <span class="s2">"bids_root"</span><span class="p">),</span>
-                    <span class="p">(</span><span class="s2">"subject"</span><span class="p">,</span> <span class="s2">"subject"</span><span class="p">),</span>
-                    <span class="p">(</span><span class="s2">"original_filename"</span><span class="p">,</span> <span class="s2">"original_filename"</span><span class="p">),</span>
-                <span class="p">],</span>
-            <span class="p">),</span>
-            <span class="c1"># Connect to output</span>
-            <span class="p">(</span><span class="n">evoked_node</span><span class="p">,</span> <span class="n">outputnode</span><span class="p">,</span> <span class="p">[(</span><span class="s2">"evoked"</span><span class="p">,</span> <span class="s2">"evoked"</span><span class="p">)]),</span>
-        <span class="p">]</span>
-    <span class="p">)</span>
-
-    <span class="k">return</span> <span class="n">workflow</span>
-
-
-<span class="k">def</span> <span class="nf">setup_derivatives_directories</span><span class="p">(</span><span class="n">bids_root</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span>
-                                  <span class="n">create_preprocessing</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                                  <span class="n">create_analysis</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">"""</span>
-<span class="sd">    Set up BIDS derivatives directories for ffrprep outputs.</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    bids_root : str or pathlib.Path</span>
-<span class="sd">        Path to the BIDS dataset root directory.</span>
-<span class="sd">    subject : str</span>
-<span class="sd">        Subject label (without 'sub-' prefix).</span>
-<span class="sd">    create_preprocessing : bool</span>
-<span class="sd">        Whether to create preprocessing derivatives directory.</span>
-<span class="sd">    create_analysis : bool</span>
-<span class="sd">        Whether to create analysis derivatives directory.</span>
-
-<span class="sd">    Returns</span>
-<span class="sd">    -------</span>
-<span class="sd">    derivatives_info : dict</span>
-<span class="sd">        Dictionary containing paths to derivatives directories.</span>
-<span class="sd">    """</span>
-    <span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
-
-    <span class="n">bids_root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">bids_root</span><span class="p">)</span>
-    <span class="n">derivatives_root</span> <span class="o">=</span> <span class="n">bids_root</span> <span class="o">/</span> <span class="s2">"derivatives"</span>
-
-    <span class="c1"># Create main derivatives directory if it doesn't exist</span>
-    <span class="n">derivatives_root</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-
-    <span class="c1"># Set up preprocessing derivatives</span>
-    <span class="n">preproc_dir</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="k">if</span> <span class="n">create_preprocessing</span><span class="p">:</span>
-        <span class="n">preproc_dir</span> <span class="o">=</span> <span class="n">derivatives_root</span> <span class="o">/</span> <span class="s2">"ffrprep-preprocessing"</span>
-        <span class="n">preproc_subject_dir</span> <span class="o">=</span> <span class="n">preproc_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">"sub-</span><span class="si">{</span><span class="n">subject</span><span class="si">}</span><span class="s2">"</span>
-        <span class="n">preproc_subject_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-
-    <span class="c1"># Set up analysis derivatives</span>
-    <span class="n">analysis_dir</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="k">if</span> <span class="n">create_analysis</span><span class="p">:</span>
-        <span class="n">analysis_dir</span> <span class="o">=</span> <span class="n">derivatives_root</span> <span class="o">/</span> <span class="s2">"ffrprep-analysis"</span>
-        <span class="n">analysis_subject_dir</span> <span class="o">=</span> <span class="n">analysis_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">"sub-</span><span class="si">{</span><span class="n">subject</span><span class="si">}</span><span class="s2">"</span>
-        <span class="n">analysis_subject_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-
-    <span class="k">return</span> <span class="p">{</span>
-        <span class="s2">"derivatives_root"</span><span class="p">:</span> <span class="n">derivatives_root</span><span class="p">,</span>
-        <span class="s2">"preprocessing_dir"</span><span class="p">:</span> <span class="n">preproc_dir</span><span class="p">,</span>
-        <span class="s2">"analysis_dir"</span><span class="p">:</span> <span class="n">analysis_dir</span><span class="p">,</span>
-        <span class="s2">"preprocessing_subject_dir"</span><span class="p">:</span> <span class="p">(</span>
-            <span class="n">preproc_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">"sub-</span><span class="si">{</span><span class="n">subject</span><span class="si">}</span><span class="s2">"</span> <span class="k">if</span> <span class="n">preproc_dir</span> <span class="k">else</span> <span class="kc">None</span>
-        <span class="p">),</span>
-        <span class="s2">"analysis_subject_dir"</span><span class="p">:</span> <span class="p">(</span>
-            <span class="n">analysis_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">"sub-</span><span class="si">{</span><span class="n">subject</span><span class="si">}</span><span class="s2">"</span> <span class="k">if</span> <span class="n">analysis_dir</span> <span class="k">else</span> <span class="kc">None</span>
-        <span class="p">),</span>
-    <span class="p">}</span>
-
-
-<span class="k">def</span> <span class="nf">check_preprocessing_exists</span><span class="p">(</span><span class="n">bids_root</span><span class="p">,</span> <span class="n">subject</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">"""</span>
-<span class="sd">    Check if preprocessing outputs exist for a given subject.</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    bids_root : str or pathlib.Path</span>
-<span class="sd">        Path to the BIDS dataset root directory.</span>
-<span class="sd">    subject : str</span>
-<span class="sd">        Subject label (without 'sub-' prefix).</span>
-
-<span class="sd">    Returns</span>
-<span class="sd">    -------</span>
-<span class="sd">    exists : bool</span>
-<span class="sd">        Whether preprocessing outputs exist for the subject.</span>
-<span class="sd">    preproc_files : list</span>
-<span class="sd">        List of found preprocessing files.</span>
-<span class="sd">    """</span>
-    <span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
-
-    <span class="n">bids_root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">bids_root</span><span class="p">)</span>
-    <span class="n">preproc_dir</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="n">bids_root</span>
-        <span class="o">/</span> <span class="s2">"derivatives"</span>
-        <span class="o">/</span> <span class="s2">"ffrprep-preprocessing"</span>
-        <span class="o">/</span> <span class="sa">f</span><span class="s2">"sub-</span><span class="si">{</span><span class="n">subject</span><span class="si">}</span><span class="s2">"</span>
-    <span class="p">)</span>
-
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">preproc_dir</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-        <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="p">[]</span>
-
-    <span class="c1"># Look for common preprocessing output files</span>
-    <span class="n">preproc_patterns</span> <span class="o">=</span> <span class="p">[</span>
-        <span class="s2">"*_desc-preproc.fif"</span><span class="p">,</span>  <span class="c1"># New naming convention</span>
-        <span class="sa">f</span><span class="s2">"sub-</span><span class="si">{</span><span class="n">subject</span><span class="si">}</span><span class="s2">_*_desc-preproc.fif"</span><span class="p">,</span>  <span class="c1"># With subject prefix</span>
-        <span class="sa">f</span><span class="s2">"sub-</span><span class="si">{</span><span class="n">subject</span><span class="si">}</span><span class="s2">_*_epo.fif"</span><span class="p">,</span>  <span class="c1"># Legacy epoched data</span>
-        <span class="sa">f</span><span class="s2">"sub-</span><span class="si">{</span><span class="n">subject</span><span class="si">}</span><span class="s2">_*_epochs.fif"</span><span class="p">,</span>  <span class="c1"># Legacy alternative epoch naming</span>
-        <span class="sa">f</span><span class="s2">"sub-</span><span class="si">{</span><span class="n">subject</span><span class="si">}</span><span class="s2">_*_preproc.fif"</span><span class="p">,</span>  <span class="c1"># Legacy preprocessed continuous data</span>
-    <span class="p">]</span>
-
-    <span class="n">found_files</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="k">for</span> <span class="n">pattern</span> <span class="ow">in</span> <span class="n">preproc_patterns</span><span class="p">:</span>
-        <span class="n">found_files</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">preproc_dir</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">pattern</span><span class="p">)))</span>
-
-    <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">found_files</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">found_files</span>
-
-
-<span class="k">def</span> <span class="nf">save_preprocessing_outputs</span><span class="p">(</span><span class="n">epochs</span><span class="p">,</span> <span class="n">bids_root</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">task</span><span class="p">,</span>
-                               <span class="n">session</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">run</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">"""</span>
-<span class="sd">    Save preprocessing outputs to BIDS derivatives structure.</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    epochs : mne.Epochs</span>
-<span class="sd">        Epoched data to save.</span>
-<span class="sd">    bids_root : str or pathlib.Path</span>
-<span class="sd">        Path to the BIDS dataset root directory.</span>
-<span class="sd">    subject : str</span>
-<span class="sd">        Subject label (without 'sub-' prefix).</span>
-<span class="sd">    task : str</span>
-<span class="sd">        Task label (without 'task-' prefix). Required for BIDS compliance.</span>
-<span class="sd">    session : str, optional</span>
-<span class="sd">        Session label (without 'ses-' prefix).</span>
-<span class="sd">    run : str or int, optional</span>
-<span class="sd">        Run label (without 'run-' prefix).</span>
-
-<span class="sd">    Returns</span>
-<span class="sd">    -------</span>
-<span class="sd">    output_path : pathlib.Path</span>
-<span class="sd">        Path to the saved epochs file.</span>
-<span class="sd">    """</span>
-
-    <span class="c1"># Set up derivatives directory</span>
-    <span class="n">derivatives_info</span> <span class="o">=</span> <span class="n">setup_derivatives_directories</span><span class="p">(</span>
-        <span class="n">bids_root</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">create_preprocessing</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">create_analysis</span><span class="o">=</span><span class="kc">False</span>
-    <span class="p">)</span>
-
-    <span class="c1"># Build BIDS-compliant filename with task (required)</span>
-    <span class="c1"># and session/run (optional)</span>
-    <span class="n">filename_parts</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">"sub-</span><span class="si">{</span><span class="n">subject</span><span class="si">}</span><span class="s2">"</span><span class="p">]</span>
-
-    <span class="c1"># Session is optional</span>
-    <span class="k">if</span> <span class="n">session</span><span class="p">:</span>
-        <span class="n">filename_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"ses-</span><span class="si">{</span><span class="n">session</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-
-    <span class="c1"># Task is required for BIDS compliance</span>
-    <span class="n">filename_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"task-</span><span class="si">{</span><span class="n">task</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-
-    <span class="c1"># Run is optional</span>
-    <span class="k">if</span> <span class="n">run</span><span class="p">:</span>
-        <span class="n">filename_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"run-</span><span class="si">{</span><span class="n">run</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-
-    <span class="c1"># Add descriptor and extension</span>
-    <span class="n">filename_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"desc-preproc.fif"</span><span class="p">)</span>
-    <span class="n">filename</span> <span class="o">=</span> <span class="s2">"_"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">filename_parts</span><span class="p">)</span>
-
-    <span class="n">output_path</span> <span class="o">=</span> <span class="n">derivatives_info</span><span class="p">[</span><span class="s2">"preprocessing_subject_dir"</span><span class="p">]</span> <span class="o">/</span> <span class="n">filename</span>
-
-    <span class="c1"># Save epochs</span>
-    <span class="n">epochs</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">output_path</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-
-    <span class="c1"># Create dataset_description.json if it doesn't exist</span>
-    <span class="n">preprocessing_dir</span> <span class="o">=</span> <span class="n">derivatives_info</span><span class="p">[</span><span class="s2">"preprocessing_dir"</span><span class="p">]</span>
-    <span class="n">dataset_desc_path</span> <span class="o">=</span> <span class="n">preprocessing_dir</span> <span class="o">/</span> <span class="s2">"dataset_description.json"</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">dataset_desc_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-        <span class="kn">import</span> <span class="nn">json</span>
-
-        <span class="n">dataset_desc</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s2">"Name"</span><span class="p">:</span> <span class="s2">"ffrprep preprocessing outputs"</span><span class="p">,</span>
-            <span class="s2">"BIDSVersion"</span><span class="p">:</span> <span class="s2">"1.6.0"</span><span class="p">,</span>
-            <span class="s2">"GeneratedBy"</span><span class="p">:</span> <span class="p">[</span>
-                <span class="p">{</span>
-                    <span class="s2">"Name"</span><span class="p">:</span> <span class="s2">"ffrprep"</span><span class="p">,</span>
-                    <span class="s2">"Description"</span><span class="p">:</span> <span class="p">(</span>
-                        <span class="s2">"Frequency-following response preprocessing "</span>
-                        <span class="s2">"pipeline"</span>
-                    <span class="p">),</span>
-                <span class="p">}</span>
-            <span class="p">],</span>
-        <span class="p">}</span>
-        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">dataset_desc_path</span><span class="p">,</span> <span class="s2">"w"</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-            <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">dataset_desc</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
-
-    <span class="k">return</span> <span class="n">output_path</span>
-
-
-<span class="k">def</span> <span class="nf">load_preprocessing_outputs</span><span class="p">(</span><span class="n">bids_root</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">original_filename</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">"""</span>
-<span class="sd">    Load preprocessing outputs from BIDS derivatives structure.</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    bids_root : str or pathlib.Path</span>
-<span class="sd">        Path to the BIDS dataset root directory.</span>
-<span class="sd">    subject : str</span>
-<span class="sd">        Subject label (without 'sub-' prefix).</span>
-<span class="sd">    original_filename : str, optional</span>
-<span class="sd">        Original filename base to look for. If None, finds any</span>
-<span class="sd">        preprocessing file for the subject.</span>
-
-<span class="sd">    Returns</span>
-<span class="sd">    -------</span>
-<span class="sd">    epochs : mne.Epochs</span>
-<span class="sd">        Loaded epoched data.</span>
-<span class="sd">    """</span>
-    <span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
-    <span class="kn">import</span> <span class="nn">importlib</span>
-
-    <span class="c1"># Lazy import of mne with a helpful error if it's not installed.</span>
-    <span class="k">try</span><span class="p">:</span>
-        <span class="n">mne</span> <span class="o">=</span> <span class="n">importlib</span><span class="o">.</span><span class="n">import_module</span><span class="p">(</span><span class="s2">"mne"</span><span class="p">)</span>
-    <span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
-            <span class="s2">"The 'mne' package is required to load preprocessing outputs. "</span>
-            <span class="s2">"Install it with 'pip install mne'"</span>
-        <span class="p">)</span> <span class="kn">from</span> <span class="nn">exc</span>
-
-    <span class="n">bids_root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">bids_root</span><span class="p">)</span>
-    <span class="n">preproc_dir</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="n">bids_root</span>
-        <span class="o">/</span> <span class="s2">"derivatives"</span>
-        <span class="o">/</span> <span class="s2">"ffrprep-preprocessing"</span>
-        <span class="o">/</span> <span class="sa">f</span><span class="s2">"sub-</span><span class="si">{</span><span class="n">subject</span><span class="si">}</span><span class="s2">"</span>
-    <span class="p">)</span>
-
-    <span class="k">if</span> <span class="n">original_filename</span><span class="p">:</span>
-        <span class="c1"># Look for file with specific original filename</span>
-        <span class="n">expected_filename</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">original_filename</span><span class="si">}</span><span class="s2">_desc-preproc.fif"</span>
-        <span class="n">expected_path</span> <span class="o">=</span> <span class="n">preproc_dir</span> <span class="o">/</span> <span class="n">expected_filename</span>
-
-        <span class="k">if</span> <span class="n">expected_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-            <span class="k">return</span> <span class="n">mne</span><span class="o">.</span><span class="n">read_epochs</span><span class="p">(</span><span class="n">expected_path</span><span class="p">)</span>
-
-    <span class="c1"># Try to find any preprocessing file for the subject</span>
-    <span class="n">epoch_patterns</span> <span class="o">=</span> <span class="p">[</span>
-        <span class="s2">"*desc-preproc.fif"</span><span class="p">,</span>  <span class="c1"># New naming convention</span>
-        <span class="sa">f</span><span class="s2">"sub-</span><span class="si">{</span><span class="n">subject</span><span class="si">}</span><span class="s2">_*desc-preproc.fif"</span><span class="p">,</span>  <span class="c1"># Fallback with subject</span>
-        <span class="sa">f</span><span class="s2">"sub-</span><span class="si">{</span><span class="n">subject</span><span class="si">}</span><span class="s2">_*_epo.fif"</span><span class="p">,</span>  <span class="c1"># Legacy pattern</span>
-    <span class="p">]</span>
-
-    <span class="k">for</span> <span class="n">pattern</span> <span class="ow">in</span> <span class="n">epoch_patterns</span><span class="p">:</span>
-        <span class="n">epoch_files</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">preproc_dir</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="n">pattern</span><span class="p">))</span>
-        <span class="k">if</span> <span class="n">epoch_files</span><span class="p">:</span>
-            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">epoch_files</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">"Warning: Multiple files found, using "</span>
-                    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">epoch_files</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">"</span>
-                <span class="p">)</span>
-            <span class="k">return</span> <span class="n">mne</span><span class="o">.</span><span class="n">read_epochs</span><span class="p">(</span><span class="n">epoch_files</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-
-    <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span>
-        <span class="sa">f</span><span class="s2">"No preprocessing outputs found for subject </span><span class="si">{</span><span class="n">subject</span><span class="si">}</span><span class="s2"> in "</span>
-        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">preproc_dir</span><span class="si">}</span><span class="s2">"</span>
-    <span class="p">)</span>
-
-
-<span class="k">def</span> <span class="nf">save_analysis_outputs</span><span class="p">(</span><span class="n">evoked</span><span class="p">,</span> <span class="n">bids_root</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">task</span><span class="p">,</span>
-                          <span class="n">session</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">run</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">analysis_type</span><span class="o">=</span><span class="s2">"evoked"</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">"""</span>
-<span class="sd">    Save analysis outputs to BIDS derivatives structure.</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    evoked : mne.Evoked or dict of mne.Evoked</span>
-<span class="sd">        Evoked data to save.</span>
-<span class="sd">    bids_root : str or pathlib.Path</span>
-<span class="sd">        Path to the BIDS dataset root directory.</span>
-<span class="sd">    subject : str</span>
-<span class="sd">        Subject label (without 'sub-' prefix).</span>
-<span class="sd">    task : str</span>
-<span class="sd">        Task label (without 'task-' prefix). Required for BIDS compliance.</span>
-<span class="sd">    session : str, optional</span>
-<span class="sd">        Session label (without 'ses-' prefix).</span>
-<span class="sd">    run : str or int, optional</span>
-<span class="sd">        Run label (without 'run-' prefix).</span>
-<span class="sd">    analysis_type : str</span>
-<span class="sd">        Type of analysis output ('evoked', 'spectrum', etc.).</span>
-
-<span class="sd">    Returns</span>
-<span class="sd">    -------</span>
-<span class="sd">    output_paths : list of pathlib.Path</span>
-<span class="sd">        Paths to the saved files.</span>
-<span class="sd">    """</span>
-
-    <span class="c1"># Set up derivatives directory</span>
-    <span class="n">derivatives_info</span> <span class="o">=</span> <span class="n">setup_derivatives_directories</span><span class="p">(</span>
-        <span class="n">bids_root</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">create_preprocessing</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">create_analysis</span><span class="o">=</span><span class="kc">True</span>
-    <span class="p">)</span>
-
-    <span class="n">output_paths</span> <span class="o">=</span> <span class="p">[]</span>
-
-    <span class="c1"># Build base filename with task (required) and session/run (optional)</span>
-    <span class="n">filename_base_parts</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">"sub-</span><span class="si">{</span><span class="n">subject</span><span class="si">}</span><span class="s2">"</span><span class="p">]</span>
-
-    <span class="c1"># Session is optional</span>
-    <span class="k">if</span> <span class="n">session</span><span class="p">:</span>
-        <span class="n">filename_base_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"ses-</span><span class="si">{</span><span class="n">session</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-
-    <span class="c1"># Task is required for BIDS compliance</span>
-    <span class="n">filename_base_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"task-</span><span class="si">{</span><span class="n">task</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-
-    <span class="c1"># Run is optional</span>
-    <span class="k">if</span> <span class="n">run</span><span class="p">:</span>
-        <span class="n">filename_base_parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"run-</span><span class="si">{</span><span class="n">run</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-
-    <span class="n">filename_base</span> <span class="o">=</span> <span class="s2">"_"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">filename_base_parts</span><span class="p">)</span>
-
-    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">evoked</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
-        <span class="c1"># Multiple conditions - save each separately</span>
-        <span class="k">for</span> <span class="n">condition</span><span class="p">,</span> <span class="n">evoked_data</span> <span class="ow">in</span> <span class="n">evoked</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="c1"># Format condition name with proper capitalization</span>
-            <span class="n">condition_formatted</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">condition</span><span class="p">)</span><span class="o">.</span><span class="n">capitalize</span><span class="p">()</span>
-            <span class="n">filename</span> <span class="o">=</span> <span class="p">(</span>
-                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">filename_base</span><span class="si">}</span><span class="s2">_desc-</span><span class="si">{</span><span class="n">analysis_type</span><span class="si">}</span><span class="s2">"</span>
-                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">condition_formatted</span><span class="si">}</span><span class="s2">.fif"</span>
-            <span class="p">)</span>
-            <span class="n">output_path</span> <span class="o">=</span> <span class="n">derivatives_info</span><span class="p">[</span><span class="s2">"analysis_subject_dir"</span><span class="p">]</span> <span class="o">/</span> <span class="n">filename</span>
-            <span class="n">evoked_data</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">output_path</span><span class="p">)</span>
-            <span class="n">output_paths</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">output_path</span><span class="p">)</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="c1"># Single evoked response</span>
-        <span class="n">filename</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">filename_base</span><span class="si">}</span><span class="s2">_desc-</span><span class="si">{</span><span class="n">analysis_type</span><span class="si">}</span><span class="s2">.fif"</span>
-        <span class="n">output_path</span> <span class="o">=</span> <span class="n">derivatives_info</span><span class="p">[</span><span class="s2">"analysis_subject_dir"</span><span class="p">]</span> <span class="o">/</span> <span class="n">filename</span>
-        <span class="n">evoked</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">output_path</span><span class="p">)</span>
-        <span class="n">output_paths</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">output_path</span><span class="p">)</span>
-
-    <span class="c1"># Create dataset_description.json if it doesn't exist</span>
-    <span class="n">dataset_desc_path</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="n">derivatives_info</span><span class="p">[</span><span class="s2">"analysis_dir"</span><span class="p">]</span> <span class="o">/</span> <span class="s2">"dataset_description.json"</span>
-    <span class="p">)</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">dataset_desc_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-        <span class="kn">import</span> <span class="nn">json</span>
-
-        <span class="n">dataset_desc</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s2">"Name"</span><span class="p">:</span> <span class="s2">"ffrprep analysis outputs"</span><span class="p">,</span>
-            <span class="s2">"BIDSVersion"</span><span class="p">:</span> <span class="s2">"1.6.0"</span><span class="p">,</span>
-            <span class="s2">"GeneratedBy"</span><span class="p">:</span> <span class="p">[</span>
-                <span class="p">{</span><span class="s2">"Name"</span><span class="p">:</span> <span class="s2">"ffrprep"</span><span class="p">,</span> <span class="s2">"Description"</span><span class="p">:</span> <span class="s2">"Frequency-following response analysis pipeline"</span><span class="p">}</span>  <span class="c1"># noqa: E501</span>
-            <span class="p">],</span>
-        <span class="p">}</span>
-        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">dataset_desc_path</span><span class="p">,</span> <span class="s2">"w"</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-            <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">dataset_desc</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
-
-    <span class="k">return</span> <span class="n">output_paths</span>
-
-
-<span class="k">def</span> <span class="nf">save_preprocessing_node</span><span class="p">(</span><span class="n">epochs</span><span class="p">,</span> <span class="n">bids_root</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">task</span><span class="p">,</span>
-                            <span class="n">session</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">run</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">"""</span>
-<span class="sd">    Nipype-compatible function to save preprocessing outputs.</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    epochs : mne.Epochs</span>
-<span class="sd">        Epoched data to save.</span>
-<span class="sd">    bids_root : str</span>
-<span class="sd">        Path to the BIDS dataset root directory.</span>
-<span class="sd">    subject : str</span>
-<span class="sd">        Subject label (without 'sub-' prefix).</span>
-<span class="sd">    task : str</span>
-<span class="sd">        Task label (without 'task-' prefix). Required for BIDS compliance.</span>
-<span class="sd">    session : str, optional</span>
-<span class="sd">        Session label (without 'ses-' prefix).</span>
-<span class="sd">    run : str or int, optional</span>
-<span class="sd">        Run label (without 'run-' prefix).</span>
-
-<span class="sd">    Returns</span>
-<span class="sd">    -------</span>
-<span class="sd">    output_path : str</span>
-<span class="sd">        Path to the saved epochs file.</span>
-<span class="sd">    """</span>
-    <span class="n">output_path</span> <span class="o">=</span> <span class="n">save_preprocessing_outputs</span><span class="p">(</span>
-        <span class="n">epochs</span><span class="p">,</span> <span class="n">bids_root</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">task</span><span class="p">,</span> <span class="n">session</span><span class="p">,</span> <span class="n">run</span>
-    <span class="p">)</span>
-    <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">output_path</span><span class="p">)</span>
-
-
-<span class="k">def</span> <span class="nf">save_analysis_node</span><span class="p">(</span><span class="n">evoked</span><span class="p">,</span> <span class="n">bids_root</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">task</span><span class="p">,</span>
-                       <span class="n">session</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">run</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">analysis_type</span><span class="o">=</span><span class="s2">"evoked"</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">"""</span>
-<span class="sd">    Nipype-compatible function to save analysis outputs.</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    evoked : mne.Evoked or dict of mne.Evoked</span>
-<span class="sd">        Evoked data to save.</span>
-<span class="sd">    bids_root : str</span>
-<span class="sd">        Path to the BIDS dataset root directory.</span>
-<span class="sd">    subject : str</span>
-<span class="sd">        Subject label (without 'sub-' prefix).</span>
-<span class="sd">    task : str</span>
-<span class="sd">        Task label (without 'task-' prefix). Required for BIDS compliance.</span>
-<span class="sd">    session : str, optional</span>
-<span class="sd">        Session label (without 'ses-' prefix).</span>
-<span class="sd">    run : str or int, optional</span>
-<span class="sd">        Run label (without 'run-' prefix).</span>
-<span class="sd">    analysis_type : str</span>
-<span class="sd">        Type of analysis output ('evoked', 'spectrum', etc.).</span>
-
-<span class="sd">    Returns</span>
-<span class="sd">    -------</span>
-<span class="sd">    output_paths : list of str</span>
-<span class="sd">        Paths to the saved files.</span>
-<span class="sd">    """</span>
-    <span class="n">output_paths</span> <span class="o">=</span> <span class="n">save_analysis_outputs</span><span class="p">(</span>
-        <span class="n">evoked</span><span class="p">,</span> <span class="n">bids_root</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">task</span><span class="p">,</span> <span class="n">session</span><span class="p">,</span> <span class="n">run</span><span class="p">,</span> <span class="n">analysis_type</span>
-    <span class="p">)</span>
-    <span class="k">return</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">output_paths</span><span class="p">]</span>
 </pre></div>
 
           </article>
