@@ -25,7 +25,6 @@ docutils==0.21.2
 duecredit==0.10.2
 etelemetry==0.3.1
 executing==2.1.0
--e git+https://github.com/SPARK-CSD/ffrprep@b92958346a77c4d152940e5a35a1d5f063c06854#egg=ffrprep
 fileformats==0.14.4
 filelock==3.17.0
 flake8==7.1.1
