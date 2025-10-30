@@ -1,3 +1,5 @@
+"""Unit tests for the reporting functions in ffrprep.reports."""
+
 import os.path as op
 import matplotlib
 import matplotlib.pyplot as plt
@@ -46,6 +48,7 @@ def test_create_report(tmp_path):
 
 
 def test_add_to_report(tmp_path):
+    """Test the add_to_report function with various parameters and options."""
     # First, create a report
     report_fpath = create_report(tmp_path, filename="add_test.h5")
     assert op.exists(report_fpath)

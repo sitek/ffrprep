@@ -1,3 +1,10 @@
+"""
+This module provides functions for creating, updating, and saving MNE reports.
+
+For FFRPREP BIDS datasets, including support for figures, HTML blocks, and
+special MNE objects.
+"""
+
 import os
 import time
 from mne import Report, open_report
@@ -49,7 +56,9 @@ def create_report(bids_root, out_dir=None, filename=None, title=None, overwrite=
 
     # Define and create the output filename
     if filename is None:
-        filename = f"ffrprep_report_{timenow}.h5"
+        filename = f'ffrprep_report_{timenow}.hdf5'
+    elif filename.endswith('.hdf5') is False:
+        filename = f'{filename}.hdf5'
 
     report_fpath = os.path.join(out_dir, filename)
     if os.path.isfile(report_fpath):
@@ -172,3 +181,38 @@ def add_to_report(
             report.save(html_path, overwrite=True, open_browser=False)
 
     return report_fpath
+
+
+def save_report(report_fpath, overwrite=True):
+    """
+    Save the existing FFRPREP report to an HTML file.
+
+    Parameters
+    ----------
+    report_fpath : string
+        Full filepath to the existing .hdf5 FFRPREP report.
+    overwrite : boolean
+        Whether to overwrite an existing HTML file (`True`).
+        If `False` (default) and file exists, report will be saved as
+        '{filename}_1.html'.
+
+    Returns
+    -------
+    html_fpath : string
+        Full filepath to the saved HTML report file.
+
+    Examples
+    --------
+    Save an existing FFRPREP report to an HTML file.
+    >>> html_fpath = save_report(report_fpath)
+    """
+    html_fpath = report_fpath.replace('.hdf5', '.html')
+    if overwrite is False:
+        if os.path.isfile(html_fpath):
+            fname_base, fname_ext = os.path.splitext(html_fpath)
+            new_filename = f'{fname_base}_1{fname_ext}'
+            html_fpath = new_filename
+
+    with open_report(report_fpath) as report:
+        report.save(html_fpath, overwrite=True)
+    return html_fpath
