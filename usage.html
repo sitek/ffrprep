@@ -46,7 +46,7 @@
   
   
   
-    <title>Usage &#8212; ffrprep 0+untagged.1.g8e4cd7e documentation</title>
+    <title>Usage &#8212; ffrprep 0+untagged.1.gb067b43 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
     <link rel="stylesheet" type="text/css" href="_static/material.css?v=79c92029" />
     <link rel="stylesheet" type="text/css" href="_static/plot_directive.css" />
@@ -56,7 +56,7 @@
     <link rel="stylesheet" type="text/css" href="_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="_static/sg_gallery-rendered-html.css?v=1277b6f3" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <script src="_static/documentation_options.js?v=60463a80"></script>
+    <script src="_static/documentation_options.js?v=8226784d"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -89,7 +89,7 @@
   <nav class="md-header-nav md-grid">
     <div class="md-flex navheader">
       <div class="md-flex__cell md-flex__cell--shrink">
-        <a href="index.html" title="ffrprep 0+untagged.1.g8e4cd7e documentation"
+        <a href="index.html" title="ffrprep 0+untagged.1.gb067b43 documentation"
            class="md-header-nav__button md-logo">
           
             &nbsp;
@@ -175,7 +175,7 @@
   <nav class="md-tabs" data-md-component="tabs">
     <div class="md-tabs__inner md-grid">
       <ul class="md-tabs__list">
-          <li class="md-tabs__item"><a href="index.html" class="md-tabs__link">ffrprep 0+untagged.1.g8e4cd7e documentation</a></li>
+          <li class="md-tabs__item"><a href="index.html" class="md-tabs__link">ffrprep 0+untagged.1.gb067b43 documentation</a></li>
       </ul>
     </div>
   </nav>
@@ -187,13 +187,13 @@
               <div class="md-sidebar__inner">
                 <nav class="md-nav md-nav--primary" data-md-level="0">
   <label class="md-nav__title md-nav__title--site" for="__drawer">
-    <a href="index.html" title="ffrprep 0+untagged.1.g8e4cd7e documentation" class="md-nav__button md-logo">
+    <a href="index.html" title="ffrprep 0+untagged.1.gb067b43 documentation" class="md-nav__button md-logo">
       
         <img src="_static/" alt=" logo" width="48" height="48">
       
     </a>
     <a href="index.html"
-       title="ffrprep 0+untagged.1.g8e4cd7e documentation">ffrprep</a>
+       title="ffrprep 0+untagged.1.gb067b43 documentation">ffrprep</a>
   </label>
     <div class="md-nav__source">
       <a href="https://github.com/spark-csd/ffrprep" title="Go to repository" class="md-source" data-md-source="github">
@@ -242,6 +242,10 @@
         <li class="md-nav__item"><a href="#ffrprep.ffrprep_cli-get_parser-positional-arguments" class="md-nav__link">Positional Arguments</a>
         </li>
         <li class="md-nav__item"><a href="#ffrprep.ffrprep_cli-get_parser-named-arguments" class="md-nav__link">Named Arguments</a>
+        </li>
+        <li class="md-nav__item"><a href="#ffrprep.ffrprep_cli-get_parser-preprocessing-options" class="md-nav__link">Preprocessing options</a>
+        </li>
+        <li class="md-nav__item"><a href="#ffrprep.ffrprep_cli-get_parser-analysis-options" class="md-nav__link">Analysis options</a>
         </li>
         <li class="md-nav__item"><a href="#example-call-s" class="md-nav__link">Example Call(s)</a><nav class="md-nav">
               <ul class="md-nav__list">
@@ -326,6 +330,10 @@
         </li>
         <li class="md-nav__item"><a href="#ffrprep.ffrprep_cli-get_parser-named-arguments" class="md-nav__link">Named Arguments</a>
         </li>
+        <li class="md-nav__item"><a href="#ffrprep.ffrprep_cli-get_parser-preprocessing-options" class="md-nav__link">Preprocessing options</a>
+        </li>
+        <li class="md-nav__item"><a href="#ffrprep.ffrprep_cli-get_parser-analysis-options" class="md-nav__link">Analysis options</a>
+        </li>
         <li class="md-nav__item"><a href="#example-call-s" class="md-nav__link">Example Call(s)</a><nav class="md-nav">
               <ul class="md-nav__list">
         <li class="md-nav__item"><a href="#example-1" class="md-nav__link">Example 1</a>
@@ -382,12 +390,16 @@ please check the <a class="reference external" href="https://YourGitHubHandle.gi
 </section>
 <section id="command-line-arguments">
 <h2 id="command-line-arguments">Command-Line Arguments<a class="headerlink" href="#command-line-arguments" title="Link to this heading">¶</a></h2>
-<p><p>A standardized and robust processing pipeline for FFR data.</p>
+<p><p>ffrprep: A BIDS-App for standardized FFR preprocessing and analysis</p>
 </p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">ffrprep</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">v</span><span class="p">]</span>
                <span class="p">[</span><span class="o">--</span><span class="n">participant_label</span> <span class="n">PARTICIPANT_LABEL</span> <span class="p">[</span><span class="n">PARTICIPANT_LABEL</span> <span class="o">...</span><span class="p">]]</span>
-               <span class="p">[</span><span class="o">--</span><span class="n">skip_bids_validation</span><span class="p">]</span>
-               <span class="n">bids_dir</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">stage</span> <span class="p">{</span><span class="n">preprocessing</span><span class="p">,</span><span class="n">analysis</span><span class="p">,</span><span class="n">both</span><span class="p">}]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">ref_channels</span> <span class="n">REF_CHANNELS</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">high_pass</span> <span class="n">HIGH_PASS</span><span class="p">]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">low_pass</span> <span class="n">LOW_PASS</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">baseline</span> <span class="n">BASELINE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">tmin</span> <span class="n">TMIN</span><span class="p">]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">tmax</span> <span class="n">TMAX</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">by_event_type</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">skip_bids_validation</span><span class="p">]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">n_procs</span> <span class="n">N_PROCS</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">work_dir</span> <span class="n">WORK_DIR</span><span class="p">]</span>
+               <span class="n">bids_dir</span> <span class="n">output_dir</span> <span class="p">{</span><span class="n">participant</span><span class="p">,</span><span class="n">group</span><span class="p">}</span>
 </pre></div>
 </div>
 <section id="ffrprep.ffrprep_cli-get_parser-positional-arguments">
@@ -395,6 +407,13 @@ please check the <a class="reference external" href="https://YourGitHubHandle.gi
 <dl class="option-list">
 <dt><kbd>bids_dir</kbd></dt>
 <dd><p>The directory with the input dataset formatted according to the BIDS standard.</p>
+</dd>
+<dt><kbd>output_dir</kbd></dt>
+<dd><p>The directory where the output files should be stored. If you are running group level analysis this folder should be prepopulated with the results of the participant level analysis.</p>
+</dd>
+<dt><kbd>analysis_level</kbd></dt>
+<dd><p>Possible choices: participant, group</p>
+<p>Level of the analysis that will be performed. Multiple participant level analyses can be run independently (in parallel) using the same output_dir.</p>
 </dd>
 </dl>
 </section>
@@ -405,10 +424,51 @@ please check the <a class="reference external" href="https://YourGitHubHandle.gi
 <dd><p>show program’s version number and exit</p>
 </dd>
 <dt><kbd>--participant_label</kbd></dt>
-<dd><p>The label(s) of the participant(s) that should be preprocessed. The label corresponds to sub-&lt;participant_label&gt; from the BIDS spec (so it does not include “sub-“). Multiple participants can be specified with a space-separated list.</p>
+<dd><p>The label(s) of the participant(s) that should be processed. The label corresponds to sub-&lt;participant_label&gt; from the BIDS spec (so it does not include “sub-“). Multiple participants can be specified with a space-separated list.</p>
+</dd>
+<dt><kbd>--stage</kbd></dt>
+<dd><p>Possible choices: preprocessing, analysis, both</p>
+<p>Processing stage to run: preprocessing only, analysis only, or both stages sequentially.</p>
 </dd>
 <dt><kbd>--skip_bids_validation</kbd></dt>
-<dd><p>Assume the input dataset is BIDS compliant                           and skip the validation (default: False).</p>
+<dd><p>Assume the input dataset is BIDS compliant and skip the validation.</p>
+</dd>
+<dt><kbd>--n_procs</kbd></dt>
+<dd><p>Number of processors to use for parallel execution.</p>
+</dd>
+<dt><kbd>--work_dir</kbd></dt>
+<dd><p>Path where intermediate results should be stored.</p>
+</dd>
+</dl>
+</section>
+<section id="ffrprep.ffrprep_cli-get_parser-preprocessing-options">
+<h3 id="ffrprep.ffrprep_cli-get_parser-preprocessing-options">Preprocessing options<a class="headerlink" href="#ffrprep.ffrprep_cli-get_parser-preprocessing-options" title="Link to this heading">¶</a></h3>
+<dl class="option-list">
+<dt><kbd>--ref_channels</kbd></dt>
+<dd><p>Reference channel(s) for re-referencing. Can be “average” for average reference, a single channel name, or comma-separated list of channels.</p>
+</dd>
+<dt><kbd>--high_pass</kbd></dt>
+<dd><p>High-pass filter cutoff frequency in Hz.</p>
+</dd>
+<dt><kbd>--low_pass</kbd></dt>
+<dd><p>Low-pass filter cutoff frequency in Hz.</p>
+</dd>
+<dt><kbd>--baseline</kbd></dt>
+<dd><p>Baseline correction period. Format: start,end (e.g., “-0.2,0” for -200ms to 0ms).</p>
+</dd>
+<dt><kbd>--tmin</kbd></dt>
+<dd><p>Start time of epochs relative to event onset (s).</p>
+</dd>
+<dt><kbd>--tmax</kbd></dt>
+<dd><p>End time of epochs relative to event onset (s).</p>
+</dd>
+</dl>
+</section>
+<section id="ffrprep.ffrprep_cli-get_parser-analysis-options">
+<h3 id="ffrprep.ffrprep_cli-get_parser-analysis-options">Analysis options<a class="headerlink" href="#ffrprep.ffrprep_cli-get_parser-analysis-options" title="Link to this heading">¶</a></h3>
+<dl class="option-list">
+<dt><kbd>--by_event_type</kbd></dt>
+<dd><p>Create separate evoked responses for each event type.</p>
 </dd>
 </dl>
 </section>
