@@ -45,7 +45,7 @@
   
   
   
-    <title>ffrprep.datasets &#8212; ffrprep 0+untagged.1.g8e4cd7e documentation</title>
+    <title>ffrprep.datasets &#8212; ffrprep 0+untagged.1.g7c3495d documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
     <link rel="stylesheet" type="text/css" href="../../_static/material.css?v=79c92029" />
     <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
@@ -55,7 +55,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
-    <script src="../../_static/documentation_options.js?v=60463a80"></script>
+    <script src="../../_static/documentation_options.js?v=490ea0d6"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -86,7 +86,7 @@
   <nav class="md-header-nav md-grid">
     <div class="md-flex navheader">
       <div class="md-flex__cell md-flex__cell--shrink">
-        <a href="../../index.html" title="ffrprep 0+untagged.1.g8e4cd7e documentation"
+        <a href="../../index.html" title="ffrprep 0+untagged.1.g7c3495d documentation"
            class="md-header-nav__button md-logo">
           
             &nbsp;
@@ -172,7 +172,7 @@
   <nav class="md-tabs" data-md-component="tabs">
     <div class="md-tabs__inner md-grid">
       <ul class="md-tabs__list">
-          <li class="md-tabs__item"><a href="../../index.html" class="md-tabs__link">ffrprep 0+untagged.1.g8e4cd7e documentation</a></li>
+          <li class="md-tabs__item"><a href="../../index.html" class="md-tabs__link">ffrprep 0+untagged.1.g7c3495d documentation</a></li>
           <li class="md-tabs__item"><a href="../index.html" class="md-tabs__link">Module code</a></li>
       </ul>
     </div>
@@ -185,13 +185,13 @@
               <div class="md-sidebar__inner">
                 <nav class="md-nav md-nav--primary" data-md-level="0">
   <label class="md-nav__title md-nav__title--site" for="__drawer">
-    <a href="../../index.html" title="ffrprep 0+untagged.1.g8e4cd7e documentation" class="md-nav__button md-logo">
+    <a href="../../index.html" title="ffrprep 0+untagged.1.g7c3495d documentation" class="md-nav__button md-logo">
       
         <img src="../../_static/" alt=" logo" width="48" height="48">
       
     </a>
     <a href="../../index.html"
-       title="ffrprep 0+untagged.1.g8e4cd7e documentation">ffrprep</a>
+       title="ffrprep 0+untagged.1.g7c3495d documentation">ffrprep</a>
   </label>
     <div class="md-nav__source">
       <a href="https://github.com/spark-csd/ffrprep" title="Go to repository" class="md-source" data-md-source="github">
@@ -313,28 +313,28 @@
 <span class="sd">        Path to the downloaded file.</span>
 <span class="sd">    """</span>
     <span class="c1"># Get the file name from the URL</span>
-    <span class="n">file_name</span> <span class="o">=</span> <span class="n">osf_url</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">'/'</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">file_name</span> <span class="o">=</span> <span class="n">osf_url</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"/"</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
     <span class="n">file_path</span> <span class="o">=</span> <span class="n">output_path</span> <span class="o">/</span> <span class="n">file_name</span>
 
     <span class="c1"># if the file does not already exist, download it from osf</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">file_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
         <span class="c1"># provide a little update message</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'Downloading </span><span class="si">{</span><span class="n">file_name</span><span class="si">}</span><span class="s1"> to </span><span class="si">{</span><span class="n">file_path</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Downloading </span><span class="si">{</span><span class="n">file_name</span><span class="si">}</span><span class="s2"> to </span><span class="si">{</span><span class="n">file_path</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
         <span class="c1"># download and save the file, updating the user on download progress</span>
         <span class="k">with</span> <span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">osf_url</span><span class="p">,</span> <span class="n">stream</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
             <span class="c1"># get total size of file for download updates</span>
-            <span class="n">file_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">file</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'Content-Length'</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+            <span class="n">file_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">file</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"Content-Length"</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
 
             <span class="c1"># implement progress bar via tqdm</span>
             <span class="n">desc</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"Downloading </span><span class="si">{</span><span class="n">file_name</span><span class="si">}</span><span class="s2">"</span>
             <span class="k">with</span> <span class="n">tqdm</span><span class="o">.</span><span class="n">wrapattr</span><span class="p">(</span><span class="n">file</span><span class="o">.</span><span class="n">raw</span><span class="p">,</span> <span class="s2">"read"</span><span class="p">,</span> <span class="n">total</span><span class="o">=</span><span class="n">file_size</span><span class="p">,</span>
                                <span class="n">desc</span><span class="o">=</span><span class="n">desc</span><span class="p">)</span> <span class="k">as</span> <span class="n">raw</span><span class="p">:</span>
                 <span class="c1"># save the output to the file specified before</span>
-                <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="s1">'wb'</span><span class="p">)</span> <span class="k">as</span> <span class="n">output</span><span class="p">:</span>
+                <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="s2">"wb"</span><span class="p">)</span> <span class="k">as</span> <span class="n">output</span><span class="p">:</span>
                     <span class="n">shutil</span><span class="o">.</span><span class="n">copyfileobj</span><span class="p">(</span><span class="n">raw</span><span class="p">,</span> <span class="n">output</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">'File </span><span class="si">{</span><span class="n">file_name</span><span class="si">}</span><span class="s1"> already exists at </span><span class="si">{</span><span class="n">file_path</span><span class="si">}</span><span class="s1">'</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"File </span><span class="si">{</span><span class="n">file_name</span><span class="si">}</span><span class="s2"> already exists at </span><span class="si">{</span><span class="n">file_path</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">file_path</span>
 
@@ -408,15 +408,17 @@
 <span class="sd">    ...                   dataset_path='/home/user/Desktop')</span>
 <span class="sd">    """</span>
     <span class="c1"># Available subjects based on the OSF structure</span>
-    <span class="n">available_subjects</span> <span class="o">=</span> <span class="p">[</span><span class="s1">'03'</span><span class="p">,</span> <span class="s1">'05'</span><span class="p">,</span> <span class="s1">'09'</span><span class="p">,</span> <span class="s1">'11'</span><span class="p">,</span> <span class="s1">'15'</span><span class="p">,</span> <span class="s1">'21'</span><span class="p">]</span>
+    <span class="n">available_subjects</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"03"</span><span class="p">,</span> <span class="s2">"05"</span><span class="p">,</span> <span class="s2">"09"</span><span class="p">,</span> <span class="s2">"11"</span><span class="p">,</span> <span class="s2">"15"</span><span class="p">,</span> <span class="s2">"21"</span><span class="p">]</span>
 
     <span class="c1"># Handle different input types for subjects parameter</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">subjects</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
         <span class="c1"># If integer, select first N subjects</span>
         <span class="n">n_subjects</span> <span class="o">=</span> <span class="n">subjects</span>
         <span class="k">if</span> <span class="n">n_subjects</span> <span class="o">&gt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">available_subjects</span><span class="p">):</span>
-            <span class="n">warning_msg</span> <span class="o">=</span> <span class="p">(</span><span class="sa">f</span><span class="s2">"Warning: Only </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">available_subjects</span><span class="p">)</span><span class="si">}</span><span class="s2"> subjects "</span>
-                           <span class="s2">"available. Downloading all available subjects."</span><span class="p">)</span>
+            <span class="n">warning_msg</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"Warning: Only </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">available_subjects</span><span class="p">)</span><span class="si">}</span><span class="s2"> subjects "</span>
+                <span class="s2">"available. Downloading all available subjects."</span>
+            <span class="p">)</span>
             <span class="nb">print</span><span class="p">(</span><span class="n">warning_msg</span><span class="p">)</span>
             <span class="n">n_subjects</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">available_subjects</span><span class="p">)</span>
         <span class="n">subjects_to_download</span> <span class="o">=</span> <span class="n">available_subjects</span><span class="p">[:</span><span class="n">n_subjects</span><span class="p">]</span>
@@ -424,8 +426,10 @@
         <span class="c1"># If list, validate and use specific subject IDs</span>
         <span class="n">invalid_subjects</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">subjects</span> <span class="k">if</span> <span class="n">s</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">available_subjects</span><span class="p">]</span>
         <span class="k">if</span> <span class="n">invalid_subjects</span><span class="p">:</span>
-            <span class="n">warning_msg</span> <span class="o">=</span> <span class="p">(</span><span class="sa">f</span><span class="s2">"Warning: Subjects </span><span class="si">{</span><span class="n">invalid_subjects</span><span class="si">}</span><span class="s2"> not "</span>
-                           <span class="sa">f</span><span class="s2">"available. Available: </span><span class="si">{</span><span class="n">available_subjects</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+            <span class="n">warning_msg</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"Warning: Subjects </span><span class="si">{</span><span class="n">invalid_subjects</span><span class="si">}</span><span class="s2"> not "</span>
+                <span class="sa">f</span><span class="s2">"available. Available: </span><span class="si">{</span><span class="n">available_subjects</span><span class="si">}</span><span class="s2">"</span>
+            <span class="p">)</span>
             <span class="nb">print</span><span class="p">(</span><span class="n">warning_msg</span><span class="p">)</span>
         <span class="n">subjects_to_download</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">subjects</span> <span class="k">if</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">available_subjects</span><span class="p">]</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">subjects_to_download</span><span class="p">:</span>
@@ -435,9 +439,9 @@
 
     <span class="c1"># Set up directory structure</span>
     <span class="k">if</span> <span class="n">dataset_path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">curdir</span><span class="p">)</span> <span class="o">/</span> <span class="s1">'ffrprep_raw_data'</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">curdir</span><span class="p">)</span> <span class="o">/</span> <span class="s2">"ffrprep_raw_data"</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">dataset_path</span><span class="p">)</span> <span class="o">/</span> <span class="s1">'ffrprep_raw_data'</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">dataset_path</span><span class="p">)</span> <span class="o">/</span> <span class="s2">"ffrprep_raw_data"</span>
 
     <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
         <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
@@ -447,51 +451,52 @@
 
     <span class="c1"># Download metadata files first</span>
     <span class="n">metadata_files</span> <span class="o">=</span> <span class="p">{</span>
-        <span class="s1">'dataset_description.json'</span><span class="p">:</span> <span class="s1">'8dp94'</span><span class="p">,</span>  <span class="c1"># Update with actual OSF IDs</span>
-        <span class="s1">'participants.json'</span><span class="p">:</span> <span class="s1">'3y27d'</span><span class="p">,</span>
-        <span class="s1">'participants.tsv'</span><span class="p">:</span> <span class="s1">'8pwfq'</span><span class="p">,</span>
-        <span class="s1">'README'</span><span class="p">:</span> <span class="s1">'je2bf'</span>
+        <span class="s2">"dataset_description.json"</span><span class="p">:</span> <span class="s2">"8dp94"</span><span class="p">,</span>  <span class="c1"># Update with actual OSF IDs</span>
+        <span class="s2">"participants.json"</span><span class="p">:</span> <span class="s2">"3y27d"</span><span class="p">,</span>
+        <span class="s2">"participants.tsv"</span><span class="p">:</span> <span class="s2">"8pwfq"</span><span class="p">,</span>
+        <span class="s2">"README"</span><span class="p">:</span> <span class="s2">"je2bf"</span><span class="p">,</span>
     <span class="p">}</span>
 
     <span class="nb">print</span><span class="p">(</span><span class="s2">"Downloading metadata files..."</span><span class="p">)</span>
     <span class="k">for</span> <span class="n">filename</span><span class="p">,</span> <span class="n">osf_id</span> <span class="ow">in</span> <span class="n">metadata_files</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-        <span class="k">if</span> <span class="n">osf_id</span> <span class="o">!=</span> <span class="s1">'participants_json_id'</span><span class="p">:</span>  <span class="c1"># Skip placeholder IDs</span>
+        <span class="k">if</span> <span class="n">osf_id</span> <span class="o">!=</span> <span class="s2">"participants_json_id"</span><span class="p">:</span>  <span class="c1"># Skip placeholder IDs</span>
             <span class="n">osf_url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">base_url</span><span class="si">}{</span><span class="n">osf_id</span><span class="si">}</span><span class="s2">"</span>
             <span class="n">_download_single_file</span><span class="p">(</span><span class="n">osf_url</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
 
     <span class="c1"># Download subject data</span>
     <span class="n">subject_urls</span> <span class="o">=</span> <span class="p">{</span>
-        <span class="s1">'03'</span><span class="p">:</span> <span class="s1">'x2kd6'</span><span class="p">,</span>
-        <span class="s1">'05'</span><span class="p">:</span> <span class="s1">'s8wu6'</span><span class="p">,</span>
-        <span class="s1">'09'</span><span class="p">:</span> <span class="s1">'xj7pd'</span><span class="p">,</span>
-        <span class="s1">'11'</span><span class="p">:</span> <span class="s1">'4ge3d'</span><span class="p">,</span>
-        <span class="s1">'15'</span><span class="p">:</span> <span class="s1">'kqhux'</span><span class="p">,</span>
-        <span class="s1">'21'</span><span class="p">:</span> <span class="s1">'hdc8f'</span><span class="p">,</span>
-        <span class="s1">'23'</span><span class="p">:</span> <span class="s1">'9rnp6'</span><span class="p">,</span>
-        <span class="s1">'25'</span><span class="p">:</span> <span class="s1">'dgfsp'</span><span class="p">,</span>
-        <span class="s1">'27'</span><span class="p">:</span> <span class="s1">'6enym'</span><span class="p">,</span>
-        <span class="s1">'29'</span><span class="p">:</span> <span class="s1">'9k24c'</span><span class="p">,</span>
-        <span class="s1">'31'</span><span class="p">:</span> <span class="s1">'npywc'</span><span class="p">,</span>
-        <span class="s1">'33'</span><span class="p">:</span> <span class="s1">'dh23w'</span>
+        <span class="s2">"03"</span><span class="p">:</span> <span class="s2">"x2kd6"</span><span class="p">,</span>
+        <span class="s2">"05"</span><span class="p">:</span> <span class="s2">"s8wu6"</span><span class="p">,</span>
+        <span class="s2">"09"</span><span class="p">:</span> <span class="s2">"xj7pd"</span><span class="p">,</span>
+        <span class="s2">"11"</span><span class="p">:</span> <span class="s2">"4ge3d"</span><span class="p">,</span>
+        <span class="s2">"15"</span><span class="p">:</span> <span class="s2">"kqhux"</span><span class="p">,</span>
+        <span class="s2">"21"</span><span class="p">:</span> <span class="s2">"hdc8f"</span><span class="p">,</span>
+        <span class="s2">"23"</span><span class="p">:</span> <span class="s2">"9rnp6"</span><span class="p">,</span>
+        <span class="s2">"25"</span><span class="p">:</span> <span class="s2">"dgfsp"</span><span class="p">,</span>
+        <span class="s2">"27"</span><span class="p">:</span> <span class="s2">"6enym"</span><span class="p">,</span>
+        <span class="s2">"29"</span><span class="p">:</span> <span class="s2">"9k24c"</span><span class="p">,</span>
+        <span class="s2">"31"</span><span class="p">:</span> <span class="s2">"npywc"</span><span class="p">,</span>
+        <span class="s2">"33"</span><span class="p">:</span> <span class="s2">"dh23w"</span><span class="p">,</span>
     <span class="p">}</span>
 
     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Downloading data for </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">subjects_to_download</span><span class="p">)</span><span class="si">}</span><span class="s2"> subjects..."</span><span class="p">)</span>
     <span class="k">for</span> <span class="n">subject</span> <span class="ow">in</span> <span class="n">subjects_to_download</span><span class="p">:</span>
-        <span class="n">placeholder_id</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">'sub</span><span class="si">{</span><span class="n">subject</span><span class="si">}</span><span class="s1">_osf_id'</span>
+        <span class="n">placeholder_id</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"sub</span><span class="si">{</span><span class="n">subject</span><span class="si">}</span><span class="s2">_osf_id"</span>
+        <span class="c1"># Skip placeholders</span>
         <span class="k">if</span> <span class="p">(</span><span class="n">subject</span> <span class="ow">in</span> <span class="n">subject_urls</span> <span class="ow">and</span>
-                <span class="n">subject_urls</span><span class="p">[</span><span class="n">subject</span><span class="p">]</span> <span class="o">!=</span> <span class="n">placeholder_id</span><span class="p">):</span>  <span class="c1"># Skip placeholders</span>
+                <span class="n">subject_urls</span><span class="p">[</span><span class="n">subject</span><span class="p">]</span> <span class="o">!=</span> <span class="n">placeholder_id</span><span class="p">):</span>
             <span class="n">osf_url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">base_url</span><span class="si">}{</span><span class="n">subject_urls</span><span class="p">[</span><span class="n">subject</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span>
             <span class="n">zip_path</span> <span class="o">=</span> <span class="n">_download_single_file</span><span class="p">(</span><span class="n">osf_url</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
 
             <span class="c1"># Unzip the subject data</span>
-            <span class="k">with</span> <span class="n">zipfile</span><span class="o">.</span><span class="n">ZipFile</span><span class="p">(</span><span class="n">zip_path</span><span class="p">,</span> <span class="s1">'r'</span><span class="p">)</span> <span class="k">as</span> <span class="n">zip_ref</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">zipfile</span><span class="o">.</span><span class="n">ZipFile</span><span class="p">(</span><span class="n">zip_path</span><span class="p">,</span> <span class="s2">"r"</span><span class="p">)</span> <span class="k">as</span> <span class="n">zip_ref</span><span class="p">:</span>
                 <span class="n">zip_ref</span><span class="o">.</span><span class="n">extractall</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
 
             <span class="c1"># Remove the zip file</span>
             <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">zip_path</span><span class="p">)</span>
 
     <span class="c1"># Clean up __MACOSX folder if it exists</span>
-    <span class="n">macosx_path</span> <span class="o">=</span> <span class="n">path</span> <span class="o">/</span> <span class="s1">'__MACOSX'</span>
+    <span class="n">macosx_path</span> <span class="o">=</span> <span class="n">path</span> <span class="o">/</span> <span class="s2">"__MACOSX"</span>
     <span class="k">if</span> <span class="n">macosx_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
         <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">macosx_path</span><span class="p">,</span> <span class="n">ignore_errors</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
@@ -539,15 +544,17 @@
 <span class="sd">    ...                     dataset_path='/home/user/Desktop')</span>
 <span class="sd">    """</span>
     <span class="c1"># Available subjects for epoched data (based on OSF structure)</span>
-    <span class="n">available_subjects</span> <span class="o">=</span> <span class="p">[</span><span class="s1">'03'</span><span class="p">,</span> <span class="s1">'15'</span><span class="p">,</span> <span class="s1">'21'</span><span class="p">,</span> <span class="s1">'30'</span><span class="p">]</span>
+    <span class="n">available_subjects</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"03"</span><span class="p">,</span> <span class="s2">"15"</span><span class="p">,</span> <span class="s2">"21"</span><span class="p">,</span> <span class="s2">"30"</span><span class="p">]</span>
 
     <span class="c1"># Handle different input types for subjects parameter</span>
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">subjects</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
         <span class="c1"># If integer, select first N subjects</span>
         <span class="n">n_subjects</span> <span class="o">=</span> <span class="n">subjects</span>
         <span class="k">if</span> <span class="n">n_subjects</span> <span class="o">&gt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">available_subjects</span><span class="p">):</span>
-            <span class="n">warning_msg</span> <span class="o">=</span> <span class="p">(</span><span class="sa">f</span><span class="s2">"Warning: Only </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">available_subjects</span><span class="p">)</span><span class="si">}</span><span class="s2"> subjects "</span>
-                           <span class="s2">"available. Downloading all available subjects."</span><span class="p">)</span>
+            <span class="n">warning_msg</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"Warning: Only </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">available_subjects</span><span class="p">)</span><span class="si">}</span><span class="s2"> subjects "</span>
+                <span class="s2">"available. Downloading all available subjects."</span>
+            <span class="p">)</span>
             <span class="nb">print</span><span class="p">(</span><span class="n">warning_msg</span><span class="p">)</span>
             <span class="n">n_subjects</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">available_subjects</span><span class="p">)</span>
         <span class="n">subjects_to_download</span> <span class="o">=</span> <span class="n">available_subjects</span><span class="p">[:</span><span class="n">n_subjects</span><span class="p">]</span>
@@ -555,8 +562,10 @@
         <span class="c1"># If list, validate and use specific subject IDs</span>
         <span class="n">invalid_subjects</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">subjects</span> <span class="k">if</span> <span class="n">s</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">available_subjects</span><span class="p">]</span>
         <span class="k">if</span> <span class="n">invalid_subjects</span><span class="p">:</span>
-            <span class="n">warning_msg</span> <span class="o">=</span> <span class="p">(</span><span class="sa">f</span><span class="s2">"Warning: Subjects </span><span class="si">{</span><span class="n">invalid_subjects</span><span class="si">}</span><span class="s2"> not "</span>
-                           <span class="sa">f</span><span class="s2">"available. Available: </span><span class="si">{</span><span class="n">available_subjects</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+            <span class="n">warning_msg</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"Warning: Subjects </span><span class="si">{</span><span class="n">invalid_subjects</span><span class="si">}</span><span class="s2"> not "</span>
+                <span class="sa">f</span><span class="s2">"available. Available: </span><span class="si">{</span><span class="n">available_subjects</span><span class="si">}</span><span class="s2">"</span>
+            <span class="p">)</span>
             <span class="nb">print</span><span class="p">(</span><span class="n">warning_msg</span><span class="p">)</span>
         <span class="n">subjects_to_download</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">subjects</span> <span class="k">if</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">available_subjects</span><span class="p">]</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">subjects_to_download</span><span class="p">:</span>
@@ -566,12 +575,12 @@
 
     <span class="c1"># Set up BIDS derivatives directory structure within raw data</span>
     <span class="k">if</span> <span class="n">dataset_path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">base_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">curdir</span><span class="p">)</span> <span class="o">/</span> <span class="s1">'ffrprep_raw_data'</span>
+        <span class="n">base_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">curdir</span><span class="p">)</span> <span class="o">/</span> <span class="s2">"ffrprep_raw_data"</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">base_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">dataset_path</span><span class="p">)</span> <span class="o">/</span> <span class="s1">'ffrprep_raw_data'</span>
+        <span class="n">base_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">dataset_path</span><span class="p">)</span> <span class="o">/</span> <span class="s2">"ffrprep_raw_data"</span>
 
     <span class="c1"># Create derivatives/epochs directory</span>
-    <span class="n">derivatives_path</span> <span class="o">=</span> <span class="n">base_path</span> <span class="o">/</span> <span class="s1">'derivatives'</span> <span class="o">/</span> <span class="s1">'epochs'</span>
+    <span class="n">derivatives_path</span> <span class="o">=</span> <span class="n">base_path</span> <span class="o">/</span> <span class="s2">"derivatives"</span> <span class="o">/</span> <span class="s2">"epochs"</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">derivatives_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
         <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">derivatives_path</span><span class="p">)</span>
 
@@ -580,22 +589,10 @@
 
     <span class="c1"># Epoched data OSF IDs (update with actual IDs from your OSF project)</span>
     <span class="n">epoch_files</span> <span class="o">=</span> <span class="p">{</span>
-        <span class="s1">'03'</span><span class="p">:</span> <span class="p">{</span>
-            <span class="s1">'active'</span><span class="p">:</span> <span class="s1">'qtm3s'</span><span class="p">,</span>
-            <span class="s1">'passive'</span><span class="p">:</span> <span class="s1">'rvnfw'</span>
-        <span class="p">},</span>
-        <span class="s1">'15'</span><span class="p">:</span> <span class="p">{</span>
-            <span class="s1">'active'</span><span class="p">:</span> <span class="s1">'8wykn'</span><span class="p">,</span>
-            <span class="s1">'passive'</span><span class="p">:</span> <span class="s1">'k3zcn'</span>
-        <span class="p">},</span>
-        <span class="s1">'21'</span><span class="p">:</span> <span class="p">{</span>
-            <span class="s1">'active'</span><span class="p">:</span> <span class="s1">'pvrs3'</span><span class="p">,</span>
-            <span class="s1">'passive'</span><span class="p">:</span> <span class="s1">'9yvp4'</span>
-        <span class="p">},</span>
-        <span class="s1">'30'</span><span class="p">:</span> <span class="p">{</span>
-            <span class="s1">'active'</span><span class="p">:</span> <span class="s1">'ub4cz'</span><span class="p">,</span>
-            <span class="s1">'passive'</span><span class="p">:</span> <span class="s1">'rbm74'</span>
-        <span class="p">}</span>
+        <span class="s2">"03"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"active"</span><span class="p">:</span> <span class="s2">"qtm3s"</span><span class="p">,</span> <span class="s2">"passive"</span><span class="p">:</span> <span class="s2">"rvnfw"</span><span class="p">},</span>
+        <span class="s2">"15"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"active"</span><span class="p">:</span> <span class="s2">"8wykn"</span><span class="p">,</span> <span class="s2">"passive"</span><span class="p">:</span> <span class="s2">"k3zcn"</span><span class="p">},</span>
+        <span class="s2">"21"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"active"</span><span class="p">:</span> <span class="s2">"pvrs3"</span><span class="p">,</span> <span class="s2">"passive"</span><span class="p">:</span> <span class="s2">"9yvp4"</span><span class="p">},</span>
+        <span class="s2">"30"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"active"</span><span class="p">:</span> <span class="s2">"ub4cz"</span><span class="p">,</span> <span class="s2">"passive"</span><span class="p">:</span> <span class="s2">"rbm74"</span><span class="p">},</span>
     <span class="p">}</span>
 
     <span class="n">n_subs</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">subjects_to_download</span><span class="p">)</span>
@@ -603,18 +600,18 @@
 
     <span class="k">for</span> <span class="n">subject</span> <span class="ow">in</span> <span class="n">subjects_to_download</span><span class="p">:</span>
         <span class="c1"># Create subject-specific directories following BIDS derivatives</span>
-        <span class="n">subject_dir</span> <span class="o">=</span> <span class="n">derivatives_path</span> <span class="o">/</span> <span class="sa">f</span><span class="s1">'sub-</span><span class="si">{</span><span class="n">subject</span><span class="si">}</span><span class="s1">'</span>
-        <span class="n">eeg_dir</span> <span class="o">=</span> <span class="n">subject_dir</span> <span class="o">/</span> <span class="s1">'eeg'</span>
+        <span class="n">subject_dir</span> <span class="o">=</span> <span class="n">derivatives_path</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">"sub-</span><span class="si">{</span><span class="n">subject</span><span class="si">}</span><span class="s2">"</span>
+        <span class="n">eeg_dir</span> <span class="o">=</span> <span class="n">subject_dir</span> <span class="o">/</span> <span class="s2">"eeg"</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">eeg_dir</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
             <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">eeg_dir</span><span class="p">)</span>
 
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Processing subject </span><span class="si">{</span><span class="n">subject</span><span class="si">}</span><span class="s2">..."</span><span class="p">)</span>
 
         <span class="c1"># Download both active and passive task epochs for each subject</span>
-        <span class="k">for</span> <span class="n">task</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">'active'</span><span class="p">,</span> <span class="s1">'passive'</span><span class="p">]:</span>
+        <span class="k">for</span> <span class="n">task</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">"active"</span><span class="p">,</span> <span class="s2">"passive"</span><span class="p">]:</span>
             <span class="k">if</span> <span class="n">subject</span> <span class="ow">in</span> <span class="n">epoch_files</span><span class="p">:</span>
                 <span class="n">osf_id</span> <span class="o">=</span> <span class="n">epoch_files</span><span class="p">[</span><span class="n">subject</span><span class="p">][</span><span class="n">task</span><span class="p">]</span>
-                <span class="k">if</span> <span class="n">osf_id</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">'osf_id_'</span><span class="p">):</span>  <span class="c1"># Skip placeholder IDs</span>
+                <span class="k">if</span> <span class="n">osf_id</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"osf_id_"</span><span class="p">):</span>  <span class="c1"># Skip placeholder IDs</span>
                     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Skipping </span><span class="si">{</span><span class="n">task</span><span class="si">}</span><span class="s2"> task - OSF ID not yet provided"</span><span class="p">)</span>
                     <span class="k">continue</span>
 
@@ -627,11 +624,11 @@
                 <span class="k">if</span> <span class="ow">not</span> <span class="n">file_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
                     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  Downloading </span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s2">..."</span><span class="p">)</span>
                     <span class="k">with</span> <span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">osf_url</span><span class="p">,</span> <span class="n">stream</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
-                        <span class="n">file_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">file</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'Content-Length'</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+                        <span class="n">file_size</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">file</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"Content-Length"</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
                         <span class="n">desc</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"Downloading </span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s2">"</span>
                         <span class="k">with</span> <span class="n">tqdm</span><span class="o">.</span><span class="n">wrapattr</span><span class="p">(</span><span class="n">file</span><span class="o">.</span><span class="n">raw</span><span class="p">,</span> <span class="s2">"read"</span><span class="p">,</span> <span class="n">total</span><span class="o">=</span><span class="n">file_size</span><span class="p">,</span>
                                            <span class="n">desc</span><span class="o">=</span><span class="n">desc</span><span class="p">)</span> <span class="k">as</span> <span class="n">raw</span><span class="p">:</span>
-                            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="s1">'wb'</span><span class="p">)</span> <span class="k">as</span> <span class="n">output</span><span class="p">:</span>
+                            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="s2">"wb"</span><span class="p">)</span> <span class="k">as</span> <span class="n">output</span><span class="p">:</span>
                                 <span class="n">shutil</span><span class="o">.</span><span class="n">copyfileobj</span><span class="p">(</span><span class="n">raw</span><span class="p">,</span> <span class="n">output</span><span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
                     <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"  File </span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s2"> already exists"</span><span class="p">)</span>
@@ -639,7 +636,7 @@
     <span class="nb">print</span><span class="p">(</span><span class="s2">"Note: Update epoch_files dictionary with actual OSF IDs"</span><span class="p">)</span>
 
     <span class="c1"># Clean up __MACOSX folder if it exists</span>
-    <span class="n">macosx_path</span> <span class="o">=</span> <span class="n">base_path</span> <span class="o">/</span> <span class="s1">'__MACOSX'</span>
+    <span class="n">macosx_path</span> <span class="o">=</span> <span class="n">base_path</span> <span class="o">/</span> <span class="s2">"__MACOSX"</span>
     <span class="k">if</span> <span class="n">macosx_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
         <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">macosx_path</span><span class="p">,</span> <span class="n">ignore_errors</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 

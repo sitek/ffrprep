@@ -46,7 +46,7 @@
   
   
   
-    <title>ffrprep.preproc.filter_data &#8212; ffrprep 0+untagged.1.g8e4cd7e documentation</title>
+    <title>ffrprep.preproc.filter_data &#8212; ffrprep 0+untagged.1.g7c3495d documentation</title>
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
     <link rel="stylesheet" type="text/css" href="../_static/material.css?v=79c92029" />
     <link rel="stylesheet" type="text/css" href="../_static/plot_directive.css" />
@@ -56,7 +56,7 @@
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
     <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
-    <script src="../_static/documentation_options.js?v=60463a80"></script>
+    <script src="../_static/documentation_options.js?v=490ea0d6"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -89,7 +89,7 @@
   <nav class="md-header-nav md-grid">
     <div class="md-flex navheader">
       <div class="md-flex__cell md-flex__cell--shrink">
-        <a href="../index.html" title="ffrprep 0+untagged.1.g8e4cd7e documentation"
+        <a href="../index.html" title="ffrprep 0+untagged.1.g7c3495d documentation"
            class="md-header-nav__button md-logo">
           
             &nbsp;
@@ -175,7 +175,7 @@
   <nav class="md-tabs" data-md-component="tabs">
     <div class="md-tabs__inner md-grid">
       <ul class="md-tabs__list">
-          <li class="md-tabs__item"><a href="../index.html" class="md-tabs__link">ffrprep 0+untagged.1.g8e4cd7e documentation</a></li>
+          <li class="md-tabs__item"><a href="../index.html" class="md-tabs__link">ffrprep 0+untagged.1.g7c3495d documentation</a></li>
           <li class="md-tabs__item"><a href="../api_ref.html" class="md-tabs__link">Reference API</a></li>
       </ul>
     </div>
@@ -188,13 +188,13 @@
               <div class="md-sidebar__inner">
                 <nav class="md-nav md-nav--primary" data-md-level="0">
   <label class="md-nav__title md-nav__title--site" for="__drawer">
-    <a href="../index.html" title="ffrprep 0+untagged.1.g8e4cd7e documentation" class="md-nav__button md-logo">
+    <a href="../index.html" title="ffrprep 0+untagged.1.g7c3495d documentation" class="md-nav__button md-logo">
       
         <img src="../_static/" alt=" logo" width="48" height="48">
       
     </a>
     <a href="../index.html"
-       title="ffrprep 0+untagged.1.g8e4cd7e documentation">ffrprep</a>
+       title="ffrprep 0+untagged.1.g7c3495d documentation">ffrprep</a>
   </label>
     <div class="md-nav__source">
       <a href="https://github.com/spark-csd/ffrprep" title="Go to repository" class="md-source" data-md-source="github">
@@ -303,11 +303,11 @@
 <dl class="py function">
 <dt class="sig sig-object py" id="ffrprep.preproc.filter_data">
 <span class="sig-prename descclassname"><span class="pre">ffrprep.preproc.</span></span><span class="sig-name descname"><span class="pre">filter_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">eeg_data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">high_pass</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">low_pass</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/ffrprep/preproc.html#filter_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ffrprep.preproc.filter_data" title="Link to this definition">¶</a></dt>
-<dd><p>Re-reference the provided EEG data object.</p>
+<dd><p>Apply frequency filters to the provided EEG data object.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>data</strong> (MNE <cite>data</cite> object) – MNE <cite>data</cite> object containing EEG data and metadata.</p></li>
+<li><p><strong>eeg_data</strong> (MNE <cite>data</cite> object) – MNE <cite>data</cite> object containing EEG data and metadata.</p></li>
 <li><p><strong>high_pass</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Lower passband edge (in Hertz).
 Default = None.</p></li>
 <li><p><strong>low_pass</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Upper passband edge (in Hertz).
@@ -315,25 +315,23 @@ Default = None.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p><strong>filtered_eeg</strong> – to given frequency range.</p>
+<dd class="field-even"><p><strong>filtered_eeg</strong> – EEG data filtered to given frequency range.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>MNE <cite>data</cite> object</p>
 </dd>
 </dl>
 <p class="rubric">Examples</p>
-<p>Filter an EEG data object with a band-pass filter.</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">filtered_data</span> <span class="o">=</span> <span class="n">filter_data</span><span class="p">(</span><span class="n">eeg_data</span><span class="p">,</span> <span class="n">high_pass</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span> <span class="n">low_pass</span><span class="o">=</span><span class="mi">2000</span><span class="p">)</span>
+<p>Filter an EEG data object with a band-pass filter (1-40 Hz).</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">filtered_data</span> <span class="o">=</span> <span class="n">filter_data</span><span class="p">(</span><span class="n">eeg_data</span><span class="p">,</span> <span class="n">high_pass</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">low_pass</span><span class="o">=</span><span class="mf">40.0</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Filter an EEG data object with a high-pass filter.</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">filtered_data</span> <span class="o">=</span> <span class="n">filter_data</span><span class="p">(</span><span class="n">eeg_data</span><span class="p">,</span> <span class="n">high_pass</span><span class="o">=</span><span class="mi">50</span><span class="p">)</span>
+<p>Filter an EEG data object with a high-pass filter (0.1 Hz).</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">filtered_data</span> <span class="o">=</span> <span class="n">filter_data</span><span class="p">(</span><span class="n">eeg_data</span><span class="p">,</span> <span class="n">high_pass</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
 </pre></div>
 </div>
-<blockquote>
-<div><p>Filter an EEG data object with a low-pass filter.</p>
-</div></blockquote>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">filtered_data</span> <span class="o">=</span> <span class="n">filter_data</span><span class="p">(</span><span class="n">eeg_data</span><span class="p">,</span> <span class="n">low_pass</span><span class="o">=</span><span class="mi">2000</span><span class="p">)</span>
+<p>Filter an EEG data object with a low-pass filter (100 Hz).</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">filtered_data</span> <span class="o">=</span> <span class="n">filter_data</span><span class="p">(</span><span class="n">eeg_data</span><span class="p">,</span> <span class="n">low_pass</span><span class="o">=</span><span class="mf">100.0</span><span class="p">)</span>
 </pre></div>
 </div>
 </dd></dl>
