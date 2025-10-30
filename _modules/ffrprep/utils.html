@@ -45,7 +45,7 @@
   
   
   
-    <title>ffrprep.utils &#8212; ffrprep 0+untagged.1.gfc881fa documentation</title>
+    <title>ffrprep.utils &#8212; ffrprep 0+untagged.1.g8e4cd7e documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
     <link rel="stylesheet" type="text/css" href="../../_static/material.css?v=79c92029" />
     <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
@@ -55,7 +55,7 @@
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
     <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
-    <script src="../../_static/documentation_options.js?v=a3174b13"></script>
+    <script src="../../_static/documentation_options.js?v=60463a80"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -86,7 +86,7 @@
   <nav class="md-header-nav md-grid">
     <div class="md-flex navheader">
       <div class="md-flex__cell md-flex__cell--shrink">
-        <a href="../../index.html" title="ffrprep 0+untagged.1.gfc881fa documentation"
+        <a href="../../index.html" title="ffrprep 0+untagged.1.g8e4cd7e documentation"
            class="md-header-nav__button md-logo">
           
             &nbsp;
@@ -172,7 +172,7 @@
   <nav class="md-tabs" data-md-component="tabs">
     <div class="md-tabs__inner md-grid">
       <ul class="md-tabs__list">
-          <li class="md-tabs__item"><a href="../../index.html" class="md-tabs__link">ffrprep 0+untagged.1.gfc881fa documentation</a></li>
+          <li class="md-tabs__item"><a href="../../index.html" class="md-tabs__link">ffrprep 0+untagged.1.g8e4cd7e documentation</a></li>
           <li class="md-tabs__item"><a href="../index.html" class="md-tabs__link">Module code</a></li>
       </ul>
     </div>
@@ -185,13 +185,13 @@
               <div class="md-sidebar__inner">
                 <nav class="md-nav md-nav--primary" data-md-level="0">
   <label class="md-nav__title md-nav__title--site" for="__drawer">
-    <a href="../../index.html" title="ffrprep 0+untagged.1.gfc881fa documentation" class="md-nav__button md-logo">
+    <a href="../../index.html" title="ffrprep 0+untagged.1.g8e4cd7e documentation" class="md-nav__button md-logo">
       
         <img src="../../_static/" alt=" logo" width="48" height="48">
       
     </a>
     <a href="../../index.html"
-       title="ffrprep 0+untagged.1.gfc881fa documentation">ffrprep</a>
+       title="ffrprep 0+untagged.1.g8e4cd7e documentation">ffrprep</a>
   </label>
     <div class="md-nav__source">
       <a href="https://github.com/spark-csd/ffrprep" title="Go to repository" class="md-source" data-md-source="github">
@@ -353,19 +353,20 @@
             <span class="s2">"MALFORMED_BVEC"</span><span class="p">,</span>
             <span class="s2">"MALFORMED_BVAL"</span><span class="p">,</span>
             <span class="s2">"MISSING_TSV_COLUMN_EEG_ELECTRODES"</span><span class="p">,</span>
-            <span class="s2">"MISSING_SESSION"</span><span class="p">,</span>
+            <span class="s2">"MISSING_SESSION"</span>
         <span class="p">],</span>
         <span class="s2">"error"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"NO_EGG"</span><span class="p">,</span> <span class="s2">"NO_EVENTS_TSV"</span><span class="p">],</span>
-        <span class="s2">"ignoredFiles"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"/dataset_description.json"</span><span class="p">,</span> <span class="s2">"/participants.tsv"</span><span class="p">],</span>
+        <span class="s2">"ignoredFiles"</span><span class="p">:</span> <span class="p">[</span><span class="s1">'/dataset_description.json'</span><span class="p">,</span> <span class="s1">'/participants.tsv'</span><span class="p">]</span>
     <span class="p">}</span>
 
     <span class="c1"># Limit validation only to data from requested participants</span>
     <span class="k">if</span> <span class="n">participant_label</span><span class="p">:</span>
         <span class="c1"># get all participant labels in bids_dir</span>
-        <span class="n">all_subs</span> <span class="o">=</span> <span class="nb">set</span><span class="p">([</span><span class="n">s</span><span class="o">.</span><span class="n">name</span><span class="p">[</span><span class="mi">4</span><span class="p">:]</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">bids_dir</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">"sub-*"</span><span class="p">)])</span>
+        <span class="n">all_subs</span> <span class="o">=</span> <span class="nb">set</span><span class="p">([</span><span class="n">s</span><span class="o">.</span><span class="n">name</span><span class="p">[</span><span class="mi">4</span><span class="p">:]</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">bids_dir</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s1">'sub-*'</span><span class="p">)])</span>
 
         <span class="c1"># get selected participant labels</span>
-        <span class="n">selected_subs</span> <span class="o">=</span> <span class="nb">set</span><span class="p">([</span><span class="n">s</span><span class="p">[</span><span class="mi">4</span><span class="p">:]</span> <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"sub-"</span><span class="p">)</span> <span class="k">else</span> <span class="n">s</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">participant_label</span><span class="p">])</span>
+        <span class="n">selected_subs</span> <span class="o">=</span> <span class="nb">set</span><span class="p">([</span><span class="n">s</span><span class="p">[</span><span class="mi">4</span><span class="p">:]</span> <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">'sub-'</span><span class="p">)</span> <span class="k">else</span> <span class="n">s</span>
+                             <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">participant_label</span><span class="p">])</span>
 
         <span class="c1"># check if all selected participants exist in bids_dir</span>
         <span class="n">bad_labels</span> <span class="o">=</span> <span class="n">selected_subs</span><span class="o">.</span><span class="n">difference</span><span class="p">(</span><span class="n">all_subs</span><span class="p">)</span>
@@ -373,42 +374,47 @@
         <span class="c1"># raise error if any selected participant does not exist</span>
         <span class="k">if</span> <span class="n">bad_labels</span><span class="p">:</span>
             <span class="n">error_msg</span> <span class="o">=</span> <span class="p">(</span>
-                <span class="s2">"Data for requested participant(s) label(s) not found. "</span>
-                <span class="s2">"Could not find data for participant(s): </span><span class="si">%s</span><span class="s2">. "</span>
-            <span class="p">)</span> <span class="o">+</span> <span class="s2">"Please verify the requested "</span> <span class="s2">"participant labels."</span>
+                <span class="s1">'Data for requested participant(s) label(s) not found. '</span>
+                <span class="s1">'Could not find data for participant(s): </span><span class="si">%s</span><span class="s1">. '</span>
+            <span class="p">)</span> <span class="o">+</span> <span class="s1">'Please verify the requested '</span> \
+                <span class="s1">'participant labels.'</span>
 
             <span class="c1"># Add additional error message depending on execution environment</span>
-            <span class="k">if</span> <span class="n">exec_env</span> <span class="o">==</span> <span class="s2">"docker"</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">exec_env</span> <span class="o">==</span> <span class="s1">'docker'</span><span class="p">:</span>
                 <span class="n">error_msg</span> <span class="o">+=</span> <span class="p">(</span>
-                    <span class="s2">" This error can be caused by the input data not being "</span>
-                    <span class="s2">"accessible inside the docker container. Please make sure "</span>
-                    <span class="s2">"all volumes are mounted properly (see "</span>
-                    <span class="s2">"https://docs.docker.com/engine/reference/commandline/run/"</span>
-                    <span class="s2">"#mount-volume--v---read-only)"</span>
+                    <span class="s1">' This error can be caused by the input data not being '</span>
+                    <span class="s1">'accessible inside the docker container. Please make sure '</span>
+                    <span class="s1">'all volumes are mounted properly (see '</span>
+                    <span class="s1">'https://docs.docker.com/engine/reference/commandline/run/'</span>
+                    <span class="s1">'#mount-volume--v---read-only)'</span>
                 <span class="p">)</span>
-            <span class="k">if</span> <span class="n">exec_env</span> <span class="o">==</span> <span class="s2">"singularity"</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">exec_env</span> <span class="o">==</span> <span class="s1">'singularity'</span><span class="p">:</span>
                 <span class="n">error_msg</span> <span class="o">+=</span> <span class="p">(</span>
-                    <span class="s2">"accessible inside the singularity container. Please make "</span>
-                    <span class="s2">"sure all paths are mapped properly (see "</span>
-                    <span class="s2">"https://www.sylabs.io/guides/3.0/user-guide/"</span>
-                    <span class="s2">"bind_paths_and_mounts.html)"</span>
-                    <span class="s2">"guides/3.0/user-guide/bind_paths_and_mounts.html)"</span>
+                    <span class="s1">'accessible inside the singularity container. Please make '</span>
+                    <span class="s1">'sure all paths are mapped properly (see '</span>
+                    <span class="s1">'https://www.sylabs.io/guides/3.0/user-guide/'</span>
+                    <span class="s1">'bind_paths_and_mounts.html)'</span>
+                    <span class="s1">'guides/3.0/user-guide/bind_paths_and_mounts.html)'</span>
                 <span class="p">)</span>
-            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="n">error_msg</span> <span class="o">%</span> <span class="s2">","</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">bad_labels</span><span class="p">))</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="n">error_msg</span> <span class="o">%</span> <span class="s1">','</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">bad_labels</span><span class="p">))</span>
 
         <span class="n">ignored_subs</span> <span class="o">=</span> <span class="n">all_subs</span><span class="o">.</span><span class="n">difference</span><span class="p">(</span><span class="n">selected_subs</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">ignored_subs</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">sub</span> <span class="ow">in</span> <span class="n">ignored_subs</span><span class="p">:</span>
-                <span class="n">validator_config_dict</span><span class="p">[</span><span class="s2">"ignoredFiles"</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"/sub-</span><span class="si">%s</span><span class="s2">/**"</span> <span class="o">%</span> <span class="n">sub</span><span class="p">)</span>
-    <span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">NamedTemporaryFile</span><span class="p">(</span><span class="s2">"w+"</span><span class="p">)</span> <span class="k">as</span> <span class="n">temp</span><span class="p">:</span>
+                <span class="n">validator_config_dict</span><span class="p">[</span><span class="s2">"ignoredFiles"</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="s2">"/sub-</span><span class="si">%s</span><span class="s2">/**"</span> <span class="o">%</span> <span class="n">sub</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">NamedTemporaryFile</span><span class="p">(</span><span class="s1">'w+'</span><span class="p">)</span> <span class="k">as</span> <span class="n">temp</span><span class="p">:</span>
         <span class="n">temp</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">validator_config_dict</span><span class="p">))</span>
         <span class="n">temp</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="c1"># run bids-validator</span>
-            <span class="n">subprocess</span><span class="o">.</span><span class="n">check_call</span><span class="p">([</span><span class="s2">"bids-validator"</span><span class="p">,</span> <span class="n">bids_dir</span><span class="p">,</span> <span class="s2">"-c"</span><span class="p">,</span> <span class="n">temp</span><span class="o">.</span><span class="n">name</span><span class="p">])</span>
+            <span class="n">subprocess</span><span class="o">.</span><span class="n">check_call</span><span class="p">([</span>
+                <span class="s1">'bids-validator'</span><span class="p">,</span> <span class="n">bids_dir</span><span class="p">,</span> <span class="s1">'-c'</span><span class="p">,</span> <span class="n">temp</span><span class="o">.</span><span class="n">name</span>
+            <span class="p">])</span>
         <span class="c1"># error if bids-validator is not installed</span>
         <span class="k">except</span> <span class="ne">FileNotFoundError</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s2">"bids-validator does not appear to be installed"</span><span class="p">,</span> <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span></div>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">"bids-validator does not appear to be installed"</span><span class="p">,</span>
+                  <span class="n">file</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">)</span></div>
 
 </pre></div>
 
