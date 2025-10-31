@@ -204,7 +204,7 @@ Preprocessing Workflow Nodes
 *Outputs:* File paths, processing metadata
 
 Stage 3: Analysis
-================
+=================
 
 The analysis stage computes evoked responses, time-frequency representations, and FFR-specific metrics from the preprocessed epoched data.
 
