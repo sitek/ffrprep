@@ -7,9 +7,12 @@
 .. centered:: ffrprep: A standardized and robust (pre-) processing pipeline for FFR data.
 
 
-.. image:: https://github.com/SPARK-CSD/ffrprep/actions/workflows/docs.yml/badge.svg
+.. image:: https://img.shields.io/github/actions/workflow/status/SPARK-CSD/ffrprep/.github%2Fworkflows%2Fdocs.yml
         :target: https://github.com/SPARK-CSD/ffrprep/actions/workflows/docs.yml
- 
+
+.. image:: https://img.shields.io/github/actions/workflow/status/SPARK-CSD/ffrprep/.github%2Fworkflows%2Fformatting_tests.yml
+        :target: https://github.com/SPARK-CSD/ffrprep/actions/workflows/formatting_tests.yml
+
 .. image:: https://img.shields.io/pypi/v/ffrprep.svg
         :target: https://pypi.python.org/pypi/ffrprep
 
@@ -53,6 +56,7 @@ Contents
 
    installation
    usage
+   pipeline_details
    walkthrough
    auto_examples/index
    api_ref
