@@ -41,7 +41,7 @@
 Introduction
 ============
 
-``ffrprep`` aims to provide a set of tools for ADD description here. 
+``ffrprep`` aims to provide a standardized and robust (pre-) processing pipeline for FFR data in the form of a `BIDS-App <https://bids-apps.neuroimaging.io>`_.
 
 This documentation showcases the respective functionality and provides details concerning
 its application and modules.
