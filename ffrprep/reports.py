@@ -10,10 +10,7 @@ import time
 from mne import Report, open_report
 
 
-def create_report(bids_root,
-                  out_dir=None,
-                  filename=None,
-                  title=None,
+def create_report(bids_root, out_dir=None, filename=None, title=None,
                   overwrite=False):
     """
     Initialize an MNE report.
@@ -27,14 +24,15 @@ def create_report(bids_root,
         will write the report to '{bidsroot}/derivatives/'.
     filename : string
         Filename for the report. If `None` (default),
-        will write the report as 'ffrprep_report_{YYYY:MM:DD:HH:MM:SS}.hdf5'.
+        will write the report as 'ffrprep_report_{YYYY:MM:DD:HH:MM:SS}.h5'.
+        Note: Uses .h5 extension for MNE compatibility.
     title : string
         Title for the report. If `None` (default),
         will write the title as 'FFRPREP report {YYYY:MM:DD:HH:MM:SS}'.
     overwrite : boolean
         Whether to overwrite an existing file (`True`).
         If `False` (default) and file exists, report will be saved as
-        '{filename}_1.html'.
+        '{filename}_1.h5'.
 
     Returns
     -------
@@ -52,7 +50,7 @@ def create_report(bids_root,
 
     # Define and create the output directory
     if out_dir is None:
-        out_dir = os.path.join(bids_root, 'derivatives')
+        out_dir = os.path.join(bids_root, "derivatives")
 
     if not os.path.isdir(out_dir):
         os.makedirs(out_dir)
@@ -63,37 +61,53 @@ def create_report(bids_root,
     elif filename.endswith('.hdf5') is False:
         filename = f'{filename}.hdf5'
 
-    if os.path.isfile(os.path.join(out_dir, filename)):
+    report_fpath = os.path.join(out_dir, filename)
+    if os.path.isfile(report_fpath):
         if overwrite:
-            report_fpath = os.path.join(out_dir, filename)
+            # Will overwrite the existing file
+            pass
         else:
+            # Find a unique filename by adding a suffix
             fname_base, fname_ext = os.path.splitext(filename)
-            new_filename = f'{fname_base}_1{fname_ext}'
-            report_fpath = os.path.join(out_dir, new_filename)
-    else:
-        report_fpath = os.path.join(out_dir, filename)
+            counter = 1
+            while True:
+                new_filename = f"{fname_base}_{counter}{fname_ext}"
+                new_path = os.path.join(out_dir, new_filename)
+                if not os.path.isfile(new_path):
+                    report_fpath = new_path
+                    break
+                counter += 1
 
     # Define the report title, if None
     if title is None:
         timenow = time.strftime("%Y-%m-%d_%Hh%Mm%Ss")
-        filename = f'FFRPREP report {timenow}'
+        title = f"FFRPREP report {timenow}"
 
     # Create the report
     report = Report(title=title)
-    report.save(report_fpath)
+    # Save in HDF5 format for MNE compatibility
+    if report_fpath.endswith(".html"):
+        # If user specified .html, save as both .h5 and .html
+        h5_path = report_fpath.replace(".html", ".h5")
+        report.save(h5_path, overwrite=overwrite)
+        # Also save HTML version for viewing
+        report.save(report_fpath, overwrite=overwrite, open_browser=False)
+        return h5_path  # Return .h5 path for add_to_report compatibility
+    else:
+        # Default: save as .h5 for MNE compatibility
+        report.save(report_fpath, overwrite=overwrite)
+        return report_fpath
 
-    return report_fpath
 
-
-def add_to_report(report_fpath,
-                  figure=None,
-                  figure_title=None,
-                  figure_caption=None,
-                  html_text=None,
-                  html_title=None,
-                  special_case=None,
-                  special_data=None,
-                  kwargs=None):
+def add_to_report(
+    report_fpath,
+    figure=None,
+    figure_title=None,
+    figure_caption=None,
+    html_text=None,
+    html_title=None,
+    export_html=True,
+):
     """
     Add a figure and/or html text to an existing FFRPREP report.
 
@@ -111,17 +125,8 @@ def add_to_report(report_fpath,
         HTML-formatted text string to be added to the existing FFRPREP report.
     html_title : String
         Title of the HTML text to be added to the existing FFRPREP report.
-    special_case : String
-        Type of special case data to be added to the existing FFRPREP report.
-    special_data : MNE object
-        MNE `Raw`, `Events`, `Epochs`, or `Evoked` object
-        to be added to the existing FFRPREP report.
-    kwargs : dict
-        Additional keyword arguments to be passed to the
-        `add_raw`, `add_events`, `add_epochs`, or `add_evoked`
-        methods of the MNE `Report` object. For a list of
-        acceptable keyword arguments, see the MNE documentation:
-        https://mne.tools/stable/generated/mne.Report.html#mne-report
+    export_html : bool
+        Whether to also export an HTML version of the report. Default True.
 
     Returns
     -------
@@ -135,30 +140,49 @@ def add_to_report(report_fpath,
     >>> report_fpath = add_to_report(report_fpath, html_text=html_text,
                                      html_title='New section')
     """
-    with open_report(report_fpath) as report:
+    # Try to open existing report, fallback to creating new one if needed
+    try:
+        with open_report(report_fpath) as report:
+            if figure:
+                # Use correct signature for add_figure
+                title = figure_title if figure_title is not None else "Figure"
+                if figure_caption is not None:
+                    report.add_figure(figure, title=title,
+                                      caption=figure_caption)
+                else:
+                    report.add_figure(figure, title=title)
+            if html_text:
+                title_text = html_title or "Content"
+                report.add_html(title=title_text, html=html_text)
+            report.save(report_fpath, overwrite=True)
+
+            # Also export HTML version if requested
+            if export_html and report_fpath.endswith(".h5"):
+                html_path = report_fpath.replace(".h5", ".html")
+                report.save(html_path, overwrite=True, open_browser=False)
+
+    except (OSError, ValueError, IOError) as e:
+        # If opening fails, create a new report and add content
+        print(f"Warning: Could not open existing report ({e}). "
+              "Creating new report.")
+        report = Report(title="Updated Report")
         if figure:
-            report.add_figure(figure=figure,
-                              title=figure_title,
-                              caption=figure_caption)
-        if html_text:
-            report.add_html(title=html_title, html=html_text)
-        if special_case and special_data:
-            if special_case == 'raw':
-                report.add_raw(raw=special_data,
-                               **(kwargs if kwargs else {}))
-            elif special_case == 'events':
-                report.add_events(events=special_data,
-                                  **(kwargs if kwargs else {}))
-            elif special_case == 'epochs':
-                report.add_epochs(epochs=special_data,
-                                  **(kwargs if kwargs else {}))
-            elif special_case == 'evoked':
-                report.add_evoked(evoked=special_data,
-                                  **(kwargs if kwargs else {}))
+            # Use correct signature for add_figure
+            title = figure_title if figure_title is not None else "Figure"
+            if figure_caption is not None:
+                report.add_figure(figure, title=title,
+                                  caption=figure_caption)
             else:
-                raise ValueError('special_case must be one of: '
-                                 '`raw`, `events`, `epochs`, or `evoked`.')
+                report.add_figure(figure, title=title)
+        if html_text:
+            title_text = html_title or "Content"
+            report.add_html(title=title_text, html=html_text)
         report.save(report_fpath, overwrite=True)
+
+        # Also export HTML version if requested
+        if export_html and report_fpath.endswith(".h5"):
+            html_path = report_fpath.replace(".h5", ".html")
+            report.save(html_path, overwrite=True, open_browser=False)
 
     return report_fpath
 

@@ -11,6 +11,8 @@ duecredit==0.10.2
 etelemetry==0.3.1
 filelock==3.17.0
 fonttools==4.56.0
+h5io==0.2.5
+h5py==3.15.1
 idna==3.10
 importlib_resources==6.5.2
 isodate==0.6.1
@@ -37,6 +39,7 @@ puremagic==1.28
 pydot==3.0.4
 pyparsing==3.2.1
 python-dateutil==2.9.0.post0
+pybids>=0.15.0
 pytz==2025.1
 rdflib==6.3.2
 requests==2.32.3
