@@ -157,7 +157,7 @@ The preprocessing report will show:
 - **Event timing**: Confirm events are properly aligned
 
 Step 5: Run Analysis
-===================
+====================
 
 Once preprocessing is complete and looks good, run the analysis stage:
 
@@ -201,7 +201,7 @@ The analysis stage will:
 - Save results in standard formats
 
 Step 6: Inspect Analysis Outputs
-===============================
+================================
 
 Examine the analysis results:
 
@@ -241,7 +241,7 @@ Interactive HTML reports with:
 - **Metrics**: Review quantitative measures (amplitude, phase-locking, etc.)
 
 Step 7: Working with Outputs in Python
-=======================================
+======================================
 
 After running ``ffrprep``, you can load and analyze the outputs directly in Python using MNE-Python. This allows for custom analyses, visualization, and integration with your existing analysis pipelines.
 

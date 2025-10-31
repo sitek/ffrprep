@@ -17,9 +17,7 @@ The ``ffrprep`` pipeline consists of three main stages:
 
 Each stage is implemented as a modular workflow using Nipype, allowing for parallel processing and robust error handling.
 
-.. image:: _static/pipeline_flowchart.png
-   :alt: ffrprep pipeline flowchart
-   :align: center
+
 
 Stage 1: BIDS Validation
 ========================
@@ -64,7 +62,7 @@ If validation fails, ``ffrprep`` provides detailed error messages indicating spe
 Validation can be bypassed using ``--skip_bids_validation`` (not recommended for production analyses).
 
 Stage 2: Preprocessing
-=====================
+======================
 
 The preprocessing stage converts raw EEG data into clean, epoched data suitable for FFR analysis. This stage implements standard electrophysiological preprocessing steps optimized for frequency-following responses.
 
