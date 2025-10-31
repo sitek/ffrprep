@@ -16,9 +16,9 @@
 .. image:: https://img.shields.io/pypi/v/ffrprep.svg
         :target: https://pypi.python.org/pypi/ffrprep
 
-.. image:: https://img.shields.io/docker/pulls/SPARK-CSD/ffrprep
+.. image:: https://img.shields.io/docker/pulls/sparkcsd/ffrprep
     :alt: Dockerpulls
-    :target: https://cloud.docker.com/u/SPARK-CSD/repository/docker/SPARK-CSD/ffrprep
+    :target: https://cloud.docker.com/u/sparkcsd/repository/docker/sparkcsd/ffrprep
 
 .. image:: https://img.shields.io/github/repo-size/SPARK-CSD/ffrprep.svg
         :target: https://github.com/SPARK-CSD/ffrprep.zip
