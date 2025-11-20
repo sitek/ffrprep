@@ -1,9 +1,7 @@
-import shutil
 import pytest
-import mne
 from ffrprep.datasets import download_unzip_exp_data
-from ffrprep.preproc import load_data, reference_data
-from ffrprep.preproc import filter_data, epoch_data, preproc_pipeline
+from ffrprep.preproc import load_data
+from ffrprep.preproc import epoch_data
 from ffrprep.preproc import make_evoked
 from ffrprep.analysis import compute_power, rms_snr, autocorrelation
 
