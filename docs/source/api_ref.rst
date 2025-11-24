@@ -41,7 +41,9 @@ Reference API
    :template: function.rst
    :toctree: generated/
 
-   download_unzip_exp_data
+   download_example_data
+   download_raw_data
+   download_epoch_data
 
 .. _ref_utils:
 
