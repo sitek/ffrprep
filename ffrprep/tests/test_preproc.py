@@ -1,12 +1,9 @@
 import shutil
 import pytest
-import json
-from ffrprep.datasets import download_example_data
-from ffrprep.preproc import (load_data, reference_data, filter_data,
-                             create_preprocessing_workflow,
-                             save_preprocessing_outputs, save_analysis_outputs,
-                             setup_derivatives_directories, epoch_data,
-                             make_evoked)
+from ffrprep.datasets import download_unzip_exp_data
+from ffrprep.preproc import load_data, reference_data
+from ffrprep.preproc import filter_data, epoch_data, preproc_pipeline
+from ffrprep.preproc import make_evoked
 
 
 def test_load_data(tmp_path):
@@ -1719,7 +1716,44 @@ def test_full_pipeline_with_example_dataset(tmp_path):
         print(f"Full pipeline test skipped: {e}")
         pytest.skip("Full pipeline test failed")
 
-    finally:
-        # Clean up
-        if 'data_path' in locals() and data_path.exists():
-            shutil.rmtree(data_path)
+    # Download and unzip the data
+    data_path = download_unzip_exp_data(osf_url, dataset_path)
+    data = preproc_pipeline(bids_root=data_path,
+                            baseline=-0.05,
+                            sub_label='21',
+                            session_label=None,
+                            task_label='passive',
+                            run_label=1,
+                            ref_channels=['M1'],
+                            picks='Cz',
+                            high_pass=80,
+                            low_pass=2000,
+                            verbose=False)
+
+    print(data[0])
+
+    # Clean up the downloaded files after the test
+    shutil.rmtree(dataset_path)
+
+def test_make_evoked(osf_url, tmp_path):
+    # Use temporary directory for testing
+    dataset_path = tmp_path / "test_dataset"
+
+    # Download and unzip the data
+    data_path = download_unzip_exp_data(osf_url, dataset_path)
+
+    data = preproc_pipeline(bids_root=data_path,
+                            sub_label='21',
+                            session_label=None,
+                            task_label='passive',
+                            run_label=1,
+                            verbose=False, baseline=[-0.1, 0.5])
+
+    #epoch the data
+    epoched_data = epoch_data(eeg_data=data, baseline=[-0.2, -0.05], verbose='WARNING')
+
+    #run make_evoked on the epoched data
+    assert isinstance(make_evoked(epoched_data, True), list), "output must be list"
+    assert isinstance(make_evoked(epoched_data, False), mne.Evoked), "output must be evoked object"
+
+    shutil.rmtree(dataset_path)
