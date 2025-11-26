@@ -89,7 +89,6 @@ def rms_snr(evoked, response_lower=0.100, response_upper=0.200):
     >>> float(np.round(snr, 3))
     3.412
     """
-
     baseline_ind_bounds = evoked.time_as_index(evoked.baseline)
     response_ind_bounds = evoked.time_as_index(
         [response_lower, response_upper])
@@ -118,9 +117,12 @@ def autocorrelation(evoked):
 
 
 def compute_pitch_and_conf(evoked,
-                           win_dur=0.040, hop_dur=0.010,
-                           fmin=60, fmax=200,
-                           strength_thresh=0.15, smooth_k=3):
+                           win_dur=0.040,
+                           hop_dur=0.010,
+                           fmin=60,
+                           fmax=200,
+                           strength_thresh=0.15,
+                           smooth_k=3):
     """
     Compute the pitch (f0) and confidence metrics for an Evoked response.
 
@@ -161,9 +163,6 @@ def compute_pitch_and_conf(evoked,
         - 'conf_z':
             Array of z-scores for the maximum autocorrelation values
             for each window.
-        - 'conf_times':
-            Array of time points corresponding to the confidence metrics
-            for each window.
 
     Examples
     --------
@@ -182,47 +181,95 @@ def compute_pitch_and_conf(evoked,
 
     signal = evoked.data[0]
     times = evoked.times
-    sfreq = evoked.info['sfreq'] if hasattr(evoked, 'info') else None
-    if sfreq is None:
+    if hasattr(evoked, 'info'):
+        sfreq = evoked.info['sfreq']
+    else:
         sfreq = 1.0 / np.diff(times)[0]
 
+    # Define window, hop sizes, and lags in samples
     win_samps = max(3, int(round(win_dur * sfreq)))
     hop_samps = max(1, int(round(hop_dur * sfreq)))
     lag_min = max(1, int(round(sfreq / fmax)))
     lag_max = int(round(sfreq / fmin))
 
-    pitch_times = []
-    pitch_hz = []
-    peak_strength = []
+    # Initialize output lists
+    pitch_times, pitch_hz, peak_strength = [], [], []
+    rmax_list, pnr_list, z_list = [], [], []
 
-    # compute pitch (autocorr) per window
+    # Compute pitch (autocorr) and confidence per window (single pass)
     for start in range(0, len(signal) - win_samps + 1, hop_samps):
+        # extract windowed signal and normalize
         w = signal[start:start + win_samps].copy()
         w = w - np.mean(w)
-        ac_full = np.correlate(w, w, mode='full')
-        ac = ac_full[ac_full.size // 2:]  # positive lags
-        if ac.size <= lag_min:
-            pitch = np.nan
-            strength = 0.0
-        else:
-            norm_ac = ac / (ac[0] if ac[0] != 0 else 1.0)
-            search = norm_ac[lag_min: min(lag_max + 1, len(norm_ac))]
-            if search.size == 0:
-                pitch = np.nan
-                strength = 0.0
-            else:
-                idx = int(np.argmax(search))
-                strength = float(search[idx])
-                lag = idx + lag_min
-                if strength >= strength_thresh:
-                    pitch = float(sfreq / lag)
-                else:
-                    pitch = np.nan
 
+        # compute autocorrelation
+        ac_full = np.correlate(w, w, mode='full')
+        ac = ac_full[ac_full.size // 2:]  # keep positive lags
+
+        # time stamp for this window
         center_time = times[start + win_samps // 2]
         pitch_times.append(center_time)
+
+        # guard for too-short autocorrelation / invalid lag range
+        if ac.size <= lag_min:
+            pitch_hz.append(np.nan)
+            peak_strength.append(0.0)
+            rmax_list.append(np.nan)
+            pnr_list.append(np.nan)
+            z_list.append(np.nan)
+            continue
+
+        # normalize autocorrelation and search for peaks in desired lag range
+        norm_ac = ac / (ac[0] if ac[0] != 0 else 1.0)
+        search = norm_ac[lag_min: min(lag_max + 1, len(norm_ac))]
+
+        # if no peaks found
+        if search.size == 0:
+            pitch_hz.append(np.nan)
+            peak_strength.append(0.0)
+            rmax_list.append(np.nan)
+            pnr_list.append(np.nan)
+            z_list.append(np.nan)
+            continue
+
+        # main peak and strength
+        idx_rel = int(np.argmax(search))
+        strength = float(search[idx_rel])
+        lag = idx_rel + lag_min
+        if strength >= strength_thresh:
+            pitch = float(sfreq / lag)
+        else:
+            pitch = np.nan
+
         pitch_hz.append(pitch)
         peak_strength.append(strength)
+
+        # confidence metrics
+        rmax = strength
+
+        # Find next highest peak excluding the main peak
+        peaks, _ = find_peaks(search)
+        if peaks.size == 0:
+            sorted_idx = np.argsort(search)
+            if sorted_idx.size >= 2:
+                next_max = float(search[sorted_idx[-2]])
+            else:
+                next_max = 0.0
+        else:
+            peak_vals = search[peaks]
+            mask_other = peaks != idx_rel
+            other_vals = peak_vals[mask_other]
+            next_max = float(other_vals.max()) if other_vals.size > 0 else 0.0
+
+        # pitch-to-noise ratio and z-score
+        pnr = (rmax / (next_max + 1e-12)) if next_max > 0 else np.inf
+        search_mean = float(np.mean(search))
+        search_std = float(np.std(search)) if float(np.std(search)) > 0 else 1e-12
+        z = (rmax - search_mean) / search_std
+
+        rmax_list.append(rmax)
+        pnr_list.append(pnr)
+        z_list.append(z)
 
     pitch_times = np.array(pitch_times)
     pitch_hz = np.array(pitch_hz)
@@ -239,62 +286,10 @@ def compute_pitch_and_conf(evoked,
 
     pitch_hz_smooth = moving_avg_ignore_nan(pitch_hz, k=smooth_k)
 
-    # compute per-window confidence metrics (rmax, PNR, z)
-    rmax_list, pnr_list, z_list, valid_times = [], [], [], []
-    for start in range(0, len(signal) - win_samps + 1, hop_samps):
-        w = signal[start:start + win_samps].copy()
-        w = w - np.mean(w)
-        ac_full = np.correlate(w, w, mode='full')
-        ac = ac_full[ac_full.size // 2:]
-        if ac.size <= lag_min or lag_min >= len(ac):
-            rmax_list.append(np.nan)
-            pnr_list.append(np.nan)
-            z_list.append(np.nan)
-            valid_times.append(times[start + win_samps // 2])
-            continue
-
-        norm_ac = ac / (ac[0] if ac[0] != 0 else 1.0)
-        search = norm_ac[lag_min: min(lag_max + 1, len(norm_ac))]
-        if search.size == 0:
-            rmax_list.append(np.nan)
-            pnr_list.append(np.nan)
-            z_list.append(np.nan)
-            valid_times.append(times[start + win_samps // 2])
-            continue
-
-        idx_rel = int(np.argmax(search))
-        rmax = float(search[idx_rel])
-
-        peaks, _ = find_peaks(search)
-        if peaks.size == 0:
-            sorted_idx = np.argsort(search)
-            if sorted_idx.size >= 2:
-                next_max = float(search[sorted_idx[-2]])
-            else:
-                next_max = 0.0
-        else:
-            peak_vals = search[peaks]
-            mask = peaks != idx_rel
-            other_vals = peak_vals[mask]
-            next_max = float(other_vals.max()) if other_vals.size > 0 else 0.0
-
-        pnr = (rmax / (next_max + 1e-12)) if next_max > 0 else np.inf
-        search_mean = float(np.mean(search))
-        if float(np.std(search)) > 0:
-            search_std = float(np.std(search))
-        else:
-            search_std = 1e-12
-        z = (rmax - search_mean) / search_std
-
-        rmax_list.append(rmax)
-        pnr_list.append(pnr)
-        z_list.append(z)
-        valid_times.append(times[start + win_samps // 2])
-
+    # Prepare output arrays
     rmax_arr = np.array(rmax_list)
     pnr_arr = np.array(pnr_list)
     z_arr = np.array(z_list)
-    valid_times = np.array(valid_times)
 
     return {
         'times': pitch_times,
@@ -304,7 +299,6 @@ def compute_pitch_and_conf(evoked,
         'conf_rmax': rmax_arr,
         'conf_pnr': pnr_arr,
         'conf_z': z_arr,
-        'conf_times': valid_times,
     }
 
 
@@ -332,9 +326,6 @@ def plot_pitch_and_conf(results):
           - 'peak_strength' : array-like or None
               Per-frame peak strength values that can be used as an alternate
               confidence measure for coloring the pitch scatter.
-          - 'conf_times' : array-like or None
-              Time stamps corresponding to the confidence measures; if omitted,
-              'times' is used.
           - 'conf_rmax' : array-like or None
               Preferred confidence metric (e.g., correlation maximum).
               If present and aligned with the pitch/times vector,
@@ -343,7 +334,7 @@ def plot_pitch_and_conf(results):
           - 'conf_z' : array-like or None
               Z-score confidence values (plotted in bottom panel when present).
           - 'conf_pnr' : array-like or None
-              PNR (peak-to-noise ratio) confidence values (plotted in bottom).
+              PNR (pitch-to-noise ratio) confidence values (plotted in bottom).
 
     Returns
     -------
@@ -396,7 +387,6 @@ def plot_pitch_and_conf(results):
     times = results.get('times')
     pitch_smooth = results.get('pitch_hz_smooth')
     peak_strength = results.get('peak_strength')
-    conf_times = results.get('conf_times')
     conf_rmax = results.get('conf_rmax')
     conf_z = results.get('conf_z')
     conf_pnr = results.get('conf_pnr')
@@ -456,10 +446,7 @@ def plot_pitch_and_conf(results):
     ax_top.grid(True)
 
     # bottom: confidence time-series (rmax, z, pnr if present)
-    if conf_times is None:
-        conf_times = times
-    else:
-        conf_times = np.asarray(conf_times)
+    conf_times = times
 
     if conf_rmax is not None:
         ax_bot.plot(conf_times, conf_rmax, label='rmax', color='C0')
