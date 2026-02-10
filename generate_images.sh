@@ -19,7 +19,7 @@ generate_docker() {
              --base-image debian:bullseye-slim \
              --pkg-manager apt \
              --arg DEBIAN_FRONTEND=noninteractive \
-             --copy . /home/ffrprep \
+             --copy ./environment.yml /home/ffrprep/environment.yml \
              --miniconda \
                version=latest \
                conda_install="python=3.11" \
@@ -27,11 +27,11 @@ generate_docker() {
                yaml_file='/home/ffrprep/environment.yml' \
                env_exists=false \
             --copy . /home/ffrprep \
-            --run-bash "source activate ffrprep && cd /home/ffrprep && pip install -r requirements.txt" \
             --run-bash "source activate ffrprep && cd /home/ffrprep && pip install -e ." \
+            --run-bash "chmod +x /home/ffrprep/ffrprep-entrypoint.sh" \
             --env IS_DOCKER=1 \
             --workdir '/tmp/' \
-            --entrypoint "/neurodocker/startup.sh  ffrprep"
+            --entrypoint "/home/ffrprep/ffrprep-entrypoint.sh  ffrprep"
 }
 
 # Function to generate Singularity definition file using neurodocker  
@@ -70,10 +70,10 @@ build_docker() {
     # Build Docker image using current directory as build context
     # The -t flag tags the image with a name for easy reference
     # The . specifies current directory as build context (where Dockerfile is located)
-    docker build -t sdnn:local .
+    docker build -t ffrprep:local .
     
     echo "  → Docker image build completed"
-    echo "    You can now run: docker run -p 8888:8888 sdnn:local"
+    echo "    You can now run: docker run -p 8888:8888 ffrprep:local"
 }
 
 # Function to build Singularity image from generated definition file
@@ -86,10 +86,10 @@ build_singularity() {
     # Build Singularity Image Format (.sif) file from definition
     # The resulting .sif file is a single executable container image
     # Singularity build process may require sudo depending on system configuration
-    singularity build sdnn.sif Singularity.def
+    singularity build ffrprep.sif Singularity.def
     
     echo "  → Singularity image build completed"
-    echo "    You can now run: singularity run sdnn.sif"
+    echo "    You can now run: singularity run ffrprep.sif"
 }
 
 # Function to display comprehensive usage instructions
@@ -99,7 +99,7 @@ show_usage() {
     echo ""
     echo "DESCRIPTION:"
     echo "  This script generates container definition files and optionally builds container images"
-    echo "  for the sdnn project using neurodocker for reproducible container generation."
+    echo "  for the ffrprep project using neurodocker for reproducible container generation."
     echo "  It creates containers with conda environment, Jupyter notebook, and all project dependencies."
     echo ""
     echo "ARGUMENTS:"
@@ -124,8 +124,8 @@ show_usage() {
     echo "OUTPUT FILES:"
     echo "  - Dockerfile: Docker container definition (if docker option used)"
     echo "  - Singularity.def: Singularity container definition (if singularity option used)"  
-    echo "  - sdnn:local: Docker image (if docker + local options used)"
-    echo "  - sdnn.sif: Singularity image file (if singularity + local options used)"
+    echo "  - ffrprep:local: Docker image (if docker + local options used)"
+    echo "  - ffrprep.sif: Singularity image file (if singularity + local options used)"
     echo ""
     echo "NOTES:"
     echo "  - Both container types will have identical environments and functionality"
@@ -133,7 +133,7 @@ show_usage() {
     echo "  - Singularity builds may require sudo privileges depending on system configuration"
 }
 
-echo "=== sdnn Container Generation Script ==="
+echo "=== ffrprep Container Generation Script ==="
 echo ""
 
 # Initialize control flags based on command line arguments
@@ -263,28 +263,28 @@ if [ "$BUILD_LOCAL" = true ]; then
     # Build Docker image if Dockerfile was generated
     if [ "$GENERATE_DOCKER" = true ]; then
         echo "Step 3: Building Docker image..."
-        echo "  This will create a Docker image tagged as 'sdnn:local'"
+        echo "  This will create a Docker image tagged as 'ffrprep:local'"
         build_docker
         echo ""
         
         # Display information about the built image
         echo "Docker image information:"
-        docker images sdnn:local --format "  Size: {{.Size}}, Created: {{.CreatedSince}}"
+        docker images ffrprep:local --format "  Size: {{.Size}}, Created: {{.CreatedSince}}"
         echo ""
     fi
     
     # Build Singularity image if definition file was generated  
     if [ "$GENERATE_SINGULARITY" = true ]; then
         echo "Step 4: Building Singularity image..."
-        echo "  This will create a Singularity image file 'sdnn.sif'"
+        echo "  This will create a Singularity image file 'ffrprep.sif'"
         build_singularity
         echo ""
         
         # Display information about the built image file
-        if [ -f "sdnn.sif" ]; then
+        if [ -f "ffrprep.sif" ]; then
             echo "Singularity image information:"
-            echo "  Size: $(du -h sdnn.sif | cut -f1)"
-            echo "  Location: $(pwd)/sdnn.sif"
+            echo "  Size: $(du -h ffrprep.sif | cut -f1)"
+            echo "  Location: $(pwd)/ffrprep.sif"
         fi
         echo ""
     fi
@@ -297,10 +297,10 @@ else
     echo ""
     echo "To build images later, you can:"
     if [ "$GENERATE_DOCKER" = true ]; then
-        echo "  - Build Docker image: docker build -t sdnn:local ."
+        echo "  - Build Docker image: docker build -t ffrprep:local ."
     fi
     if [ "$GENERATE_SINGULARITY" = true ]; then
-        echo "  - Build Singularity image: singularity build sdnn.sif Singularity.def"
+        echo "  - Build Singularity image: singularity build ffrprep.sif Singularity.def"
     fi
     echo "  - Or run this script again with the 'local' argument"
     echo ""
@@ -324,10 +324,10 @@ if [ "$BUILD_LOCAL" = true ]; then
     echo ""
     echo "Built images:"
     if [ "$GENERATE_DOCKER" = true ]; then
-        echo "  ✓ Docker image: sdnn:local"
+        echo "  ✓ Docker image: ffrprep:local"
     fi
-    if [ "$GENERATE_SINGULARITY" = true ] && [ -f "sdnn.sif" ]; then
-        echo "  ✓ Singularity image: sdnn.sif"
+    if [ "$GENERATE_SINGULARITY" = true ] && [ -f "ffrprep.sif" ]; then
+        echo "  ✓ Singularity image: ffrprep.sif"
     fi
 fi
 

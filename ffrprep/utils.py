@@ -73,8 +73,7 @@ def validate_input_dir(exec_env, bids_dir, participant_label):
         all_subs = set([s.name[4:] for s in bids_dir.glob("sub-*")])
 
         # get selected participant labels
-        selected_subs = set([s[4:] if s.startswith("sub-") else s
-                            for s in participant_label])
+        selected_subs = set([s[4:] if s.startswith("sub-") else s for s in participant_label])
 
         # check if all selected participants exist in bids_dir
         bad_labels = selected_subs.difference(all_subs)
@@ -108,16 +107,14 @@ def validate_input_dir(exec_env, bids_dir, participant_label):
         ignored_subs = all_subs.difference(selected_subs)
         if ignored_subs:
             for sub in ignored_subs:
-                validator_config_dict["ignoredFiles"].append(
-                    "/sub-%s/**" % sub)
+                validator_config_dict["ignoredFiles"].append("/sub-%s/**" % sub)
     with tempfile.NamedTemporaryFile("w+") as temp:
         temp.write(json.dumps(validator_config_dict))
         temp.flush()
+        # Use the deno-based CLI only (bids-validator-deno). The validator
+        # requires a config file path; pass the temp file we created.
         try:
-            # run bids-validator
-            subprocess.check_call(["bids-validator", bids_dir, "-c",
-                                   temp.name])
-        # error if bids-validator is not installed
+            subprocess.check_call(["bids-validator-deno", str(bids_dir), "-c", temp.name])
         except FileNotFoundError:
-            print("bids-validator does not appear to be installed",
-                  file=sys.stderr)
+            # deno-based validator not installed
+            print("bids-validator-deno does not appear to be installed", file=sys.stderr)

@@ -16,3 +16,11 @@ ffrprep.egg-info/*
 ffrprep/__pycache__/*
 
 build/*
+
+tests/__pycache__/*
+
+.pytest_cache__/*
+
+ffrprep/tests/__pycache__/*
+
+__pycache__/*

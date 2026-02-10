@@ -1,5 +1,6 @@
 import argparse
 import os
+import sys
 from pathlib import Path
 
 from ffrprep.utils import validate_input_dir
@@ -7,10 +8,13 @@ from ffrprep.preproc import (
     create_preprocessing_workflow,
     create_analysis_workflow,
     get_participants,
+    get_sessions_tasks_runs,
     setup_derivatives_directories,
     check_preprocessing_exists,
 )
+import ffrprep.reports as reports
 from ._version import get_versions
+import re
 
 
 # Define parser to collect required inputs
@@ -22,22 +26,19 @@ def get_parser():
 
     # define parser description
     parser = argparse.ArgumentParser(
-        description=("ffrprep: A BIDS-App for standardized FFR preprocessing "
-                     "and analysis"),
+        description=("ffrprep: A BIDS-App for standardized FFR preprocessing " "and analysis"),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
     # add parser argument for version
-    parser.add_argument("-v", "--version", action="version",
-                        version="ffrprep version {}".format(__version__))
+    parser.add_argument("-v", "--version", action="version", version="ffrprep version {}".format(__version__))
 
     # BIDS-App standard arguments
     parser.add_argument(
         "bids_dir",
         action="store",
         type=Path,
-        help=("The directory with the input dataset "
-              "formatted according to the BIDS standard."),
+        help=("The directory with the input dataset " "formatted according to the BIDS standard."),
     )
     parser.add_argument(
         "output_dir",
@@ -75,85 +76,279 @@ def get_parser():
         "--stage",
         choices=["preprocessing", "analysis", "both"],
         default="both",
-        help=("Processing stage to run: preprocessing only, "
-              "analysis only, or both stages sequentially."),
+        help=("Processing stage to run: preprocessing only, " "analysis only, or both stages sequentially."),
     )
 
     # Preprocessing parameters
     preproc_group = parser.add_argument_group("Preprocessing options")
     preproc_group.add_argument(
         "--ref_channels",
-        help="Reference channel(s) for re-referencing. "
-        'Can be "average" for average reference, a single '
-        "channel name, or comma-separated list of channels.",
-        default="average",
+        help=(
+            "Reference channel(s) for re-referencing. Provide space-separated "
+            "channel names (e.g. --ref_channels M1 M2). Use 'average' for "
+            "average reference. Comma-separated single-argument styles are "
+            "also accepted for backward compatibility (e.g. 'M1,M2')."
+        ),
+        nargs="+",
+        type=str,
+        default=None,
     )
     preproc_group.add_argument(
-        "--high_pass", type=float,
-        help="High-pass filter cutoff frequency in Hz.", default=1.0
+        "--high_pass", type=float, help="High-pass filter cutoff frequency in Hz.", default=1.0
     )
     preproc_group.add_argument(
-        "--low_pass", type=float,
-        help="Low-pass filter cutoff frequency in Hz.", default=40.0
+        "--low_pass", type=float, help="Low-pass filter cutoff frequency in Hz.", default=40.0
+    )
+    # New MNE-style arguments (l_freq/h_freq) to make mapping explicit.
+    # These override the legacy --high_pass/--low_pass when provided.
+    preproc_group.add_argument(
+        "--l_freq",
+        type=float,
+        help=(
+            "Lower-pass edge in Hz (MNE name: l_freq). "
+            "If provided, overrides --high_pass. Use 'None' via --no-filter to disable."
+        ),
+        default=None,
+    )
+    preproc_group.add_argument(
+        "--h_freq",
+        type=float,
+        help=(
+            "Upper-pass edge in Hz (MNE name: h_freq). "
+            "If provided, overrides --low_pass. Use 'None' via --no-filter to disable."
+        ),
+        default=None,
+    )
+    preproc_group.add_argument(
+        "--no-filter",
+        action="store_true",
+        help=(
+            "Disable filtering entirely (equivalent to l_freq=None and h_freq=None). "
+            "When set, any provided l_freq/h_freq/high_pass/low_pass are ignored."
+        ),
+        default=False,
     )
     preproc_group.add_argument(
         "--baseline",
-        help=("Baseline correction period. Format: start,end "
-              '(e.g., "-0.2,0" for -200ms to 0ms).'),
-        default="-0.2,0",
+        help=(
+            "Baseline correction period. Provide two numbers: START END "
+            "in seconds (e.g. --baseline -0.2 0 for -200ms to 0ms)."
+        ),
+        nargs=2,
+        type=float,
+        metavar=("START", "END"),
+        default=[-0.2, 0.0],
     )
     preproc_group.add_argument(
-        "--tmin", type=float,
-        help="Start time of epochs relative to event onset (s).", default=-0.2
+        "--picks",
+        help=(
+            "Channels to include in epochs. Comma-separated list or single "
+            "channel name (e.g. 'Cz' or 'Cz,Fz'). If not provided, all "
+            "channels are considered."
+        ),
+        default=None,
     )
     preproc_group.add_argument(
-        "--tmax", type=float,
-        help="End time of epochs relative to event onset (s).", default=0.6
+        "--on-missing",
+        choices=["warn", "raise", "ignore"],
+        default="warn",
+        help=(
+            "Behavior when events referenced by event_id are missing: "
+            "warn, raise, or ignore. Matches MNE's on_missing option."
+        ),
+    )
+    preproc_group.add_argument(
+        "--event-id",
+        help=(
+            'Event id mapping. Provide a JSON string like \'{"A":1,"B":2}\' '
+            "or comma-separated pairs like 'A:1,B:2'. If not provided, "
+            "event ids will be inferred from events file or annotations."
+        ),
+        default=None,
+    )
+    preproc_group.add_argument(
+        "--events-file",
+        help=(
+            "Optional path to an events.tsv file to use for epoching. "
+            "If not provided, events will be inferred from annotations."
+        ),
+        default=None,
+    )
+    preproc_group.add_argument(
+        "--tmin", type=float, help="Start time of epochs relative to event onset (s).", default=-0.2
+    )
+    preproc_group.add_argument(
+        "--tmax", type=float, help="End time of epochs relative to event onset (s).", default=0.6
+    )
+    preproc_group.add_argument(
+        "--reject-eeg",
+        type=float,
+        help=(
+            "Peak-to-peak rejection threshold for EEG channels in Volts. "
+            "Set to 0 to disable automatic rejection."
+        ),
+        default=75e-6,
+    )
+    preproc_group.add_argument(
+        "--no-auto-reject",
+        action="store_true",
+        help=("Disable automatic amplitude-based epoch rejection."),
+        default=False,
+    )
+    preproc_group.add_argument(
+        "--concat-runs",
+        action="store_true",
+        help=(
+            "Concatenate multiple runs for a subject and process them as a "
+            "single recording. By default runs are processed separately."
+        ),
+        default=False,
+    )
+    preproc_group.add_argument(
+        "--save-each-node",
+        action="store_true",
+        help=(
+            "Write intermediate outputs to disk after each preprocessing "
+            "step (disk-backed mode). This reduces peak memory at the "
+            "expense of increased I/O and runtime."
+        ),
+        default=False,
+    )
+    preproc_group.add_argument(
+        "--run",
+        dest="run",
+        nargs="+",
+        help=(
+            "Run label(s) to process for the participant (without the 'run-' "
+            "prefix). If not provided, all runs found for the subject will "
+            "be processed. Multiple runs can be provided as space-separated "
+            "values, or as a single comma-separated string (e.g. '1 2' or "
+            "'1,2')."
+        ),
+    )
+    preproc_group.add_argument(
+        "--task",
+        dest="task",
+        nargs="+",
+        help=(
+            "Task label(s) to process for the participant (without the 'task-' "
+            "prefix). If not provided, all tasks found for the subject will "
+            "be processed. Multiple tasks can be provided as space-separated "
+            "values, or as a single comma-separated string (e.g. 'active passive')."
+        ),
     )
 
     # Analysis parameters
     analysis_group = parser.add_argument_group("Analysis options")
     analysis_group.add_argument(
-        "--by_event_type", action="store_true", help=(
-            "Create separate evoked responses for each event type.")
+        "--by_event_type", action="store_true", help=("Create separate evoked responses for each event type.")
     )
 
     # General options
     parser.add_argument(
         "--skip_bids_validation",
         action="store_true",
-        help=("Assume the input dataset is BIDS compliant "
-              "and skip the validation."),
+        help=("Assume the input dataset is BIDS compliant " "and skip the validation."),
     )
     parser.add_argument(
-        "--n_procs", type=int, default=1, help=(
-            "Number of processors to use for parallel execution.")
+        "--n_procs", type=int, default=1, help=("Number of processors to use for parallel execution.")
     )
-    parser.add_argument("--work_dir",
-                        type=Path,
-                        help="Path where intermediate results should be "
-                             "stored.")
+    parser.add_argument("--work_dir", type=Path, help="Path where intermediate results should be " "stored.")
 
     return parser
 
 
 def parse_baseline(baseline_str):
-    """Parse baseline string to tuple of floats."""
-    if "," in baseline_str:
+    """Parse baseline input to a (start, end) tuple of floats.
+
+    Accepts:
+    - a list/tuple of two floats (from argparse with nargs=2)
+    - a comma-separated string like '-0.2,0'
+    - a single numeric string which is interpreted as (value, 0.0)
+    """
+    # If argparse provided two floats (nargs=2), just return them
+    if isinstance(baseline_str, (list, tuple)) and len(baseline_str) == 2:
+        return float(baseline_str[0]), float(baseline_str[1])
+
+    # If a comma-separated string was provided
+    if isinstance(baseline_str, str) and "," in baseline_str:
         start, end = baseline_str.split(",")
         return float(start), float(end)
-    else:
-        return float(baseline_str), 0.0
+
+    # Otherwise treat as single numeric value (start) with 0 as end
+    return float(baseline_str), 0.0
 
 
 def parse_ref_channels(ref_str):
     """Parse reference channels string."""
-    if ref_str.lower() == "average":
+    if not ref_str:
+        return None
+
+    if isinstance(ref_str, (list, tuple)):
+        # Already a sequence; ensure items are stripped and handle
+        # comma-separated tokens inside any element for backward
+        # compatibility (e.g. ['M1,M2'] -> ['M1','M2']).
+        out = []
+        for item in ref_str:
+            if isinstance(item, str) and "," in item:
+                out.extend([c.strip() for c in item.split(",") if c.strip()])
+            else:
+                out.append(str(item).strip())
+        return out
+
+    s = str(ref_str)
+    if s.lower() == "average":
         return None  # Average reference
-    elif "," in ref_str:
-        return ref_str.split(",")  # List of channels
-    else:
-        return ref_str  # Single channel
+    if "," in s:
+        # Split and strip whitespace around channel names
+        return [c.strip() for c in s.split(",") if c.strip()]
+    # Single channel name; strip whitespace
+    return s.strip()
+
+
+def parse_picks(picks_str):
+    """Parse picks string into list or return None."""
+    if not picks_str:
+        return None
+    if isinstance(picks_str, (list, tuple)):
+        return picks_str
+    # comma-separated
+    return [p.strip() for p in str(picks_str).split(",") if p.strip()]
+
+
+def parse_event_id(event_id_str):
+    """Parse event-id mapping. Accept JSON string or key:val pairs.
+
+    Examples:
+      '{"A": 1, "B": 2}'  OR  'A:1,B:2'
+    """
+    if not event_id_str:
+        return None
+    import json
+
+    # Try JSON first
+    try:
+        parsed = json.loads(event_id_str)
+        return parsed
+    except Exception:
+        pass
+
+    # Fallback to key:val comma-separated format
+    mapping = {}
+    for part in str(event_id_str).split(","):
+        if not part.strip():
+            continue
+        if ":" in part:
+            k, v = part.split(":", 1)
+            k = k.strip()
+            v = v.strip()
+            try:
+                v = int(v)
+            except Exception:
+                # keep as string if not int
+                pass
+            mapping[k] = v
+    return mapping if mapping else None
 
 
 def run_ffrprep():
@@ -177,8 +372,7 @@ def run_ffrprep():
     if args.skip_bids_validation:
         print("Input data will not be checked for BIDS compliance.")
     else:
-        print("Making sure the input data is BIDS compliant "
-              "(warnings can be ignored in most cases).")
+        print("Making sure the input data is BIDS compliant " "(warnings can be ignored in most cases).")
         validate_input_dir(exec_env, args.bids_dir, args.participant_label)
 
     # Only run participant-level analysis for now
@@ -189,6 +383,25 @@ def run_ffrprep():
     # Parse processing parameters
     baseline = parse_baseline(args.baseline)
     ref_channels = parse_ref_channels(args.ref_channels)
+    # Determine rejection criteria: allow disabling automatic rejection via
+    # --no-auto-reject, otherwise use the provided --reject-eeg threshold.
+    if args.no_auto_reject:
+        reject_value = None
+    else:
+        reject_value = {"eeg": float(args.reject_eeg)}
+
+    # Determine filtering parameters. Support new MNE-style l_freq/h_freq
+    # CLI flags while preserving backward compatibility with
+    # --high_pass/--low_pass. --no-filter forces both to None.
+    if args.no_filter:
+        effective_l = None
+        effective_h = None
+        print("Filtering disabled by --no-filter; l_freq/h_freq set to None.")
+    else:
+        # Prefer explicit MNE-style args when provided
+        effective_l = args.l_freq if getattr(args, "l_freq", None) is not None else args.high_pass
+        effective_h = args.h_freq if getattr(args, "h_freq", None) is not None else args.low_pass
+        print(f"Using filter settings: l_freq={effective_l}, h_freq={effective_h}")
 
     # Get participant labels using pybids for robust querying
     print("Discovering participants using pybids...")
@@ -205,7 +418,9 @@ def run_ffrprep():
 
     # Process each subject
     for subject in subjects:
+        print(f"\n{'='*60}")
         print(f"Processing subject: sub-{subject}")
+        print(f"{'='*60}")
 
         # Set up derivatives directories within the BIDS dataset
         derivatives_info = setup_derivatives_directories(
@@ -215,73 +430,561 @@ def run_ffrprep():
             create_analysis=args.stage in ["analysis", "both"],
         )
 
-        print(
-            f"Derivatives will be stored in: "
-            f"{derivatives_info['derivatives_root']}"
-        )
+        print(f"Derivatives will be stored in: " f"{derivatives_info['derivatives_root']}")
 
         # Create workflow based on stage
         if args.stage in ["preprocessing", "both"]:
+            print("\n" + "=" * 60)
             print("Running preprocessing workflow...")
+            print("=" * 60)
 
             # Create preprocessing workflow
-            preproc_wf = create_preprocessing_workflow()
+            preproc_wf = create_preprocessing_workflow(disk_backed=bool(args.save_each_node))
 
             # Set working directory for nipype
             if args.work_dir:
                 work_dir = args.work_dir / f"sub-{subject}" / "preprocessing"
             else:
-                work_dir = (derivatives_info["preprocessing_dir"] / "work" /
-                            f"sub-{subject}")
+                work_dir = derivatives_info["preprocessing_dir"] / "work" / f"sub-{subject}"
 
             preproc_wf.base_dir = str(work_dir)
 
-            # Set inputs
-            preproc_wf.inputs.inputnode.bids_root = str(args.bids_dir)
-            preproc_wf.inputs.inputnode.sub_label = subject
-            preproc_wf.inputs.inputnode.ref_channels = ref_channels
-            preproc_wf.inputs.inputnode.high_pass = args.high_pass
-            preproc_wf.inputs.inputnode.low_pass = args.low_pass
-            preproc_wf.inputs.inputnode.baseline = baseline
-            preproc_wf.inputs.inputnode.tmin = args.tmin
-            preproc_wf.inputs.inputnode.tmax = args.tmax
+            # Set inputs on the actual inputnode object (avoids trait
+            # notifier propagation issues that can arise when assigning
+            # via workflow.inputs after certain connections are made).
+            try:
+                inputnode_obj = preproc_wf.get_node("inputnode")
+            except Exception:
+                # Fallback: if get_node is not available, fall back to the
+                # workflow.inputs assignment (best-effort).
+                inputnode_obj = None
 
-            # Set output directory for results
-            preproc_wf.inputs.inputnode.output_dir = str(
-                    derivatives_info["preprocessing_subject_dir"])
+            if inputnode_obj is not None:
+                inputnode_obj.inputs.bids_root = str(args.bids_dir)
+                inputnode_obj.inputs.sub_label = subject
+                inputnode_obj.inputs.ref_channels = ref_channels
+                # Map effective filter values (l_freq/h_freq) into the workflow
+                inputnode_obj.inputs.high_pass = effective_l
+                inputnode_obj.inputs.low_pass = effective_h
+                inputnode_obj.inputs.baseline = baseline
+                inputnode_obj.inputs.tmin = args.tmin
+                inputnode_obj.inputs.tmax = args.tmax
+                # Pass reject criteria into the workflow inputnode
+                inputnode_obj.inputs.reject = reject_value
+                # Epoching-specific inputs
+                picks = parse_picks(args.picks) if hasattr(args, "picks") else None
+                inputnode_obj.inputs.picks = picks
+                inputnode_obj.inputs.on_missing = getattr(args, "on_missing", "warn")
+                inputnode_obj.inputs.event_id = parse_event_id(getattr(args, "event_id", None))
+                # Only set events_file on the inputnode if the user provided
+                # an explicit path. Setting it to None can trigger Nipype's
+                # trait notifier machinery which tries to propagate the value
+                # to connected nodes and may fail if connections exist.
+                if getattr(args, "events_file", None) is not None:
+                    inputnode_obj.inputs.events_file = args.events_file
+                # Pass derivatives root so epoching can find stimtrack event files
+                inputnode_obj.inputs.derivatives_root = str(derivatives_info.get("derivatives_root", ""))
 
-            # Run preprocessing workflow
-            preproc_wf.run()
-            print(
-                f"Preprocessing completed. Outputs saved to: "
-                f"{derivatives_info['preprocessing_subject_dir']}"
-            )
+                # Set output directory for results
+                inputnode_obj.inputs.output_dir = str(derivatives_info["preprocessing_subject_dir"])
+            else:
+                # Best-effort fallback: assign to workflow.inputs (may trigger
+                # notifier but keeps compatibility with older nipype versions)
+                preproc_wf.inputs.inputnode.bids_root = str(args.bids_dir)
+                preproc_wf.inputs.inputnode.sub_label = subject
+                preproc_wf.inputs.inputnode.ref_channels = ref_channels
+                preproc_wf.inputs.inputnode.high_pass = effective_l
+                preproc_wf.inputs.inputnode.low_pass = effective_h
+                preproc_wf.inputs.inputnode.baseline = baseline
+                preproc_wf.inputs.inputnode.tmin = args.tmin
+                preproc_wf.inputs.inputnode.tmax = args.tmax
+                preproc_wf.inputs.inputnode.reject = reject_value
+                picks = parse_picks(args.picks) if hasattr(args, "picks") else None
+                preproc_wf.inputs.inputnode.picks = picks
+                preproc_wf.inputs.inputnode.on_missing = getattr(args, "on_missing", "warn")
+                preproc_wf.inputs.inputnode.event_id = parse_event_id(getattr(args, "event_id", None))
+                if getattr(args, "events_file", None) is not None:
+                    preproc_wf.inputs.inputnode.events_file = args.events_file
+                preproc_wf.inputs.inputnode.derivatives_root = str(derivatives_info.get("derivatives_root", ""))
+                preproc_wf.inputs.inputnode.output_dir = str(derivatives_info["preprocessing_subject_dir"])
+
+            # Determine runs for this subject. Default behavior: process
+            # runs separately (one workflow run per run label). If the user
+            # asked to concatenate runs via `--concat-runs`, run once
+            # with run_label=None and let `load_data()` perform
+            # concatenation.
+            meta = get_sessions_tasks_runs(str(args.bids_dir), subject)
+            # Allow overriding runs via CLI --run. Accept space-separated
+            # values or a single comma-separated string per argument.
+            if args.run:
+                # Flatten any comma-separated entries
+                provided = []
+                for entry in args.run:
+                    if isinstance(entry, str) and "," in entry:
+                        provided.extend([r.strip() for r in entry.split(",") if r.strip()])
+                    else:
+                        provided.append(entry)
+                runs = provided
+            else:
+                runs = meta.get("runs", [None])
+
+            # Allow overriding tasks via CLI --task (same parsing rules)
+            if args.task:
+                provided_tasks = []
+                for entry in args.task:
+                    if isinstance(entry, str) and "," in entry:
+                        provided_tasks.extend([t.strip() for t in entry.split(",") if t.strip()])
+                    else:
+                        provided_tasks.append(entry)
+                tasks = provided_tasks
+            else:
+                tasks = meta.get("tasks", [None])
+
+            # Validate requested tasks and runs against dataset metadata
+            valid_tasks = [t for t in meta.get("tasks", []) if t is not None]
+            valid_runs = [r for r in meta.get("runs", []) if r is not None]
+
+            if args.task:
+                # Identify missing/invalid task entries
+                missing_tasks = [t for t in tasks if t not in valid_tasks]
+                # If the user explicitly requested tasks but none are valid,
+                # this is a user error: fail loudly so the caller can fix the CLI
+                # invocation. If some are valid, warn and proceed with the
+                # subset that exists.
+                if missing_tasks and len(missing_tasks) == len(tasks):
+                    print(f"ERROR: None of the requested task(s) {tasks} were found for subject sub-{subject}.")
+                    if valid_tasks:
+                        print(f"Available tasks for this subject: {valid_tasks}")
+                    else:
+                        print("No tasks available for this subject in the dataset.")
+                    sys.exit(2)
+                if missing_tasks:
+                    print(
+                        f"Warning: Requested task(s) {missing_tasks} not found for subject sub-{subject}; they will be ignored."
+                    )
+                    tasks = [t for t in tasks if t in valid_tasks]
+                if not tasks:
+                    # If tasks ended up empty after filtering, skip this subject
+                    print(f"No valid tasks to process for subject sub-{subject}; skipping.")
+                    continue
+
+            if args.run:
+                # If the dataset doesn't list any runs but the user explicitly
+                # requested runs, treat as an error (likely CLI/dataset mismatch).
+                if not valid_runs:
+                    print(
+                        f"ERROR: No runs available for subject sub-{subject} in dataset but --run was provided ({runs})."
+                    )
+                    sys.exit(2)
+
+                missing_runs = [r for r in runs if r not in valid_runs]
+                if missing_runs and len(missing_runs) == len(runs):
+                    # User requested runs but none exist
+                    print(f"ERROR: None of the requested run(s) {runs} were found for subject sub-{subject}.")
+                    print(f"Available runs for this subject: {valid_runs}")
+                    sys.exit(2)
+                if missing_runs:
+                    print(
+                        f"Warning: Requested run(s) {missing_runs} not found for subject sub-{subject}; they will be ignored."
+                    )
+                    runs = [r for r in runs if r in valid_runs]
+                if not runs:
+                    print(f"No valid runs to process for subject sub-{subject}; skipping.")
+                    continue
+
+            # If concatenation requested and specific runs provided, we'll
+            # pass the selected run list into the loader so only those runs
+            # are concatenated. If no runs provided, all runs for the task
+            # will be concatenated.
+
+            if args.concat_runs:
+                # Run one workflow per task; load_data will concatenate when
+                # multiple files exist and run_label is None.
+                for task_label in tasks:
+                    print("\nConcatenating runs and processing as a single recording" f" for task {task_label}")
+                    preproc_wf_run = create_preprocessing_workflow(disk_backed=bool(args.save_each_node))
+
+                    if args.work_dir:
+                        work_dir = args.work_dir / f"sub-{subject}" / "preprocessing"
+                    else:
+                        work_dir = derivatives_info["preprocessing_dir"] / "work" / f"sub-{subject}"
+
+                    preproc_wf_run.base_dir = str(work_dir)
+
+                    # Set inputs directly on the inputnode Node to avoid
+                    # trait-notifier propagation issues when connections
+                    # already exist on the workflow.
+                    try:
+                        in_node = preproc_wf_run.get_node("inputnode")
+                    except Exception:
+                        in_node = None
+
+                    if in_node is not None:
+                        in_node.inputs.bids_root = str(args.bids_dir)
+                        in_node.inputs.sub_label = subject
+                        # If user supplied --run, pass that list so the loader
+                        # concatenates only the selected runs; otherwise leave
+                        # run_label as None to concatenate all runs.
+                        in_node.inputs.run_label = runs if args.run else None
+                        in_node.inputs.task_label = task_label
+                        in_node.inputs.ref_channels = ref_channels
+                        in_node.inputs.high_pass = effective_l
+                        in_node.inputs.low_pass = effective_h
+                        in_node.inputs.baseline = baseline
+                        in_node.inputs.tmin = args.tmin
+                        in_node.inputs.tmax = args.tmax
+                        # Pass reject criteria into the per-run workflow
+                        in_node.inputs.reject = reject_value
+                        # Epoching-specific inputs
+                        in_node.inputs.picks = parse_picks(getattr(args, "picks", None))
+                        in_node.inputs.on_missing = getattr(args, "on_missing", "warn")
+                        in_node.inputs.event_id = parse_event_id(getattr(args, "event_id", None))
+                        if getattr(args, "events_file", None) is not None:
+                            in_node.inputs.events_file = args.events_file
+                        in_node.inputs.derivatives_root = str(derivatives_info.get("derivatives_root", ""))
+                        in_node.inputs.output_dir = str(derivatives_info["preprocessing_subject_dir"])
+                    else:
+                        # Fallback: best-effort assign to workflow.inputs
+                        preproc_wf_run.inputs.inputnode.bids_root = str(args.bids_dir)
+                        preproc_wf_run.inputs.inputnode.sub_label = subject
+                        preproc_wf_run.inputs.inputnode.run_label = runs if args.run else None
+                        preproc_wf_run.inputs.inputnode.task_label = task_label
+                        preproc_wf_run.inputs.inputnode.ref_channels = ref_channels
+                        preproc_wf_run.inputs.inputnode.high_pass = effective_l
+                        preproc_wf_run.inputs.inputnode.low_pass = effective_h
+                        preproc_wf_run.inputs.inputnode.baseline = baseline
+                        preproc_wf_run.inputs.inputnode.tmin = args.tmin
+                        preproc_wf_run.inputs.inputnode.tmax = args.tmax
+                        preproc_wf_run.inputs.inputnode.reject = reject_value
+                        preproc_wf_run.inputs.inputnode.picks = parse_picks(getattr(args, "picks", None))
+                        preproc_wf_run.inputs.inputnode.on_missing = getattr(args, "on_missing", "warn")
+                        preproc_wf_run.inputs.inputnode.event_id = parse_event_id(getattr(args, "event_id", None))
+                        if getattr(args, "events_file", None) is not None:
+                            preproc_wf_run.inputs.inputnode.events_file = args.events_file
+                        preproc_wf_run.inputs.inputnode.derivatives_root = str(
+                            derivatives_info.get("derivatives_root", "")
+                        )
+                        preproc_wf_run.inputs.inputnode.output_dir = str(
+                            derivatives_info["preprocessing_subject_dir"]
+                        )
+
+                    # Run with requested parallelism: use MultiProc when
+                    # multiple processors requested, otherwise Linear.
+                    if args.n_procs and int(args.n_procs) > 1:
+                        preproc_wf_run.run(
+                            plugin="MultiProc",
+                            plugin_args={"n_procs": int(args.n_procs)},
+                        )
+                    else:
+                        preproc_wf_run.run(plugin="Linear")
+
+                    print("\nPreprocessing (concatenated) completed.")
+                    print(f"Outputs saved to: {derivatives_info['preprocessing_subject_dir']}")
+
+                # After all tasks complete, generate report
+                print("\n" + "=" * 60)
+                print("Generating preprocessing report...")
+                print("=" * 60)
+
+                try:
+                    preproc_dir = Path(derivatives_info["preprocessing_subject_dir"])
+
+                    # Collect files grouped by task/run for each stage
+                    def _collect_grouped(base_dir, patterns):
+                        grouped = {}
+                        for pat in patterns:
+                            for p in base_dir.glob(pat):
+                                name = p.name
+                                # Try to extract task-<task> and run-<run>
+                                m_task = re.search(r"task-([^_]+)", name)
+                                m_run = re.search(r"run-([^_]+)", name)
+                                task = m_task.group(1) if m_task else ""
+                                run = m_run.group(1) if m_run else ""
+                                grouped.setdefault(task, {}).setdefault(run, []).append(str(p))
+                        return grouped
+
+                    raw_patterns = ["*_desc-loaded_raw.fif"]
+                    events_patterns = ["*_events.tsv"]
+                    referenced_patterns = ["*_desc-referenced_raw.fif"]
+                    filtered_patterns = ["*_desc-filtered_raw.fif"]
+                    epoched_patterns = ["*_desc-preproc_epo.fif"]
+
+                    raw_files = _collect_grouped(preproc_dir, raw_patterns)
+                    events_files = _collect_grouped(preproc_dir, events_patterns)
+                    referenced_files = _collect_grouped(preproc_dir, referenced_patterns)
+                    filtered_files = _collect_grouped(preproc_dir, filtered_patterns)
+                    epoched_files = _collect_grouped(preproc_dir, epoched_patterns)
+
+                    print(f"\nCollected files:")
+                    print(
+                        f"  Raw files: {sum(len(r) for t in raw_files.values() for r in t.values()) if raw_files else 0}"
+                    )
+                    print(
+                        f"  Events files: {sum(len(r) for t in events_files.values() for r in t.values()) if events_files else 0}"
+                    )
+                    print(
+                        f"  Referenced files: {sum(len(r) for t in referenced_files.values() for r in t.values()) if referenced_files else 0}"
+                    )
+                    print(
+                        f"  Filtered files: {sum(len(r) for t in filtered_files.values() for r in t.values()) if filtered_files else 0}"
+                    )
+                    print(
+                        f"  Epoched files: {sum(len(r) for t in epoched_files.values() for r in t.values()) if epoched_files else 0}"
+                    )
+
+                    report_name = f"sub-{subject}_preprocessing_report.h5"
+                    report_path = reports.create_subject_report(
+                        str(args.bids_dir),
+                        out_dir=str(preproc_dir),
+                        filename=report_name,
+                        subject_id=subject,
+                        command=" ".join(sys.argv),
+                    )
+
+                    # Add summary
+                    reports.add_report_summary(
+                        report_path,
+                        command=" ".join(sys.argv),
+                        raw_files=raw_files,
+                        events_files=events_files,
+                        referenced_files=referenced_files,
+                        filtered_files=filtered_files,
+                        epoched_files=epoched_files,
+                    )
+
+                    # Add all processing stages organized by task/run
+                    reports.add_processing_stages(
+                        report_path,
+                        raw_files=raw_files,
+                        events_files=events_files,
+                        referenced_files=referenced_files,
+                        filtered_files=filtered_files,
+                        epoched_files=epoched_files,
+                    )
+
+                    # Export to HTML
+                    html_path = reports.save_report(report_path, overwrite=True)
+                    print(f"\n{'='*60}")
+                    print(f"Preprocessing report written to: {html_path}")
+                    print(f"{'='*60}")
+
+                except Exception as e:
+                    print(f"Warning: could not generate preprocessing report: {e}")
+                    import traceback
+
+                    traceback.print_exc()
+
+            else:
+                # Process each task and run separately
+                for task_label in tasks:
+                    for run in runs:
+                        if run is None:
+                            print(f"\nProcessing subject sub-{subject}, task {task_label} (no run label)")
+                            run_label = None
+                        else:
+                            print(f"\nProcessing subject sub-{subject}, task {task_label}, run {run}")
+                            run_label = run
+
+                        # Create a fresh workflow instance per run to avoid state
+                        # contamination between runs
+                        preproc_wf_run = create_preprocessing_workflow(disk_backed=bool(args.save_each_node))
+
+                        # Set working directory for nipype per run
+                        if args.work_dir:
+                            work_dir = (
+                                args.work_dir
+                                / f"sub-{subject}"
+                                / "preprocessing"
+                                / (f"task-{task_label}" if task_label is not None else "task-None")
+                                / (f"run-{run}" if run is not None else "single")
+                            )
+                        else:
+                            work_dir = (
+                                derivatives_info["preprocessing_dir"]
+                                / "work"
+                                / f"sub-{subject}"
+                                / (f"task-{task_label}" if task_label is not None else "task-None")
+                                / (f"run-{run}" if run is not None else "single")
+                            )
+
+                        preproc_wf_run.base_dir = str(work_dir)
+
+                        # Set inputs for this run safely on the inputnode Node
+                        try:
+                            in_node = preproc_wf_run.get_node("inputnode")
+                        except Exception:
+                            in_node = None
+
+                        if in_node is not None:
+                            in_node.inputs.bids_root = str(args.bids_dir)
+                            in_node.inputs.sub_label = subject
+                            in_node.inputs.run_label = run_label
+                            in_node.inputs.task_label = task_label
+                            in_node.inputs.ref_channels = ref_channels
+                            in_node.inputs.high_pass = effective_l
+                            in_node.inputs.low_pass = effective_h
+                            in_node.inputs.baseline = baseline
+                            in_node.inputs.tmin = args.tmin
+                            in_node.inputs.tmax = args.tmax
+                            in_node.inputs.reject = reject_value
+                            # Epoching-specific inputs
+                            in_node.inputs.picks = parse_picks(getattr(args, "picks", None))
+                            in_node.inputs.on_missing = getattr(args, "on_missing", "warn")
+                            in_node.inputs.event_id = parse_event_id(getattr(args, "event_id", None))
+                            if getattr(args, "events_file", None) is not None:
+                                in_node.inputs.events_file = args.events_file
+                            in_node.inputs.derivatives_root = str(derivatives_info.get("derivatives_root", ""))
+                            in_node.inputs.output_dir = str(derivatives_info["preprocessing_subject_dir"])
+                        else:
+                            preproc_wf_run.inputs.inputnode.bids_root = str(args.bids_dir)
+                            preproc_wf_run.inputs.inputnode.sub_label = subject
+                            preproc_wf_run.inputs.inputnode.run_label = run_label
+                            preproc_wf_run.inputs.inputnode.task_label = task_label
+                            preproc_wf_run.inputs.inputnode.ref_channels = ref_channels
+                            preproc_wf_run.inputs.inputnode.high_pass = effective_l
+                            preproc_wf_run.inputs.inputnode.low_pass = effective_h
+                            preproc_wf_run.inputs.inputnode.baseline = baseline
+                            preproc_wf_run.inputs.inputnode.tmin = args.tmin
+                            preproc_wf_run.inputs.inputnode.tmax = args.tmax
+                            preproc_wf_run.inputs.inputnode.reject = reject_value
+                            preproc_wf_run.inputs.inputnode.picks = parse_picks(getattr(args, "picks", None))
+                            preproc_wf_run.inputs.inputnode.on_missing = getattr(args, "on_missing", "warn")
+                            preproc_wf_run.inputs.inputnode.event_id = parse_event_id(
+                                getattr(args, "event_id", None)
+                            )
+                            if getattr(args, "events_file", None) is not None:
+                                preproc_wf_run.inputs.inputnode.events_file = args.events_file
+                            preproc_wf_run.inputs.inputnode.derivatives_root = str(
+                                derivatives_info.get("derivatives_root", "")
+                            )
+                            preproc_wf_run.inputs.inputnode.output_dir = str(
+                                derivatives_info["preprocessing_subject_dir"]
+                            )
+
+                        # Run the preprocessing workflow for this run
+                        # Use requested parallelism for per-run workflow as well
+                        if args.n_procs and int(args.n_procs) > 1:
+                            preproc_wf_run.run(
+                                plugin="MultiProc",
+                                plugin_args={"n_procs": int(args.n_procs)},
+                            )
+                        else:
+                            preproc_wf_run.run(plugin="Linear")
+
+                        print(f"\nPreprocessing for run {run_label} completed.")
+                        print(f"Outputs saved to: {derivatives_info['preprocessing_subject_dir']}")
+
+                # After all runs complete, generate report
+                print("\n" + "=" * 60)
+                print("Generating preprocessing report...")
+                print("=" * 60)
+
+                try:
+                    preproc_dir = Path(derivatives_info["preprocessing_subject_dir"])
+
+                    # Collect files grouped by task/run for each stage
+                    def _collect_grouped(base_dir, patterns):
+                        grouped = {}
+                        for pat in patterns:
+                            for p in base_dir.glob(pat):
+                                name = p.name
+                                # Try to extract task-<task> and run-<run>
+                                m_task = re.search(r"task-([^_]+)", name)
+                                m_run = re.search(r"run-([^_]+)", name)
+                                task = m_task.group(1) if m_task else ""
+                                run = m_run.group(1) if m_run else ""
+                                grouped.setdefault(task, {}).setdefault(run, []).append(str(p))
+                        return grouped
+
+                    raw_patterns = ["*_desc-loaded_raw.fif"]
+                    events_patterns = ["*_events.tsv"]
+                    referenced_patterns = ["*_desc-referenced_raw.fif"]
+                    filtered_patterns = ["*_desc-filtered_raw.fif"]
+                    epoched_patterns = ["*_desc-preproc_epo.fif"]
+
+                    raw_files = _collect_grouped(preproc_dir, raw_patterns)
+                    events_files = _collect_grouped(preproc_dir, events_patterns)
+                    referenced_files = _collect_grouped(preproc_dir, referenced_patterns)
+                    filtered_files = _collect_grouped(preproc_dir, filtered_patterns)
+                    epoched_files = _collect_grouped(preproc_dir, epoched_patterns)
+
+                    print(f"\nCollected files:")
+                    print(
+                        f"  Raw files: {sum(len(r) for t in raw_files.values() for r in t.values()) if raw_files else 0}"
+                    )
+                    print(
+                        f"  Events files: {sum(len(r) for t in events_files.values() for r in t.values()) if events_files else 0}"
+                    )
+                    print(
+                        f"  Referenced files: {sum(len(r) for t in referenced_files.values() for r in t.values()) if referenced_files else 0}"
+                    )
+                    print(
+                        f"  Filtered files: {sum(len(r) for t in filtered_files.values() for r in t.values()) if filtered_files else 0}"
+                    )
+                    print(
+                        f"  Epoched files: {sum(len(r) for t in epoched_files.values() for r in t.values()) if epoched_files else 0}"
+                    )
+
+                    report_name = f"sub-{subject}_preprocessing_report.h5"
+                    report_path = reports.create_subject_report(
+                        str(args.bids_dir),
+                        out_dir=str(preproc_dir),
+                        filename=report_name,
+                        subject_id=subject,
+                        command=" ".join(sys.argv),
+                    )
+
+                    # Add summary
+                    reports.add_report_summary(
+                        report_path,
+                        command=" ".join(sys.argv),
+                        raw_files=raw_files,
+                        events_files=events_files,
+                        referenced_files=referenced_files,
+                        filtered_files=filtered_files,
+                        epoched_files=epoched_files,
+                    )
+
+                    # Add all processing stages organized by task/run
+                    reports.add_processing_stages(
+                        report_path,
+                        raw_files=raw_files,
+                        events_files=events_files,
+                        referenced_files=referenced_files,
+                        filtered_files=filtered_files,
+                        epoched_files=epoched_files,
+                    )
+
+                    # Export to HTML
+                    html_path = reports.save_report(report_path, overwrite=True)
+                    print(f"\n{'='*60}")
+                    print(f"Preprocessing report written to: {html_path}")
+                    print(f"{'='*60}")
+
+                except Exception as e:
+                    print(f"Warning: could not generate preprocessing report: {e}")
+                    import traceback
+
+                    traceback.print_exc()
 
         if args.stage in ["analysis", "both"]:
+            print("\n" + "=" * 60)
             print("Running analysis workflow...")
+            print("=" * 60)
 
             # Check if preprocessing outputs exist (required for analysis)
             if args.stage == "analysis":  # Analysis-only mode
-                preproc_exists, preproc_files = check_preprocessing_exists(
-                        args.bids_dir, subject)
+                preproc_exists, preproc_files = check_preprocessing_exists(args.bids_dir, subject)
 
                 if not preproc_exists:
+                    print(f"ERROR: No preprocessing outputs found for " f"subject {subject}.")
                     print(
-                        f"ERROR: No preprocessing outputs found for "
-                        f"subject {subject}."
+                        f"Expected location: {args.bids_dir}/derivatives/" f"ffrprep-preprocessing/sub-{subject}/"
                     )
-                    print(
-                        f"Expected location: {args.bids_dir}/derivatives/"
-                        f"ffrprep-preprocessing/sub-{subject}/"
-                    )
-                    print("Please run preprocessing stage first or use "
-                          "'both' stage.")
+                    print("Please run preprocessing stage first or use " "'both' stage.")
                     continue
                 else:
-                    print(
-                        f"Found preprocessing outputs: "
-                        f"{[f.name for f in preproc_files]}"
-                    )
+                    print(f"Found preprocessing outputs: " f"{[f.name for f in preproc_files]}")
 
             # Create analysis workflow
             analysis_wf = create_analysis_workflow()
@@ -290,8 +993,7 @@ def run_ffrprep():
             if args.work_dir:
                 work_dir = args.work_dir / f"sub-{subject}" / "analysis"
             else:
-                work_dir = (derivatives_info["analysis_dir"] / "work" /
-                            f"sub-{subject}")
+                work_dir = derivatives_info["analysis_dir"] / "work" / f"sub-{subject}"
 
             analysis_wf.base_dir = str(work_dir)
 
@@ -301,17 +1003,46 @@ def run_ffrprep():
             analysis_wf.inputs.inputnode.subject = subject
 
             # Set output directory for analysis results
-            analysis_wf.inputs.inputnode.output_dir = str(
-                derivatives_info["analysis_subject_dir"])
+            analysis_wf.inputs.inputnode.output_dir = str(derivatives_info["analysis_subject_dir"])
 
             # Run analysis workflow
-            analysis_wf.run()
-            print(
-                f"Analysis completed. Outputs saved to: "
-                f"{derivatives_info['analysis_subject_dir']}"
-            )
+            # Run analysis workflow honoring --n_procs
+            if args.n_procs and int(args.n_procs) > 1:
+                analysis_wf.run(
+                    plugin="MultiProc",
+                    plugin_args={"n_procs": int(args.n_procs)},
+                )
+            else:
+                analysis_wf.run(plugin="Linear")
+            print(f"Analysis completed. Outputs saved to: " f"{derivatives_info['analysis_subject_dir']}")
+            # Create analysis report using reports submodule
+            try:
+                analysis_dir = Path(derivatives_info["analysis_subject_dir"])
+                # Look for analysis outputs
+                analysis_patterns = ["*_desc-evoked.fif", "*_desc-evoked*.fif"]
+                found_outputs = []
+                for pat in analysis_patterns:
+                    found_outputs.extend(list(analysis_dir.glob(pat)))
 
+                report_name = f"sub-{subject}_analysis_report.h5"
+                report_path = reports.create_report(
+                    str(args.bids_dir), out_dir=str(analysis_dir), filename=report_name
+                )
+                html_text = f"<h2>Analysis summary</h2><p>Subject: sub-{subject}</p>"
+                if found_outputs:
+                    html_text += "<p>Saved analysis outputs:</p><ul>"
+                    for p in found_outputs:
+                        html_text += f"<li>{str(p)}</li>"
+                    html_text += "</ul>"
+                reports.add_to_report(report_path, html_text=html_text, html_title="Analysis summary")
+                reports.save_report(report_path, overwrite=True)
+                print(f"Analysis report written to: {report_path}")
+            except Exception:
+                print("Warning: could not generate analysis report")
+
+    print("\n" + "=" * 60)
     print("ffrprep processing completed successfully!")
+    print("=" * 60)
 
 
 if __name__ == "__main__":

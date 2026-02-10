@@ -1,4 +1,6 @@
 acres==0.3.0
+argparse==1.4.0
+bids-validator-deno
 certifi==2025.1.31
 charset-normalizer==3.4.1
 ci-info==0.3.0

@@ -27,8 +27,8 @@ RUN export ND_ENTRYPOINT="/neurodocker/startup.sh" \
     fi \
     && chmod -R 777 /neurodocker && chmod a+s /neurodocker
 ARG DEBIAN_FRONTEND=noninteractive
-COPY [".", \
-      "/home/ffrprep"]
+COPY ["./environment.yml", \
+      "/home/ffrprep/environment.yml"]
 ENV CONDA_DIR="/opt/miniconda-latest" \
     PATH="/opt/miniconda-latest/bin:$PATH"
 RUN apt-get update -qq \
@@ -65,11 +65,11 @@ RUN apt-get update -qq \
     && rm -rf ~/.cache/pip/*
 COPY [".", \
       "/home/ffrprep"]
-RUN bash -c 'source activate ffrprep && cd /home/ffrprep && pip install -r requirements.txt'
 RUN bash -c 'source activate ffrprep && cd /home/ffrprep && pip install -e .'
+RUN bash -c 'chmod +x /home/ffrprep/ffrprep-entrypoint.sh'
 ENV IS_DOCKER="1"
 WORKDIR /tmp/
-ENTRYPOINT ["/neurodocker/startup.sh", "ffrprep"]
+ENTRYPOINT ["/home/ffrprep/ffrprep-entrypoint.sh", "ffrprep"]
 
 # Save specification to JSON.
 RUN printf '{ \
@@ -109,10 +109,10 @@ RUN printf '{ \
       "name": "copy", \
       "kwds": { \
         "source": [ \
-          ".", \
-          "/home/ffrprep" \
+          "./environment.yml", \
+          "/home/ffrprep/environment.yml" \
         ], \
-        "destination": "/home/ffrprep" \
+        "destination": "/home/ffrprep/environment.yml" \
       } \
     }, \
     { \
@@ -141,13 +141,13 @@ RUN printf '{ \
     { \
       "name": "run", \
       "kwds": { \
-        "command": "bash -c '"'"'source activate ffrprep && cd /home/ffrprep && pip install -r requirements.txt'"'"'" \
+        "command": "bash -c '"'"'source activate ffrprep && cd /home/ffrprep && pip install -e .'"'"'" \
       } \
     }, \
     { \
       "name": "run", \
       "kwds": { \
-        "command": "bash -c '"'"'source activate ffrprep && cd /home/ffrprep && pip install -e .'"'"'" \
+        "command": "bash -c '"'"'chmod +x /home/ffrprep/ffrprep-entrypoint.sh'"'"'" \
       } \
     }, \
     { \
@@ -166,7 +166,7 @@ RUN printf '{ \
       "name": "entrypoint", \
       "kwds": { \
         "args": [ \
-          "/neurodocker/startup.sh", \
+          "/home/ffrprep/ffrprep-entrypoint.sh", \
           "ffrprep" \
         ] \
       } \
