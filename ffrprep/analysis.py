@@ -2,6 +2,8 @@ import numpy as np
 from numpy import mean, sqrt, square
 import mne
 import statsmodels as sm
+from scipy import signal
+import matplotlib.pyplot as plt
 
 
 def compute_power(avg_evoked, f_low=90, f_high=110, t_low=0.1, t_high=0.2):
@@ -466,3 +468,378 @@ def plot_pitch_and_conf(results):
 
     fig.tight_layout()
     plt.show()
+
+def compute_phase_consistency(
+    epochs_A,
+    epochs_B,
+    chunksize=0.04,
+    overlap=0.036,
+    freqcap=2000
+):
+    """
+    Compute phase consistency from FFR epochs.
+    
+    The function computes phase consistency for:
+    - Polarity A (from epochs_A)
+    - Polarity B (from epochs_B)  
+    - ADD polarity: (A + B) / 2 (computed from phase vectors)
+    - SUB polarity: (A - B) / 2 (computed from phase vectors)
+    
+    Parameters
+    ----------
+    epochs_A : mne.Epochs
+        Individual epochs for polarity A
+    epochs_B : mne.Epochs
+        Individual epochs for polarity B
+    chunksize : float
+        Analysis window size in seconds (default: 0.04 = 40 ms)
+    overlap : float
+        Window overlap in seconds (default: 0.036 = 36 ms, gives ~4 ms step)
+    freqcap : int
+        Maximum frequency in Hz (default: 2000)
+        
+    Returns
+    -------
+    phasecon : dict
+        Dictionary with keys 'A', 'B', 'add', 'sub' and phase consistency arrays (freq x time) as values
+    xaxis : ndarray
+        Time axis in milliseconds
+    yaxis : ndarray
+        Frequency axis in Hz
+    numsweeps : int
+        Number of sweeps used (minimum of A and B)
+    
+    Examples
+    --------
+    >>> phasecon, xaxis, yaxis, numsweeps = compute_phase_consistency_minimal(
+    ...     epochs_A, epochs_B, chunksize=0.04, overlap=0.036
+    ... )
+    >>> 
+    >>> # Plot
+    >>> plot_phase_consistency(phasecon, xaxis, yaxis)
+    """
+    
+    # Get sampling info from epochs
+    sfreq = epochs_A.info['sfreq']
+    tmin = epochs_A.times[0]
+    tmax = epochs_A.times[-1]
+    
+    # Convert parameters to samples
+    chunksizepts = int(np.round(chunksize * sfreq))
+    overlappts = int(np.round(overlap * sfreq))
+    
+    # Create Hann window
+    ramp = signal.windows.hann(chunksizepts)
+    
+    # Get epoch data for A and B
+    data_A = epochs_A.get_data(picks='eeg')
+    data_B = epochs_B.get_data(picks='eeg')
+    
+    # Average across channels if multiple
+    if data_A.shape[1] > 1:
+        print(f"Averaging across {data_A.shape[1]} channels")
+        data_A = np.mean(data_A, axis=1)  # Shape: (n_epochs, n_times)
+        data_B = np.mean(data_B, axis=1)
+    else:
+        data_A = data_A[:, 0, :]
+        data_B = data_B[:, 0, :]
+    
+    # Determine minimum number of sweeps
+    numsweeps = min(len(epochs_A), len(epochs_B))
+    data_A = data_A[:numsweeps, :]
+    data_B = data_B[:numsweeps, :]
+    
+    n_epochs, n_samples = data_A.shape
+    
+    # Calculate sliding window positions
+    segstart = np.arange(0, n_samples - chunksizepts, chunksizepts - overlappts)
+    segstop = segstart + chunksizepts
+    
+    # Tile the window for all epochs
+    bigramp = np.tile(ramp[:, np.newaxis], (1, n_epochs))
+    
+    # Initialize phase info for A and B: (freq, epochs, time_windows)
+    phaseinfo_A = np.zeros((freqcap + 1, n_epochs, len(segstart)), dtype=complex)
+    phaseinfo_B = np.zeros((freqcap + 1, n_epochs, len(segstart)), dtype=complex)
+    
+    # Process each time window
+    print(f"Processing {len(segstart)} time windows, {n_epochs} epochs each for A and B")
+    for s in range(len(segstart)):
+        if s % 20 == 0:
+            print(f"  Window {s+1}/{len(segstart)}")
+        
+        # Extract segments from all epochs
+        segment_A = data_A[:, segstart[s]:segstop[s]].T  # Shape: (time, epochs)
+        segment_B = data_B[:, segstart[s]:segstop[s]].T
+        
+        # Detrend (baseline to 0)
+        segment_A_detr = signal.detrend(segment_A, axis=0, type='constant')
+        segment_B_detr = signal.detrend(segment_B, axis=0, type='constant')
+        
+        # Apply Hann window
+        segment_A_windowed = segment_A_detr * bigramp
+        segment_B_windowed = segment_B_detr * bigramp
+        
+        # Compute FFT with 1 Hz resolution
+        fft_A = np.fft.fft(segment_A_windowed, n=int(sfreq), axis=0)
+        fft_B = np.fft.fft(segment_B_windowed, n=int(sfreq), axis=0)
+        
+        # Keep only frequencies up to freqcap
+        fft_A = fft_A[:freqcap + 1, :]
+        fft_B = fft_B[:freqcap + 1, :]
+        
+        # Normalize to get phase only (discard amplitude)
+        fft_mag_A = np.abs(fft_A)
+        fft_mag_B = np.abs(fft_B)
+        phaseinfo_A[:, :, s] = fft_A / (fft_mag_A + 1e-10)
+        phaseinfo_B[:, :, s] = fft_B / (fft_mag_B + 1e-10)
+    
+    # Average across epochs (complex average) for A and B
+    phase_avg_A = np.mean(phaseinfo_A, axis=1)  # Shape: (freq, time_windows)
+    phase_avg_B = np.mean(phaseinfo_B, axis=1)
+    
+    # Compute ADD and SUB from the averaged phase vectors
+    phase_avg_add = (phase_avg_A + phase_avg_B) / 2
+    phase_avg_sub = (phase_avg_A - phase_avg_B) / 2
+    
+    # Phase consistency is the absolute value
+    phasecon = {
+        'A': np.abs(phase_avg_A),
+        'B': np.abs(phase_avg_B),
+        'add': np.abs(phase_avg_add),
+        'sub': np.abs(phase_avg_sub)
+    }
+    
+    # Create axes
+    xaxis = 1000 * np.linspace(
+        tmin + (chunksize / 2),
+        tmax - (chunksize / 2),
+        len(segstart)
+    )
+    yaxis = np.arange(0, freqcap + 1)
+    
+    print(f"\nPhase consistency computed!")
+    print(f"  Polarities: A, B, add, sub")
+    print(f"  Number of sweeps: {numsweeps}")
+    print(f"  Time axis: {xaxis[0]:.1f} to {xaxis[-1]:.1f} ms ({len(xaxis)} points)")
+    print(f"  Freq axis: {yaxis[0]} to {yaxis[-1]} Hz ({len(yaxis)} points)")
+    
+    return phasecon, xaxis, yaxis, numsweeps
+
+
+def plot_phase_consistency(
+    phasecon,
+    xaxis,
+    yaxis,
+    pol_names=None,
+    vmax=0.14,
+    ylim=None,
+    figsize=(12, 8),
+    cmap='viridis'
+):
+    """
+    Plot phase consistency matrices.
+    
+    Parameters
+    ----------
+    phasecon : dict
+        Dictionary of phase consistency arrays
+    xaxis : ndarray
+        Time axis in ms
+    yaxis : ndarray
+        Frequency axis in Hz
+    pol_names : list, optional
+        Order of polarities to plot. If None, uses dict order
+    vmax : float
+        Maximum value for colormap (default: 0.14)
+    ylim : tuple, optional
+        Frequency limits (min_freq, max_freq)
+    figsize : tuple
+        Figure size (default: (12, 8))
+    cmap : str
+        Colormap name (default: 'viridis')
+    
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+    """
+    
+    if pol_names is None:
+        pol_names = list(phasecon.keys())
+    
+    n_pols = len(pol_names)
+    
+    # Determine subplot layout
+    if n_pols <= 2:
+        nrows, ncols = 1, n_pols
+    elif n_pols <= 4:
+        nrows, ncols = 2, 2
+    else:
+        nrows = int(np.ceil(n_pols / 3))
+        ncols = 3
+    
+    fig, axes = plt.subplots(nrows, ncols, figsize=figsize)
+    if n_pols == 1:
+        axes = [axes]
+    else:
+        axes = axes.flatten()
+    
+    for idx, pol_name in enumerate(pol_names):
+        if pol_name not in phasecon:
+            continue
+        
+        ax = axes[idx]
+        
+        im = ax.imshow(
+            phasecon[pol_name],
+            aspect='auto',
+            origin='lower',
+            extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
+            vmin=0,
+            vmax=vmax,
+            cmap=cmap
+        )
+        
+        if ylim is not None:
+            ax.set_ylim(ylim)
+        
+        ax.set_title(pol_name, fontsize=14, fontweight='bold')
+        ax.set_xlabel('Time (ms)', fontsize=12)
+        ax.set_ylabel('Frequency (Hz)', fontsize=12)
+        
+        plt.colorbar(im, ax=ax, label='Phase Consistency')
+    
+    # Hide extra subplots
+    for idx in range(len(pol_names), len(axes)):
+        axes[idx].set_visible(False)
+    
+    plt.tight_layout()
+    return fig
+
+
+def plot_phase_consistency_masked(
+    phasecon,
+    xaxis,
+    yaxis,
+    numsweeps,
+    alpha=0.01,
+    pol_names=None,
+    vmax=0.14,
+    ylim=None,
+    figsize=(12, 8)
+):
+    """
+    Plot phase consistency with significance masking.
+    
+    Parameters
+    ----------
+    phasecon : dict
+        Dictionary of phase consistency arrays
+    xaxis : ndarray
+        Time axis in ms
+    yaxis : ndarray
+        Frequency axis in Hz
+    numsweeps : int
+        Number of sweeps used in the analysis
+    alpha : float
+        Significance level (default: 0.01)
+    pol_names : list, optional
+        Order of polarities to plot
+    vmax : float
+        Maximum value for colormap
+    ylim : tuple, optional
+        Frequency limits
+    figsize : tuple
+        Figure size
+        
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+    """
+    
+    if pol_names is None:
+        pol_names = list(phasecon.keys())
+    
+    # Calculate cutoff (same for all polarities)
+    cutoff = np.sqrt(-np.log(alpha) / numsweeps)
+    print(f"Significance cutoff (α={alpha}, n={numsweeps}): {cutoff:.4f}")
+    
+    # Create masked version
+    maskedphasecon = {}
+    for pol_name in pol_names:
+        if pol_name not in phasecon:
+            continue
+        
+        # Mask
+        masked = phasecon[pol_name].copy()
+        masked[masked < cutoff] = 0
+        maskedphasecon[pol_name] = masked
+    
+    # Create colormap with black for zero
+    cmap = plt.cm.viridis.copy()
+    cmap.set_under('black')
+    
+    n_pols = len(pol_names)
+    
+    # Determine subplot layout
+    if n_pols <= 2:
+        nrows, ncols = 1, n_pols
+    elif n_pols <= 4:
+        nrows, ncols = 2, 2
+    else:
+        nrows = int(np.ceil(n_pols / 3))
+        ncols = 3
+    
+    fig, axes = plt.subplots(nrows, ncols, figsize=figsize)
+    if n_pols == 1:
+        axes = [axes]
+    else:
+        axes = axes.flatten()
+    
+    for idx, pol_name in enumerate(pol_names):
+        if pol_name not in maskedphasecon:
+            continue
+        
+        ax = axes[idx]
+        
+        im = ax.imshow(
+            maskedphasecon[pol_name],
+            aspect='auto',
+            origin='lower',
+            extent=[xaxis[0], xaxis[-1], yaxis[0], yaxis[-1]],
+            vmin=cutoff,  # Values below are 'under' (black)
+            vmax=vmax,
+            cmap=cmap
+        )
+        
+        if ylim is not None:
+            ax.set_ylim(ylim)
+        
+        ax.set_title(f"{pol_name} (p < {alpha})", fontsize=14, fontweight='bold')
+        ax.set_xlabel('Time (ms)', fontsize=12)
+        ax.set_ylabel('Frequency (Hz)', fontsize=12)
+        
+        plt.colorbar(im, ax=ax, label='Phase Consistency')
+    
+    # Hide extra subplots
+    for idx in range(len(pol_names), len(axes)):
+        axes[idx].set_visible(False)
+    
+    plt.tight_layout()
+    return fig
+
+def corr_stim_to_resp(stim, resp, sfreq):
+    minimum_length = min(len(stim), len(resp))
+    stim = stim[:minimum_length, :]
+    resp = resp[:minimum_length, :]
+
+    corrs = signal.correlate(resp, stim, mode="full")
+    corrs = corrs / (np.std(stim) * np.std(resp) * len(stim))
+
+    lag = np.arange(-len(stim) + 1, len(resp))
+    lag_milliseconds = lag / sfreq * 1000
+    peak_n = np.argmax(corrs)
+    peak_corr = corrs[peak_n]
+    peak_lag = lag_milliseconds[peak_n]
+
+    return peak_corr, peak_lag
