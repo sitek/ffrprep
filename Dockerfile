@@ -69,7 +69,7 @@ RUN bash -c 'source activate ffrprep && cd /home/ffrprep && pip install -e .'
 RUN bash -c 'chmod +x /home/ffrprep/ffrprep-entrypoint.sh'
 ENV IS_DOCKER="1"
 WORKDIR /tmp/
-ENTRYPOINT ["/home/ffrprep/ffrprep-entrypoint.sh", "ffrprep"]
+ENTRYPOINT ["/home/ffrprep/ffrprep-entrypoint.sh"]
 
 # Save specification to JSON.
 RUN printf '{ \
@@ -166,8 +166,7 @@ RUN printf '{ \
       "name": "entrypoint", \
       "kwds": { \
         "args": [ \
-          "/home/ffrprep/ffrprep-entrypoint.sh", \
-          "ffrprep" \
+          "/home/ffrprep/ffrprep-entrypoint.sh" \
         ] \
       } \
     } \

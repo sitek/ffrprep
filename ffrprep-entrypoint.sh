@@ -21,5 +21,11 @@ if [ -x "/opt/miniconda-latest/bin/conda" ]; then
     fi
 fi
 
-# Exec the original neurodocker startup script (preserves previous behavior)
-exec /neurodocker/startup.sh "$@"
+# Dispatch: route `download ...` to the ffrprep-download CLI; everything
+# else continues to hit `ffrprep` so the BIDS-App contract is preserved.
+if [ "${1:-}" = "download" ]; then
+    shift
+    exec /neurodocker/startup.sh ffrprep-download "$@"
+else
+    exec /neurodocker/startup.sh ffrprep "$@"
+fi
