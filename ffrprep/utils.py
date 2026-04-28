@@ -1,9 +1,10 @@
 """Utility functions for validating BIDS directories and related operations."""
 
-import sys
-import tempfile
-import subprocess
 import json
+import shutil
+import subprocess
+import tempfile
+import warnings
 
 
 def validate_input_dir(exec_env, bids_dir, participant_label):
@@ -113,8 +114,11 @@ def validate_input_dir(exec_env, bids_dir, participant_label):
         temp.flush()
         # Use the deno-based CLI only (bids-validator-deno). The validator
         # requires a config file path; pass the temp file we created.
-        try:
-            subprocess.check_call(["bids-validator-deno", str(bids_dir), "-c", temp.name])
-        except FileNotFoundError:
-            # deno-based validator not installed
-            print("bids-validator-deno does not appear to be installed", file=sys.stderr)
+        if shutil.which("bids-validator-deno") is None:
+            warnings.warn(
+                "bids-validator-deno does not appear to be installed; "
+                "skipping BIDS validation.",
+                stacklevel=2,
+            )
+            return
+        subprocess.check_call(["bids-validator-deno", str(bids_dir), "-c", temp.name])

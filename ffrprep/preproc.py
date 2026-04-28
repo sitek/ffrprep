@@ -47,25 +47,12 @@ def load_data(bids_root=None, sub_label=None, session_label=None, task_label=Non
                          sub_label=sub_label,
                          run_label=run_label)
     """
-    # Import BIDSLayout locally to ensure availability when executed inside
-    # a Nipype Function node (which may run in a fresh python process).
-    try:
-        from bids import BIDSLayout
-    except Exception as exc:  # pragma: no cover - defensive at runtime
-        raise ImportError(
-            "pybids (bids) is required to query BIDS datasets. "
-            "Please install pybids in the environment running ffrprep."
-        ) from exc
-
-    # Import mne-bids components locally so they are available when this
-    # function is executed inside a Nipype Function node (separate process).
-    try:
-        from mne_bids import BIDSPath, read_raw_bids
-    except Exception as exc:  # pragma: no cover - defensive at runtime
-        raise ImportError(
-            "mne-bids is required to read BIDS-formatted EEG data. "
-            "Please install mne-bids in the environment running ffrprep."
-        ) from exc
+    # Local imports keep these names resolvable inside Nipype Function
+    # nodes (which run in fresh subprocesses). pybids and mne-bids are
+    # declared as required dependencies in pyproject.toml, so a plain
+    # import is always safe here.
+    from bids import BIDSLayout
+    from mne_bids import BIDSPath, read_raw_bids
 
     # Create BIDSLayout for robust querying
     layout = BIDSLayout(bids_root, validate=False)
@@ -245,15 +232,10 @@ def load_data_to_fif(
     This helper is intended for disk-backed workflows where we avoid
     passing large Raw objects between Nipype nodes.
     """
-    try:
-        from bids import BIDSLayout
-    except Exception as exc:  # pragma: no cover - defensive at runtime
-        raise ImportError("pybids (bids) is required to query BIDS datasets.") from exc
-
-    try:
-        from mne_bids import BIDSPath, read_raw_bids
-    except Exception as exc:  # pragma: no cover - defensive at runtime
-        raise ImportError("mne-bids is required to read BIDS-formatted EEG data.") from exc
+    # Local imports for nipype subprocess context (deps guaranteed by
+    # pyproject.toml).
+    from bids import BIDSLayout
+    from mne_bids import BIDSPath, read_raw_bids
 
     layout = BIDSLayout(bids_root, validate=False)
 
@@ -542,16 +524,9 @@ def get_participants(bids_root, participant_label=None):
 
     >>> participants = get_participants('/path/to/bids', ['01', '02'])
     """
-    # Import BIDSLayout locally to ensure availability in Nipype subprocesses
-    try:
-        from bids import BIDSLayout
-    except Exception as exc:  # pragma: no cover - defensive at runtime
-        raise ImportError(
-            "pybids (bids) is required to query BIDS datasets. "
-            "Please install pybids in the environment running ffrprep."
-        ) from exc
+    # Local import for nipype subprocess context.
+    from bids import BIDSLayout
 
-    # Create BIDSLayout for querying
     layout = BIDSLayout(bids_root, validate=False)
 
     # Query for all participants with EEG data
@@ -594,14 +569,8 @@ def get_sessions_tasks_runs(bids_root, subject):
 
     >>> metadata = get_sessions_tasks_runs('/path/to/bids', '01')
     """
-    # Import BIDSLayout locally to ensure availability in Nipype subprocesses
-    try:
-        from bids import BIDSLayout
-    except Exception as exc:  # pragma: no cover - defensive at runtime
-        raise ImportError(
-            "pybids (bids) is required to query BIDS datasets. "
-            "Please install pybids in the environment running ffrprep."
-        ) from exc
+    # Local import for nipype subprocess context.
+    from bids import BIDSLayout
 
     layout = BIDSLayout(bids_root, validate=False)
 
@@ -777,12 +746,8 @@ def epoch_data(
 
     """
 
-    # Import Epochs locally so Nipype Function nodes (which run in separate
-    # processes) have the name available when executing this function.
-    try:
-        from mne import Epochs
-    except Exception as exc:  # pragma: no cover - runtime defensive
-        raise ImportError("mne (Epochs) is required for epoching. Please install mne.") from exc
+    # Local import for nipype subprocess context.
+    from mne import Epochs
 
     # Load events from file or extract from data
     if events_file:
@@ -1470,11 +1435,11 @@ def setup_derivatives_directories(bids_root, subject, create_preprocessing=True,
     preproc_dir = None
     if create_preprocessing:
         preproc_dir = derivatives_root / "ffrprep-preprocessing"
-    preproc_subject_dir = preproc_dir / f"sub-{subject}"
-    preproc_subject_dir.mkdir(parents=True, exist_ok=True)
-    # Create an 'eeg' subdirectory for EEG-specific outputs
-    preproc_subject_eeg_dir = preproc_subject_dir / "eeg"
-    preproc_subject_eeg_dir.mkdir(parents=True, exist_ok=True)
+        preproc_subject_dir = preproc_dir / f"sub-{subject}"
+        preproc_subject_dir.mkdir(parents=True, exist_ok=True)
+        # Create an 'eeg' subdirectory for EEG-specific outputs
+        preproc_subject_eeg_dir = preproc_subject_dir / "eeg"
+        preproc_subject_eeg_dir.mkdir(parents=True, exist_ok=True)
 
     # Set up analysis derivatives
     analysis_dir = None
@@ -1591,6 +1556,27 @@ def save_preprocessing_outputs(epochs, bids_root, subject, task, session=None, r
 
     output_path = derivatives_info["preprocessing_subject_dir"] / filename
 
+    # Write dataset_description.json once at the preprocessing root if it
+    # doesn't yet exist. This must happen before the save/return below,
+    # otherwise the writes never run.
+    preprocessing_dir = derivatives_info["preprocessing_dir"]
+    dataset_desc_path = preprocessing_dir / "dataset_description.json"
+    if not dataset_desc_path.exists():
+        import json as _json
+
+        dataset_desc = {
+            "Name": "ffrprep preprocessing outputs",
+            "BIDSVersion": "1.6.0",
+            "GeneratedBy": [
+                {
+                    "Name": "ffrprep",
+                    "Description": "Frequency-following response preprocessing pipeline",
+                }
+            ],
+        }
+        with open(dataset_desc_path, "w") as f:
+            _json.dump(dataset_desc, f, indent=2)
+
     # Ensure epochs.times is immutable (MNE requires non-writeable times array).
     # To be robust when this function runs inside a Nipype subprocess, make
     # a safe copy of the Epochs object, assign a non-writeable times array to
@@ -1660,27 +1646,6 @@ def save_preprocessing_outputs(epochs, bids_root, subject, task, session=None, r
             return output_path
         except Exception:
             raise
-
-    # Create dataset_description.json if it doesn't exist
-    preprocessing_dir = derivatives_info["preprocessing_dir"]
-    dataset_desc_path = preprocessing_dir / "dataset_description.json"
-    if not dataset_desc_path.exists():
-        import json
-
-        dataset_desc = {
-            "Name": "ffrprep preprocessing outputs",
-            "BIDSVersion": "1.6.0",
-            "GeneratedBy": [
-                {
-                    "Name": "ffrprep",
-                    "Description": ("Frequency-following response preprocessing " "pipeline"),
-                }
-            ],
-        }
-        with open(dataset_desc_path, "w") as f:
-            json.dump(dataset_desc, f, indent=2)
-
-    return output_path
 
 
 def load_preprocessing_outputs(bids_root, subject, original_filename=None):

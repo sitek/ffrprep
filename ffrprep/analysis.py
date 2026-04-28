@@ -1,7 +1,7 @@
 import numpy as np
 from numpy import mean, sqrt, square
 import mne
-import statsmodels as sm
+from statsmodels.tsa.stattools import acf as _sm_acf
 
 
 def compute_power(avg_evoked, f_low=90, f_high=110, t_low=0.1, t_high=0.2):
@@ -107,10 +107,13 @@ def rms_snr(evoked, response_lower=0.100, response_upper=0.200):
 
 
 def autocorrelation(evoked):
-    acf, confidence_interval = sm.tsa.stattools.acf(
-        evoked,
-        nlags=len(evoked) - 1,
-        alpha=0.05
+    # statsmodels.acf needs a 1-D sequence. Match compute_pitch_and_conf
+    # by taking the first channel's time series.
+    signal = evoked.data[0]
+    acf, confidence_interval = _sm_acf(
+        signal,
+        nlags=len(signal) - 1,
+        alpha=0.05,
     )
 
     return acf, confidence_interval
