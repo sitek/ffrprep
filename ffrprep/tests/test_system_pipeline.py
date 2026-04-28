@@ -142,6 +142,57 @@ def test_multiple_subjects_single_run(bids_workspace, tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# CLI flag coverage — --concat-runs and --save-each-node
+# ---------------------------------------------------------------------------
+
+def test_concat_runs_single_subject(bids_workspace, tmp_path):
+    """``--concat-runs`` runs a single workflow per task with runs merged.
+
+    With concatenation, the per-run loop is bypassed and the resulting
+    derivative file should not carry a ``run-*`` token.
+    """
+    out_dir = tmp_path / "out"
+    work_dir = tmp_path / "work"
+    _run_ffrprep(
+        bids_workspace, out_dir, work_dir,
+        "--participant_label", "03",
+        "--task", "active",
+        "--concat-runs",
+    )
+    sub_deriv = _derivatives_root(bids_workspace) / "sub-03"
+    fifs = sorted(sub_deriv.rglob("sub-03_task-active*.fif"))
+    assert fifs, "concat-runs produced no derivatives"
+    # No per-run output should appear when runs are concatenated
+    per_run = [f for f in fifs if "_run-" in f.name]
+    assert not per_run, (
+        f"--concat-runs should suppress per-run derivative files; got {per_run}"
+    )
+
+
+def test_save_each_node_writes_intermediates(bids_workspace, tmp_path):
+    """``--save-each-node`` should leave intermediate node outputs on disk."""
+    out_dir = tmp_path / "out"
+    work_dir = tmp_path / "work"
+    _run_ffrprep(
+        bids_workspace, out_dir, work_dir,
+        "--participant_label", "03",
+        "--task", "active",
+        "--run", "1",
+        "--save-each-node",
+    )
+    # With disk-backed mode, multiple .fif files representing intermediate
+    # preprocessing steps (referenced, filtered, epoched) should appear in
+    # the work dir or under derivatives. We assert the count is materially
+    # larger than the single output produced without --save-each-node.
+    intermediate = list(work_dir.rglob("*.fif"))
+    intermediate += list(_derivatives_root(bids_workspace).rglob("*.fif"))
+    assert len(intermediate) >= 3, (
+        f"--save-each-node should leave at least three intermediate .fif "
+        f"files on disk; found {len(intermediate)}: {intermediate}"
+    )
+
+
+# ---------------------------------------------------------------------------
 # Session axis — dataset has no ses-* level
 # ---------------------------------------------------------------------------
 

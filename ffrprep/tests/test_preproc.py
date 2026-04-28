@@ -1,9 +1,18 @@
+import json
 import shutil
 import pytest
-from ffrprep.datasets import download_unzip_exp_data
-from ffrprep.preproc import load_data, reference_data
-from ffrprep.preproc import filter_data, epoch_data, preproc_pipeline
-from ffrprep.preproc import make_evoked
+from ffrprep.datasets import download_example_data
+from ffrprep.preproc import (
+    create_preprocessing_workflow,
+    epoch_data,
+    filter_data,
+    load_data,
+    make_evoked,
+    reference_data,
+    save_analysis_outputs,
+    save_preprocessing_outputs,
+    setup_derivatives_directories,
+)
 
 
 def test_load_data(tmp_path):
@@ -562,17 +571,19 @@ def test_epoch_data(tmp_path):
         assert times[-1] <= time_window1[1], \
             "Last time point should be <= tmax"
 
-    # Test 8: Verify baseline correction was applied
+    # Test 8: Verify baseline correction was applied (EEG channels only —
+    # stim channels are deliberately NOT baseline-corrected by MNE).
     if len(epochs1) > 0:
-        # Epochs should have baseline correction applied
-        # The baseline period should have values close to zero after
         baseline_indices = (epochs1.times >= -0.1) & (epochs1.times <= 0)
         if np.any(baseline_indices):
-            baseline_data = epochs_data[:, :, baseline_indices]
-            baseline_mean = np.mean(baseline_data, axis=2)  # Mean
-            # After baseline correction, baseline period should be ~zero
+            eeg_picks = [
+                i for i, ch in enumerate(epochs1.ch_names)
+                if epochs1.get_channel_types([ch])[0] == "eeg"
+            ]
+            baseline_data = epochs_data[:, eeg_picks, :][:, :, baseline_indices]
+            baseline_mean = np.mean(baseline_data, axis=2)
             assert np.all(np.abs(baseline_mean) < 1e-10), \
-                "Baseline period should be close to zero after correction"
+                "EEG baseline period should be ~zero after correction"
 
     print("✓ All epoch_data tests passed!")
 
@@ -869,12 +880,14 @@ def test_output_structure_and_files(tmp_path):
     assert dataset_desc["Name"] == "ffrprep preprocessing outputs"
     assert "ffrprep" in str(dataset_desc["GeneratedBy"]).lower()
 
-    # Verify preprocessing output file naming convention
+    # Verify preprocessing output file naming convention. Outputs land
+    # under the BIDS-derivatives ``sub-XX/eeg`` subdirectory, and the
+    # filename uses MNE's conventional ``_epo.fif`` epoch suffix.
     expected_preprocessing_filename = (
-        "sub-03_task-passive_run-1_desc-preproc.fif"
+        "sub-03_task-passive_run-1_desc-preproc_epo.fif"
     )
     expected_preprocessing_path = (
-        subject_preprocessing_dir / expected_preprocessing_filename
+        subject_preprocessing_dir / "eeg" / expected_preprocessing_filename
     )
 
     assert expected_preprocessing_path.exists(), (
@@ -890,7 +903,9 @@ def test_output_structure_and_files(tmp_path):
         epochs, data_path, subject="03", task="passive",
         session="01", run=1
     )
-    expected_with_session = "sub-03_ses-01_task-passive_run-1_desc-preproc.fif"
+    expected_with_session = (
+        "sub-03_ses-01_task-passive_run-1_desc-preproc_epo.fif"
+    )
     assert preprocessing_output_with_session.name == expected_with_session, \
         "Filename should include session when provided"
 
@@ -899,7 +914,7 @@ def test_output_structure_and_files(tmp_path):
         epochs, data_path, subject="03", task="passive",
         session=None, run=None
     )
-    expected_no_run = "sub-03_task-passive_desc-preproc.fif"
+    expected_no_run = "sub-03_task-passive_desc-preproc_epo.fif"
     assert preprocessing_output_no_run.name == expected_no_run, \
         "Filename should work without run parameter"
 
@@ -1175,18 +1190,23 @@ def test_setup_derivatives_directories(tmp_path):
     assert result["derivatives_root"] == derivatives_root, \
         "Should return correct derivatives root path"
 
-    # Check preprocessing directory structure
+    # Check preprocessing directory structure. preprocessing_subject_dir
+    # points at the BIDS-derivatives ``sub-XX/eeg`` subdirectory where the
+    # actual preprocessed EEG outputs live (per setup_derivatives_directories).
     preproc_dir = derivatives_root / "ffrprep-preprocessing"
     preproc_subject_dir = preproc_dir / "sub-03"
+    preproc_subject_eeg_dir = preproc_subject_dir / "eeg"
 
     assert preproc_dir.exists(), \
         "Preprocessing directory should be created"
     assert preproc_subject_dir.exists(), \
         "Preprocessing subject directory should be created"
+    assert preproc_subject_eeg_dir.exists(), \
+        "Preprocessing subject eeg/ subdirectory should be created"
     assert result["preprocessing_dir"] == preproc_dir, \
         "Should return correct preprocessing directory path"
-    assert result["preprocessing_subject_dir"] == preproc_subject_dir, \
-        "Should return correct preprocessing subject directory path"
+    assert result["preprocessing_subject_dir"] == preproc_subject_eeg_dir, \
+        "Should point at the BIDS-derivatives eeg/ subdirectory"
 
     # Check analysis directory structure
     analysis_dir = derivatives_root / "ffrprep-analysis"
@@ -1364,396 +1384,174 @@ def test_setup_derivatives_directories(tmp_path):
     print("✓ All setup_derivatives_directories tests passed!")
 
 
-def test_load_data_with_example_dataset(tmp_path):
-    """Test load_data function with real example dataset."""
-    # Download the example dataset
-    try:
-        data_path = download_example_data(tmp_path / "example_data")
-
-        # Test loading data from the real dataset
-        loaded_data, bids_path, original_filename = load_data(
-            bids_root=str(data_path),
-            sub_label="03",  # Based on available subjects
-            task_label="passive",
-            run_label=1
-        )
-
-        # Verify loaded data properties
-        import mne
-        assert loaded_data is not None, \
-            "Should successfully load real example data"
-        assert isinstance(loaded_data, mne.io.BaseRaw), \
-            "Loaded data should be MNE Raw object"
-        assert loaded_data.n_times > 0, \
-            "Real data should have time points"
-        assert len(loaded_data.ch_names) > 0, \
-            "Real data should have channels"
-
-        # Verify BIDS path
-        assert bids_path.subject == "03", \
-            "BIDS path should have correct subject"
-        assert bids_path.task == "passive", \
-            "BIDS path should have correct task"
-
-        # Verify original filename
-        assert "sub-03" in original_filename, \
-            "Original filename should contain subject ID"
-        assert "task-passive" in original_filename, \
-            "Original filename should contain task"
-
-        print("✓ load_data with example dataset test passed!")
-
-    except Exception as e:
-        print(f"Example dataset test skipped (download issue): {e}")
-        pytest.skip("Example dataset download failed")
-
-    finally:
-        # Clean up
-        if 'data_path' in locals() and data_path.exists():
-            shutil.rmtree(data_path)
-
-
-def test_reference_data_with_example_dataset(tmp_path):
-    """Test reference_data function with real example dataset."""
-    try:
-        # Download and load real data
-        data_path = download_example_data(tmp_path / "example_data")
-        raw_data, _, _ = load_data(
-            bids_root=str(data_path),
-            sub_label="03",
-            task_label="passive",
-            run_label=1
-        )
-
-        # Test average referencing
-        referenced_data = reference_data(raw_data, ref_channels=None)
-
-        # Verify referencing worked
-        assert referenced_data is not None, \
-            "Referencing should work with real data"
-        assert len(referenced_data.ch_names) == len(raw_data.ch_names), \
-            "Referencing should preserve channel count"
-        assert referenced_data.info['sfreq'] == raw_data.info['sfreq'], \
-            "Referencing should preserve sampling frequency"
-
-        # Verify data was actually modified (average reference changes data)
-        import numpy as np
-        orig_data = raw_data.get_data()
-        ref_data = referenced_data.get_data()
-
-        # Data should be different after referencing (unless already
-        # referenced)
-        data_changed = not np.allclose(orig_data, ref_data, atol=1e-10)
-        if not data_changed:
-            print("Note: Data may have been already average referenced")
-
-        print("✓ reference_data with example dataset test passed!")
-
-    except Exception as e:
-        print(f"Example dataset test skipped: {e}")
-        pytest.skip("Example dataset test failed")
-
-    finally:
-        # Clean up
-        if 'data_path' in locals() and data_path.exists():
-            shutil.rmtree(data_path)
-
-
-def test_filter_data_with_example_dataset(tmp_path):
-    """Test filter_data function with real example dataset."""
-    try:
-        # Download and load real data
-        data_path = download_example_data(tmp_path / "example_data")
-        raw_data, _, _ = load_data(
-            bids_root=str(data_path),
-            sub_label="03",
-            task_label="passive",
-            run_label=1
-        )
-
-        # Apply filtering
-        filtered_data = filter_data(
-            eeg_data=raw_data,
-            high_pass=1.0,
-            low_pass=40.0
-        )
-
-        # Verify filtering worked
-        assert filtered_data is not None, \
-            "Filtering should work with real data"
-        assert len(filtered_data.ch_names) == len(raw_data.ch_names), \
-            "Filtering should preserve channel count"
-        assert filtered_data.n_times == raw_data.n_times, \
-            "Filtering should preserve time points"
-        assert filtered_data.info['sfreq'] == raw_data.info['sfreq'], \
-            "Filtering should preserve sampling frequency"
-
-        # Check filter info was added
-        assert 'lowpass' in filtered_data.info, \
-            "Lowpass filter info should be stored"
-        assert 'highpass' in filtered_data.info, \
-            "Highpass filter info should be stored"
-        assert filtered_data.info['lowpass'] == 40.0, \
-            "Lowpass frequency should be correct"
-        assert filtered_data.info['highpass'] == 1.0, \
-            "Highpass frequency should be correct"
-
-        print("✓ filter_data with example dataset test passed!")
-
-    except Exception as e:
-        print(f"Example dataset test skipped: {e}")
-        pytest.skip("Example dataset test failed")
-
-    finally:
-        # Clean up
-        if 'data_path' in locals() and data_path.exists():
-            shutil.rmtree(data_path)
-
-
-def test_epoch_data_with_example_dataset(tmp_path):
-    """Test epoch_data function with real example dataset."""
-    try:
-        # Download and load real data
-        data_path = download_example_data(tmp_path / "example_data")
-        raw_data, _, _ = load_data(
-            bids_root=str(data_path),
-            sub_label="03",
-            task_label="passive",
-            run_label=1
-        )
-
-        # Apply preprocessing before epoching
-        referenced_data = reference_data(raw_data, ref_channels=None)
-        filtered_data = filter_data(
-            referenced_data, high_pass=1.0, low_pass=40.0
-        )
-
-        # Create epochs
-        epochs, time_window = epoch_data(
-            eeg_data=filtered_data,
-            baseline=-0.1,
-            tmin=-0.2,
-            tmax=0.5,
-            verbose=False
-        )
-
-        # Verify epoching worked
-        assert epochs is not None, \
-            "Epoching should work with real data"
-        assert time_window is not None, \
-            "Time window should be returned"
-        assert time_window[0] == -0.2, \
-            "Time window start should match tmin"
-        assert time_window[1] == 0.5, \
-            "Time window end should match tmax"
-
-        # Check epochs properties
-        if len(epochs) > 0:  # Only test if epochs were found
-            epochs_data = epochs.get_data()
-            assert epochs_data.ndim == 3, \
-                "Epochs data should be 3D"
-            assert epochs_data.shape[0] > 0, \
-                "Should have at least one epoch"
-            assert epochs_data.shape[1] > 0, \
-                "Should have channels"
-            assert epochs_data.shape[2] > 0, \
-                "Should have time points"
-
-            print(f"Created {len(epochs)} epochs from real data")
-        else:
-            print("No epochs found in real data (may be expected)")
-
-        print("✓ epoch_data with example dataset test passed!")
-
-    except Exception as e:
-        print(f"Example dataset test skipped: {e}")
-        pytest.skip("Example dataset test failed")
-
-    finally:
-        # Clean up
-        if 'data_path' in locals() and data_path.exists():
-            shutil.rmtree(data_path)
-
-
-def test_make_evoked_with_example_dataset(tmp_path):
-    """Test make_evoked function with real example dataset."""
-    try:
-        # Download and load real data
-        data_path = download_example_data(tmp_path / "example_data")
-        raw_data, _, _ = load_data(
-            bids_root=str(data_path),
-            sub_label="03",
-            task_label="passive",
-            run_label=1
-        )
-
-        # Apply full preprocessing pipeline
-        referenced_data = reference_data(raw_data, ref_channels=None)
-        filtered_data = filter_data(
-            referenced_data, high_pass=1.0, low_pass=40.0
-        )
-        epochs, _ = epoch_data(
-            eeg_data=filtered_data,
-            baseline=-0.1,
-            tmin=-0.2,
-            tmax=0.5,
-            verbose=False
-        )
-
-        # Only test if we have epochs
-        if len(epochs) > 0:
-            # Test both averaging methods
-            evoked_all = make_evoked(epochs, by_event_type=False)
-            evoked_by_condition = make_evoked(epochs, by_event_type=True)
-
-            # Verify evoked responses
-            import mne
-            assert isinstance(evoked_all, mne.Evoked), \
-                "Should create single evoked response"
-            assert isinstance(evoked_by_condition, dict), \
-                "Should create dictionary of evoked responses"
-
-            # Check that evoked has reasonable properties
-            assert evoked_all.nave > 0, \
-                "Evoked should have positive number of averages"
-            assert len(evoked_all.ch_names) > 0, \
-                "Evoked should have channels"
-
-            print(f"Created evoked responses from {evoked_all.nave} epochs")
-            print(f"Found {len(evoked_by_condition)} event types")
-
-        else:
-            print("No epochs found - skipping evoked response test")
-
-        print("✓ make_evoked with example dataset test passed!")
-
-    except Exception as e:
-        print(f"Example dataset test skipped: {e}")
-        pytest.skip("Example dataset test failed")
-
-    finally:
-        # Clean up
-        if 'data_path' in locals() and data_path.exists():
-            shutil.rmtree(data_path)
-
-
-def test_full_pipeline_with_example_dataset(tmp_path):
-    """Test complete preprocessing pipeline with real example dataset."""
-    try:
-        # Download example data
-        data_path = download_example_data(tmp_path / "example_data")
-
-        # Test full pipeline
-        raw_data, bids_path, original_filename = load_data(
-            bids_root=str(data_path),
-            sub_label="03",
-            task_label="passive",
-            run_label=1
-        )
-
-        # Apply preprocessing steps
-        referenced_data = reference_data(raw_data, ref_channels=None)
-        filtered_data = filter_data(
-            referenced_data, high_pass=1.0, low_pass=40.0
-        )
-        epochs, time_window = epoch_data(
-            eeg_data=filtered_data,
-            baseline=-0.1,
-            tmin=-0.2,
-            tmax=0.5,
-            verbose=False
-        )
-
-        # Test output structure functions
-        derivatives_info = setup_derivatives_directories(
-            bids_root=data_path,
-            subject="03",
-            create_preprocessing=True,
-            create_analysis=True
-        )
-
-        # Verify derivatives structure
-        assert derivatives_info["derivatives_root"].exists(), \
-            "Derivatives root should be created"
-        assert derivatives_info["preprocessing_subject_dir"].exists(), \
-            "Preprocessing subject directory should be created"
-        assert derivatives_info["analysis_subject_dir"].exists(), \
-            "Analysis subject directory should be created"
-
-        # If we have epochs, test saving
-        if len(epochs) > 0:
-            # Test saving preprocessing outputs
-            preprocessing_output = save_preprocessing_outputs(
-                epochs, data_path, subject="03", task="passive",
-                session=None, run=1
-            )
-
-            assert preprocessing_output.exists(), \
-                "Preprocessing output file should be created"
-
-            # Test making and saving evoked response
-            evoked = make_evoked(epochs, by_event_type=False)
-            analysis_outputs = save_analysis_outputs(
-                evoked, data_path, subject="03", task="passive",
-                session=None, run=1, analysis_type="evoked"
-            )
-
-            assert len(analysis_outputs) > 0, \
-                "Analysis outputs should be created"
-            assert analysis_outputs[0].exists(), \
-                "Analysis output file should exist"
-
-            print(
-                f"Successfully processed full pipeline with {len(epochs)} "
-                f"epochs"
-            )
-        else:
-            print("No epochs found - pipeline test completed without epochs")
-
-        print("✓ Full pipeline with example dataset test passed!")
-
-    except Exception as e:
-        print(f"Full pipeline test skipped: {e}")
-        pytest.skip("Full pipeline test failed")
-
-    # Download and unzip the data
-    data_path = download_unzip_exp_data(osf_url, dataset_path)
-    data = preproc_pipeline(bids_root=data_path,
-                            baseline=-0.05,
-                            sub_label='21',
-                            session_label=None,
-                            task_label='passive',
-                            run_label=1,
-                            ref_channels=['M1'],
-                            picks='Cz',
-                            high_pass=80,
-                            low_pass=2000,
-                            verbose=False)
-
-    print(data[0])
-
-    # Clean up the downloaded files after the test
-    shutil.rmtree(dataset_path)
-
-def test_make_evoked(osf_url, tmp_path):
-    # Use temporary directory for testing
-    dataset_path = tmp_path / "test_dataset"
-
-    # Download and unzip the data
-    data_path = download_unzip_exp_data(osf_url, dataset_path)
-
-    data = preproc_pipeline(bids_root=data_path,
-                            sub_label='21',
-                            session_label=None,
-                            task_label='passive',
-                            run_label=1,
-                            verbose=False, baseline=[-0.1, 0.5])
-
-    #epoch the data
-    epoched_data = epoch_data(eeg_data=data, baseline=[-0.2, -0.05], verbose='WARNING')
-
-    #run make_evoked on the epoched data
-    assert isinstance(make_evoked(epoched_data, True), list), "output must be list"
-    assert isinstance(make_evoked(epoched_data, False), mne.Evoked), "output must be evoked object"
-
-    shutil.rmtree(dataset_path)
+@pytest.mark.integration
+def test_load_data_with_example_dataset(bids_dataset):
+    """Test load_data function on the real downloaded example dataset."""
+    import mne
+
+    loaded_data, bids_path, original_filename, _events_file = load_data(
+        bids_root=str(bids_dataset),
+        sub_label="03",
+        task_label="passive",
+        run_label=1,
+    )
+
+    assert isinstance(loaded_data, mne.io.BaseRaw)
+    assert loaded_data.n_times > 0
+    assert len(loaded_data.ch_names) > 0
+
+    assert bids_path.subject == "03"
+    assert bids_path.task == "passive"
+
+    assert "sub-03" in original_filename
+    assert "task-passive" in original_filename
+
+
+@pytest.mark.integration
+def test_reference_data_with_example_dataset(bids_dataset):
+    """Test reference_data on the real downloaded example dataset."""
+    raw_data, _bids_path, _orig_name, _events = load_data(
+        bids_root=str(bids_dataset),
+        sub_label="03",
+        task_label="passive",
+        run_label=1,
+    )
+
+    referenced_data = reference_data(raw_data, ref_channels=None)
+
+    assert len(referenced_data.ch_names) == len(raw_data.ch_names)
+    assert referenced_data.info["sfreq"] == raw_data.info["sfreq"]
+
+
+@pytest.mark.integration
+def test_filter_data_with_example_dataset(bids_dataset):
+    """Test filter_data on the real downloaded example dataset."""
+    raw_data, _bids_path, _orig_name, _events = load_data(
+        bids_root=str(bids_dataset),
+        sub_label="03",
+        task_label="passive",
+        run_label=1,
+    )
+
+    filtered_data = filter_data(eeg_data=raw_data, high_pass=1.0, low_pass=40.0)
+
+    assert len(filtered_data.ch_names) == len(raw_data.ch_names)
+    assert filtered_data.n_times == raw_data.n_times
+    assert filtered_data.info["sfreq"] == raw_data.info["sfreq"]
+    assert filtered_data.info["lowpass"] == 40.0
+    assert filtered_data.info["highpass"] == 1.0
+
+
+@pytest.mark.integration
+def test_epoch_data_with_example_dataset(bids_dataset):
+    """Test epoch_data on the real downloaded example dataset."""
+    raw_data, _bids_path, _orig_name, _events = load_data(
+        bids_root=str(bids_dataset),
+        sub_label="03",
+        task_label="passive",
+        run_label=1,
+    )
+
+    referenced_data = reference_data(raw_data, ref_channels=None)
+    filtered_data = filter_data(referenced_data, high_pass=1.0, low_pass=40.0)
+
+    epochs, time_window = epoch_data(
+        eeg_data=filtered_data,
+        baseline=-0.1,
+        tmin=-0.2,
+        tmax=0.5,
+        verbose=False,
+    )
+
+    assert time_window[0] == -0.2
+    assert time_window[1] == 0.5
+    assert len(epochs) > 0
+
+    epochs_array = epochs.get_data()
+    assert epochs_array.ndim == 3
+    assert epochs_array.shape[0] > 0
+    assert epochs_array.shape[1] > 0
+    assert epochs_array.shape[2] > 0
+
+
+@pytest.mark.integration
+def test_make_evoked_with_example_dataset(bids_dataset):
+    """Test make_evoked on the real downloaded example dataset."""
+    import mne
+
+    raw_data, _bids_path, _orig_name, _events = load_data(
+        bids_root=str(bids_dataset),
+        sub_label="03",
+        task_label="passive",
+        run_label=1,
+    )
+
+    referenced_data = reference_data(raw_data, ref_channels=None)
+    filtered_data = filter_data(referenced_data, high_pass=1.0, low_pass=40.0)
+    epochs, _time_window = epoch_data(
+        eeg_data=filtered_data,
+        baseline=-0.1,
+        tmin=-0.2,
+        tmax=0.5,
+        verbose=False,
+    )
+    assert len(epochs) > 0
+
+    evoked_all = make_evoked(epochs, by_event_type=False)
+    evoked_by_condition = make_evoked(epochs, by_event_type=True)
+
+    assert isinstance(evoked_all, mne.Evoked)
+    assert isinstance(evoked_by_condition, dict)
+    assert evoked_all.nave > 0
+    assert len(evoked_all.ch_names) > 0
+    assert len(evoked_by_condition) > 0
+
+
+@pytest.mark.integration
+def test_full_pipeline_with_example_dataset(bids_workspace):
+    """End-to-end preprocessing on real downloaded data.
+
+    Uses the writable ``bids_workspace`` fixture so derivatives can be
+    written without polluting the cached source dataset.
+    """
+    raw_data, _bids_path, _orig_name, _events = load_data(
+        bids_root=str(bids_workspace),
+        sub_label="03",
+        task_label="passive",
+        run_label=1,
+    )
+
+    referenced_data = reference_data(raw_data, ref_channels=None)
+    filtered_data = filter_data(referenced_data, high_pass=1.0, low_pass=40.0)
+    epochs, _time_window = epoch_data(
+        eeg_data=filtered_data,
+        baseline=-0.1,
+        tmin=-0.2,
+        tmax=0.5,
+        verbose=False,
+    )
+    assert len(epochs) > 0
+
+    derivatives_info = setup_derivatives_directories(
+        bids_root=bids_workspace,
+        subject="03",
+        create_preprocessing=True,
+        create_analysis=True,
+    )
+    assert derivatives_info["derivatives_root"].exists()
+    assert derivatives_info["preprocessing_subject_dir"].exists()
+    assert derivatives_info["analysis_subject_dir"].exists()
+
+    preprocessing_output = save_preprocessing_outputs(
+        epochs, bids_workspace, subject="03", task="passive",
+        session=None, run=1,
+    )
+    assert preprocessing_output.exists()
+
+    evoked = make_evoked(epochs, by_event_type=False)
+    analysis_outputs = save_analysis_outputs(
+        evoked, bids_workspace, subject="03", task="passive",
+        session=None, run=1, analysis_type="evoked",
+    )
+    assert len(analysis_outputs) > 0
+    assert analysis_outputs[0].exists()
