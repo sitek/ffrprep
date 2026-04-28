@@ -13,7 +13,7 @@ from ffrprep.preproc import (
     check_preprocessing_exists,
 )
 import ffrprep.reports as reports
-from ._version import get_versions
+from importlib.metadata import version as _pkg_version
 import re
 
 
@@ -22,7 +22,7 @@ def get_parser():
     """Create and return an argument parser for BIDS-App."""
 
     # get version
-    __version__ = get_versions()["version"]
+    __version__ = _pkg_version("ffrprep")
 
     # define parser description
     parser = argparse.ArgumentParser(
@@ -326,28 +326,24 @@ def parse_event_id(event_id_str):
         return None
     import json
 
-    # Try JSON first
-    try:
-        parsed = json.loads(event_id_str)
-        return parsed
-    except Exception:
-        pass
+    # JSON form first — detect by leading '{' (after stripping whitespace).
+    s = str(event_id_str).strip()
+    if s.startswith("{"):
+        return json.loads(s)
 
-    # Fallback to key:val comma-separated format
+    # Otherwise: key:val comma-separated format.
     mapping = {}
-    for part in str(event_id_str).split(","):
-        if not part.strip():
+    for part in s.split(","):
+        part = part.strip()
+        if not part or ":" not in part:
             continue
-        if ":" in part:
-            k, v = part.split(":", 1)
-            k = k.strip()
-            v = v.strip()
-            try:
-                v = int(v)
-            except Exception:
-                # keep as string if not int
-                pass
-            mapping[k] = v
+        k, v = part.split(":", 1)
+        k = k.strip()
+        v = v.strip()
+        # Coerce to int when the token looks like an integer literal.
+        if v.lstrip("-").isdigit():
+            v = int(v)
+        mapping[k] = v
     return mapping if mapping else None
 
 
@@ -437,76 +433,6 @@ def run_ffrprep():
             print("\n" + "=" * 60)
             print("Running preprocessing workflow...")
             print("=" * 60)
-
-            # Create preprocessing workflow
-            preproc_wf = create_preprocessing_workflow(disk_backed=bool(args.save_each_node))
-
-            # Set working directory for nipype
-            if args.work_dir:
-                work_dir = args.work_dir / f"sub-{subject}" / "preprocessing"
-            else:
-                work_dir = derivatives_info["preprocessing_dir"] / "work" / f"sub-{subject}"
-
-            preproc_wf.base_dir = str(work_dir)
-
-            # Set inputs on the actual inputnode object (avoids trait
-            # notifier propagation issues that can arise when assigning
-            # via workflow.inputs after certain connections are made).
-            try:
-                inputnode_obj = preproc_wf.get_node("inputnode")
-            except Exception:
-                # Fallback: if get_node is not available, fall back to the
-                # workflow.inputs assignment (best-effort).
-                inputnode_obj = None
-
-            if inputnode_obj is not None:
-                inputnode_obj.inputs.bids_root = str(args.bids_dir)
-                inputnode_obj.inputs.sub_label = subject
-                inputnode_obj.inputs.ref_channels = ref_channels
-                # Map effective filter values (l_freq/h_freq) into the workflow
-                inputnode_obj.inputs.high_pass = effective_l
-                inputnode_obj.inputs.low_pass = effective_h
-                inputnode_obj.inputs.baseline = baseline
-                inputnode_obj.inputs.tmin = args.tmin
-                inputnode_obj.inputs.tmax = args.tmax
-                # Pass reject criteria into the workflow inputnode
-                inputnode_obj.inputs.reject = reject_value
-                # Epoching-specific inputs
-                picks = parse_picks(args.picks) if hasattr(args, "picks") else None
-                inputnode_obj.inputs.picks = picks
-                inputnode_obj.inputs.on_missing = getattr(args, "on_missing", "warn")
-                inputnode_obj.inputs.event_id = parse_event_id(getattr(args, "event_id", None))
-                # Only set events_file on the inputnode if the user provided
-                # an explicit path. Setting it to None can trigger Nipype's
-                # trait notifier machinery which tries to propagate the value
-                # to connected nodes and may fail if connections exist.
-                if getattr(args, "events_file", None) is not None:
-                    inputnode_obj.inputs.events_file = args.events_file
-                # Pass derivatives root so epoching can find stimtrack event files
-                inputnode_obj.inputs.derivatives_root = str(derivatives_info.get("derivatives_root", ""))
-
-                # Set output directory for results
-                inputnode_obj.inputs.output_dir = str(derivatives_info["preprocessing_subject_dir"])
-            else:
-                # Best-effort fallback: assign to workflow.inputs (may trigger
-                # notifier but keeps compatibility with older nipype versions)
-                preproc_wf.inputs.inputnode.bids_root = str(args.bids_dir)
-                preproc_wf.inputs.inputnode.sub_label = subject
-                preproc_wf.inputs.inputnode.ref_channels = ref_channels
-                preproc_wf.inputs.inputnode.high_pass = effective_l
-                preproc_wf.inputs.inputnode.low_pass = effective_h
-                preproc_wf.inputs.inputnode.baseline = baseline
-                preproc_wf.inputs.inputnode.tmin = args.tmin
-                preproc_wf.inputs.inputnode.tmax = args.tmax
-                preproc_wf.inputs.inputnode.reject = reject_value
-                picks = parse_picks(args.picks) if hasattr(args, "picks") else None
-                preproc_wf.inputs.inputnode.picks = picks
-                preproc_wf.inputs.inputnode.on_missing = getattr(args, "on_missing", "warn")
-                preproc_wf.inputs.inputnode.event_id = parse_event_id(getattr(args, "event_id", None))
-                if getattr(args, "events_file", None) is not None:
-                    preproc_wf.inputs.inputnode.events_file = args.events_file
-                preproc_wf.inputs.inputnode.derivatives_root = str(derivatives_info.get("derivatives_root", ""))
-                preproc_wf.inputs.inputnode.output_dir = str(derivatives_info["preprocessing_subject_dir"])
 
             # Determine runs for this subject. Default behavior: process
             # runs separately (one workflow run per run label). If the user

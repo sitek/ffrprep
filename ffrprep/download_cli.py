@@ -2,7 +2,7 @@
 import argparse
 from pathlib import Path
 
-from ffrprep._version import get_versions
+from importlib.metadata import version as _pkg_version
 from ffrprep.datasets import (
     download_epoch_data,
     download_example_data,
@@ -48,7 +48,7 @@ def _add_subjects_argument(parser):
 
 def get_parser():
     """Create the argument parser for ffrprep-download."""
-    __version__ = get_versions()["version"]
+    __version__ = _pkg_version("ffrprep")
 
     parser = argparse.ArgumentParser(
         prog="ffrprep-download",
