@@ -417,12 +417,9 @@ def plot_pitch_and_conf(results):
     if (conf_rmax is not None and
             (conf_rmax.size == mask.sum() or
              conf_rmax.size == len(times))):
-        # try align lengths (conf arrays are usually same length as times)
-        try:
-            color_vals = conf_rmax
-            color_label = 'conf_rmax'
-        except Exception:
-            color_vals = None
+        # Align lengths (conf arrays are usually same length as times)
+        color_vals = conf_rmax
+        color_label = 'conf_rmax'
 
     if color_vals is None and peak_strength is not None:
         color_vals = peak_strength

@@ -1,6 +1,8 @@
 import argparse
+import logging
 import os
 import sys
+import time
 from pathlib import Path
 
 from ffrprep.utils import validate_input_dir
@@ -10,11 +12,101 @@ from ffrprep.preproc import (
     get_participants,
     get_sessions_tasks_runs,
     setup_derivatives_directories,
-    check_preprocessing_exists,
 )
 import ffrprep.reports as reports
 from importlib.metadata import version as _pkg_version
 import re
+
+
+def _propagate_run_provenance(preproc_file, analysis_dir):
+    """Copy ConcatenatedRuns / Run from a preproc sidecar to its analysis siblings.
+
+    The analysis stage only sees the preprocessing .fif filename; for
+    concatenated-run inputs the filename has no ``_run-N`` token so the
+    downstream save can't know it represents multiple runs. This helper
+    reads the preproc sidecar and writes the same provenance fields into
+    every analysis sidecar that came from this preproc file.
+    """
+    import json
+
+    preproc_sidecar = preproc_file.with_suffix(".json")
+    if not preproc_sidecar.exists():
+        return
+    with open(preproc_sidecar) as f:
+        preproc_meta = json.load(f)
+    fields = {}
+    if "ConcatenatedRuns" in preproc_meta:
+        fields["ConcatenatedRuns"] = preproc_meta["ConcatenatedRuns"]
+    if "Run" in preproc_meta and "Run" not in fields:
+        fields["Run"] = preproc_meta["Run"]
+    if not fields:
+        return
+
+    # The analysis sidecar(s) for this preproc file share its base stem
+    # minus the desc-preproc_epo suffix.
+    base_stem = preproc_file.stem.replace("_desc-preproc_epo", "")
+    for analysis_sidecar in analysis_dir.glob(f"{base_stem}_desc-*.json"):
+        with open(analysis_sidecar) as f:
+            data = json.load(f)
+        data.update(fields)
+        with open(analysis_sidecar, "w") as f:
+            json.dump(data, f, indent=2)
+
+
+def _setup_subject_log(derivatives_info, subject):
+    """Tee stdout-style run information into a per-subject log file.
+
+    Creates ``sub-<id>_ffrprep.log`` next to the subject's preprocessing
+    derivatives. The file captures the CLI invocation, ffrprep version,
+    timestamp, and any subsequent log messages emitted via the root or
+    nipype loggers. A handler is attached per call so each subject ends
+    up with its own log file.
+    """
+    log_dir = derivatives_info.get("preprocessing_subject_dir") or derivatives_info.get("analysis_subject_dir")
+    if log_dir is None:
+        return
+    log_dir = Path(log_dir)
+    log_dir.mkdir(parents=True, exist_ok=True)
+    # BIDS-derivatives style: sub-XX_<descriptor>.log so the file sits
+    # alongside the corresponding stage's outputs.
+    descriptor = "preprocessing" if "preprocessing_subject_dir" in derivatives_info and \
+        derivatives_info["preprocessing_subject_dir"] is not None else "analysis"
+    log_path = log_dir / f"sub-{subject}_{descriptor}.log"
+
+    # Clean up the legacy log filename (pre-descriptor naming) if present.
+    legacy_log_path = log_dir / f"sub-{subject}_ffrprep.log"
+    if legacy_log_path.exists() and legacy_log_path != log_path:
+        legacy_log_path.unlink()
+
+    # Detach any per-subject handler left over from a previous subject in
+    # the same process (otherwise its log file keeps capturing this
+    # subject's messages too — log bleed between subjects).
+    root_logger = logging.getLogger()
+    for existing in list(root_logger.handlers):
+        if getattr(existing, "_ffrprep_subject_handler", False):
+            root_logger.removeHandler(existing)
+            existing.close()
+
+    handler = logging.FileHandler(log_path, mode="w")
+    handler.setLevel(logging.INFO)
+    handler.setFormatter(
+        logging.Formatter("%(asctime)s %(name)s %(levelname)s: %(message)s")
+    )
+    # Tag so the next call can find and remove it.
+    handler._ffrprep_subject_handler = True
+
+    # Attach the handler only to the root logger. nipype's logger
+    # propagates to root by default, so the messages get captured exactly
+    # once. (Adding the handler to both root and nipype causes duplicate
+    # log lines.)
+    root_logger.setLevel(logging.INFO)
+    root_logger.addHandler(handler)
+
+    root_logger.info("ffrprep version: %s", _pkg_version("ffrprep"))
+    root_logger.info("invocation: %s", " ".join(sys.argv))
+    root_logger.info("started at: %s", time.strftime("%Y-%m-%d %H:%M:%S"))
+    root_logger.info("derivatives root: %s", derivatives_info.get("derivatives_root"))
+    print(f"Run log: {log_path}")
 
 
 # Define parser to collect required inputs
@@ -428,6 +520,12 @@ def run_ffrprep():
 
         print(f"Derivatives will be stored in: " f"{derivatives_info['derivatives_root']}")
 
+        # Persist a structured run log next to the subject's derivatives so
+        # there is a record of inputs/outputs/computing logs after the run.
+        # The handler is added per-subject so each subject gets its own log
+        # file in its own derivatives directory.
+        _setup_subject_log(derivatives_info, subject)
+
         # Create workflow based on stage
         if args.stage in ["preprocessing", "both"]:
             print("\n" + "=" * 60)
@@ -486,7 +584,8 @@ def run_ffrprep():
                     sys.exit(2)
                 if missing_tasks:
                     print(
-                        f"Warning: Requested task(s) {missing_tasks} not found for subject sub-{subject}; they will be ignored."
+                        f"Warning: Requested task(s) {missing_tasks} not found for "
+                        f"subject sub-{subject}; they will be ignored."
                     )
                     tasks = [t for t in tasks if t in valid_tasks]
                 if not tasks:
@@ -499,7 +598,8 @@ def run_ffrprep():
                 # requested runs, treat as an error (likely CLI/dataset mismatch).
                 if not valid_runs:
                     print(
-                        f"ERROR: No runs available for subject sub-{subject} in dataset but --run was provided ({runs})."
+                        f"ERROR: No runs available for subject sub-{subject} in "
+                        f"dataset but --run was provided ({runs})."
                     )
                     sys.exit(2)
 
@@ -511,7 +611,8 @@ def run_ffrprep():
                     sys.exit(2)
                 if missing_runs:
                     print(
-                        f"Warning: Requested run(s) {missing_runs} not found for subject sub-{subject}; they will be ignored."
+                        f"Warning: Requested run(s) {missing_runs} not found for "
+                        f"subject sub-{subject}; they will be ignored."
                     )
                     runs = [r for r in runs if r in valid_runs]
                 if not runs:
@@ -539,11 +640,9 @@ def run_ffrprep():
 
                     # Set inputs directly on the inputnode Node to avoid
                     # trait-notifier propagation issues when connections
-                    # already exist on the workflow.
-                    try:
-                        in_node = preproc_wf_run.get_node("inputnode")
-                    except Exception:
-                        in_node = None
+                    # already exist on the workflow. nipype's get_node
+                    # returns None when the node is missing.
+                    in_node = preproc_wf_run.get_node("inputnode")
 
                     if in_node is not None:
                         in_node.inputs.bids_root = str(args.bids_dir)
@@ -604,6 +703,24 @@ def run_ffrprep():
                     else:
                         preproc_wf_run.run(plugin="Linear")
 
+                    # Same nipype-cache safety check as the per-run branch:
+                    # confirm the concat output landed on disk. Concatenated
+                    # outputs have no run token in the filename.
+                    expected_dir = Path(derivatives_info["preprocessing_subject_dir"])
+                    candidates = sorted(expected_dir.glob(
+                        f"sub-{subject}_*task-{task_label}_desc-preproc_epo.fif"
+                    ))
+                    candidates = [c for c in candidates if "_run-" not in c.name]
+                    if not candidates:
+                        raise FileNotFoundError(
+                            f"Concatenated preprocessing reported success but "
+                            f"no _desc-preproc_epo.fif appeared in {expected_dir} "
+                            f"for sub-{subject}, task-{task_label}. Most likely "
+                            f"cause: stale nipype cache pointing at a "
+                            f"previously-deleted output. Wipe the work directory "
+                            f"({preproc_wf_run.base_dir}) and re-run."
+                        )
+
                     print("\nPreprocessing (concatenated) completed.")
                     print(f"Outputs saved to: {derivatives_info['preprocessing_subject_dir']}")
 
@@ -612,93 +729,82 @@ def run_ffrprep():
                 print("Generating preprocessing report...")
                 print("=" * 60)
 
-                try:
-                    preproc_dir = Path(derivatives_info["preprocessing_subject_dir"])
+                preproc_dir = Path(derivatives_info["preprocessing_subject_dir"])
 
-                    # Collect files grouped by task/run for each stage
-                    def _collect_grouped(base_dir, patterns):
-                        grouped = {}
-                        for pat in patterns:
-                            for p in base_dir.glob(pat):
-                                name = p.name
-                                # Try to extract task-<task> and run-<run>
-                                m_task = re.search(r"task-([^_]+)", name)
-                                m_run = re.search(r"run-([^_]+)", name)
-                                task = m_task.group(1) if m_task else ""
-                                run = m_run.group(1) if m_run else ""
-                                grouped.setdefault(task, {}).setdefault(run, []).append(str(p))
-                        return grouped
+                # Collect files grouped by task/run for each stage
+                def _collect_grouped(base_dir, patterns):
+                    grouped = {}
+                    for pat in patterns:
+                        for p in base_dir.glob(pat):
+                            name = p.name
+                            # Try to extract task-<task> and run-<run>
+                            m_task = re.search(r"task-([^_]+)", name)
+                            m_run = re.search(r"run-([^_]+)", name)
+                            task = m_task.group(1) if m_task else ""
+                            run = m_run.group(1) if m_run else ""
+                            grouped.setdefault(task, {}).setdefault(run, []).append(str(p))
+                    return grouped
 
-                    raw_patterns = ["*_desc-loaded_raw.fif"]
-                    events_patterns = ["*_events.tsv"]
-                    referenced_patterns = ["*_desc-referenced_raw.fif"]
-                    filtered_patterns = ["*_desc-filtered_raw.fif"]
-                    epoched_patterns = ["*_desc-preproc_epo.fif"]
+                raw_patterns = ["*_desc-loaded_raw.fif"]
+                events_patterns = ["*_events.tsv"]
+                referenced_patterns = ["*_desc-referenced_raw.fif"]
+                filtered_patterns = ["*_desc-filtered_raw.fif"]
+                epoched_patterns = ["*_desc-preproc_epo.fif"]
 
-                    raw_files = _collect_grouped(preproc_dir, raw_patterns)
-                    events_files = _collect_grouped(preproc_dir, events_patterns)
-                    referenced_files = _collect_grouped(preproc_dir, referenced_patterns)
-                    filtered_files = _collect_grouped(preproc_dir, filtered_patterns)
-                    epoched_files = _collect_grouped(preproc_dir, epoched_patterns)
+                raw_files = _collect_grouped(preproc_dir, raw_patterns)
+                events_files = _collect_grouped(preproc_dir, events_patterns)
+                referenced_files = _collect_grouped(preproc_dir, referenced_patterns)
+                filtered_files = _collect_grouped(preproc_dir, filtered_patterns)
+                epoched_files = _collect_grouped(preproc_dir, epoched_patterns)
 
-                    print(f"\nCollected files:")
-                    print(
-                        f"  Raw files: {sum(len(r) for t in raw_files.values() for r in t.values()) if raw_files else 0}"
-                    )
-                    print(
-                        f"  Events files: {sum(len(r) for t in events_files.values() for r in t.values()) if events_files else 0}"
-                    )
-                    print(
-                        f"  Referenced files: {sum(len(r) for t in referenced_files.values() for r in t.values()) if referenced_files else 0}"
-                    )
-                    print(
-                        f"  Filtered files: {sum(len(r) for t in filtered_files.values() for r in t.values()) if filtered_files else 0}"
-                    )
-                    print(
-                        f"  Epoched files: {sum(len(r) for t in epoched_files.values() for r in t.values()) if epoched_files else 0}"
-                    )
+                def _total(grouped):
+                    if not grouped:
+                        return 0
+                    return sum(len(r) for t in grouped.values() for r in t.values())
 
-                    report_name = f"sub-{subject}_preprocessing_report.h5"
-                    report_path = reports.create_subject_report(
-                        str(args.bids_dir),
-                        out_dir=str(preproc_dir),
-                        filename=report_name,
-                        subject_id=subject,
-                        command=" ".join(sys.argv),
-                    )
+                print("\nCollected files:")
+                print(f"  Raw files: {_total(raw_files)}")
+                print(f"  Events files: {_total(events_files)}")
+                print(f"  Referenced files: {_total(referenced_files)}")
+                print(f"  Filtered files: {_total(filtered_files)}")
+                print(f"  Epoched files: {_total(epoched_files)}")
 
-                    # Add summary
-                    reports.add_report_summary(
-                        report_path,
-                        command=" ".join(sys.argv),
-                        raw_files=raw_files,
-                        events_files=events_files,
-                        referenced_files=referenced_files,
-                        filtered_files=filtered_files,
-                        epoched_files=epoched_files,
-                    )
+                report_name = f"sub-{subject}_preprocessing_report.h5"
+                report_path = reports.create_subject_report(
+                    str(args.bids_dir),
+                    out_dir=str(preproc_dir),
+                    filename=report_name,
+                    subject_id=subject,
+                    command=" ".join(sys.argv),
+                    overwrite=True,
+                )
 
-                    # Add all processing stages organized by task/run
-                    reports.add_processing_stages(
-                        report_path,
-                        raw_files=raw_files,
-                        events_files=events_files,
-                        referenced_files=referenced_files,
-                        filtered_files=filtered_files,
-                        epoched_files=epoched_files,
-                    )
+                # Add summary
+                reports.add_report_summary(
+                    report_path,
+                    command=" ".join(sys.argv),
+                    raw_files=raw_files,
+                    events_files=events_files,
+                    referenced_files=referenced_files,
+                    filtered_files=filtered_files,
+                    epoched_files=epoched_files,
+                )
 
-                    # Export to HTML
-                    html_path = reports.save_report(report_path, overwrite=True)
-                    print(f"\n{'='*60}")
-                    print(f"Preprocessing report written to: {html_path}")
-                    print(f"{'='*60}")
+                # Add all processing stages organized by task/run
+                reports.add_processing_stages(
+                    report_path,
+                    raw_files=raw_files,
+                    events_files=events_files,
+                    referenced_files=referenced_files,
+                    filtered_files=filtered_files,
+                    epoched_files=epoched_files,
+                )
 
-                except Exception as e:
-                    print(f"Warning: could not generate preprocessing report: {e}")
-                    import traceback
-
-                    traceback.print_exc()
+                # Export to HTML
+                html_path = reports.save_report(report_path, overwrite=True)
+                print(f"\n{'=' * 60}")
+                print(f"Preprocessing report written to: {html_path}")
+                print(f"{'=' * 60}")
 
             else:
                 # Process each task and run separately
@@ -735,11 +841,9 @@ def run_ffrprep():
 
                         preproc_wf_run.base_dir = str(work_dir)
 
-                        # Set inputs for this run safely on the inputnode Node
-                        try:
-                            in_node = preproc_wf_run.get_node("inputnode")
-                        except Exception:
-                            in_node = None
+                        # Set inputs for this run on the inputnode Node.
+                        # nipype's get_node returns None when missing.
+                        in_node = preproc_wf_run.get_node("inputnode")
 
                         if in_node is not None:
                             in_node.inputs.bids_root = str(args.bids_dir)
@@ -797,6 +901,31 @@ def run_ffrprep():
                         else:
                             preproc_wf_run.run(plugin="Linear")
 
+                        # Verify the expected output file actually exists. nipype
+                        # caches by input hash and reports "Cached, collecting
+                        # precomputed outputs" without checking that the recorded
+                        # output file still exists on disk. If a previous run was
+                        # cleaned up but the work cache wasn't, the workflow
+                        # silently "succeeds" without writing anything. Catch
+                        # that here with a clear actionable error.
+                        expected_dir = Path(derivatives_info["preprocessing_subject_dir"])
+                        run_token = f"run-{run_label}" if run_label is not None else None
+                        candidates = sorted(expected_dir.glob(
+                            f"sub-{subject}_*task-{task_label}_*desc-preproc_epo.fif"
+                        ))
+                        if run_token is not None:
+                            candidates = [c for c in candidates if run_token in c.name]
+                        if not candidates:
+                            raise FileNotFoundError(
+                                f"Preprocessing reported success but no "
+                                f"_desc-preproc_epo.fif appeared in {expected_dir} "
+                                f"for sub-{subject}, task-{task_label}, "
+                                f"run-{run_label}. Most likely cause: stale "
+                                f"nipype cache pointing at a previously-deleted "
+                                f"output. Wipe the work directory "
+                                f"({preproc_wf_run.base_dir}) and re-run."
+                            )
+
                         print(f"\nPreprocessing for run {run_label} completed.")
                         print(f"Outputs saved to: {derivatives_info['preprocessing_subject_dir']}")
 
@@ -805,166 +934,171 @@ def run_ffrprep():
                 print("Generating preprocessing report...")
                 print("=" * 60)
 
-                try:
-                    preproc_dir = Path(derivatives_info["preprocessing_subject_dir"])
+                preproc_dir = Path(derivatives_info["preprocessing_subject_dir"])
 
-                    # Collect files grouped by task/run for each stage
-                    def _collect_grouped(base_dir, patterns):
-                        grouped = {}
-                        for pat in patterns:
-                            for p in base_dir.glob(pat):
-                                name = p.name
-                                # Try to extract task-<task> and run-<run>
-                                m_task = re.search(r"task-([^_]+)", name)
-                                m_run = re.search(r"run-([^_]+)", name)
-                                task = m_task.group(1) if m_task else ""
-                                run = m_run.group(1) if m_run else ""
-                                grouped.setdefault(task, {}).setdefault(run, []).append(str(p))
-                        return grouped
+                # Collect files grouped by task/run for each stage
+                def _collect_grouped(base_dir, patterns):
+                    grouped = {}
+                    for pat in patterns:
+                        for p in base_dir.glob(pat):
+                            name = p.name
+                            # Try to extract task-<task> and run-<run>
+                            m_task = re.search(r"task-([^_]+)", name)
+                            m_run = re.search(r"run-([^_]+)", name)
+                            task = m_task.group(1) if m_task else ""
+                            run = m_run.group(1) if m_run else ""
+                            grouped.setdefault(task, {}).setdefault(run, []).append(str(p))
+                    return grouped
 
-                    raw_patterns = ["*_desc-loaded_raw.fif"]
-                    events_patterns = ["*_events.tsv"]
-                    referenced_patterns = ["*_desc-referenced_raw.fif"]
-                    filtered_patterns = ["*_desc-filtered_raw.fif"]
-                    epoched_patterns = ["*_desc-preproc_epo.fif"]
+                raw_patterns = ["*_desc-loaded_raw.fif"]
+                events_patterns = ["*_events.tsv"]
+                referenced_patterns = ["*_desc-referenced_raw.fif"]
+                filtered_patterns = ["*_desc-filtered_raw.fif"]
+                epoched_patterns = ["*_desc-preproc_epo.fif"]
 
-                    raw_files = _collect_grouped(preproc_dir, raw_patterns)
-                    events_files = _collect_grouped(preproc_dir, events_patterns)
-                    referenced_files = _collect_grouped(preproc_dir, referenced_patterns)
-                    filtered_files = _collect_grouped(preproc_dir, filtered_patterns)
-                    epoched_files = _collect_grouped(preproc_dir, epoched_patterns)
+                raw_files = _collect_grouped(preproc_dir, raw_patterns)
+                events_files = _collect_grouped(preproc_dir, events_patterns)
+                referenced_files = _collect_grouped(preproc_dir, referenced_patterns)
+                filtered_files = _collect_grouped(preproc_dir, filtered_patterns)
+                epoched_files = _collect_grouped(preproc_dir, epoched_patterns)
 
-                    print(f"\nCollected files:")
-                    print(
-                        f"  Raw files: {sum(len(r) for t in raw_files.values() for r in t.values()) if raw_files else 0}"
-                    )
-                    print(
-                        f"  Events files: {sum(len(r) for t in events_files.values() for r in t.values()) if events_files else 0}"
-                    )
-                    print(
-                        f"  Referenced files: {sum(len(r) for t in referenced_files.values() for r in t.values()) if referenced_files else 0}"
-                    )
-                    print(
-                        f"  Filtered files: {sum(len(r) for t in filtered_files.values() for r in t.values()) if filtered_files else 0}"
-                    )
-                    print(
-                        f"  Epoched files: {sum(len(r) for t in epoched_files.values() for r in t.values()) if epoched_files else 0}"
-                    )
+                def _total(grouped):
+                    if not grouped:
+                        return 0
+                    return sum(len(r) for t in grouped.values() for r in t.values())
 
-                    report_name = f"sub-{subject}_preprocessing_report.h5"
-                    report_path = reports.create_subject_report(
-                        str(args.bids_dir),
-                        out_dir=str(preproc_dir),
-                        filename=report_name,
-                        subject_id=subject,
-                        command=" ".join(sys.argv),
-                    )
+                print("\nCollected files:")
+                print(f"  Raw files: {_total(raw_files)}")
+                print(f"  Events files: {_total(events_files)}")
+                print(f"  Referenced files: {_total(referenced_files)}")
+                print(f"  Filtered files: {_total(filtered_files)}")
+                print(f"  Epoched files: {_total(epoched_files)}")
 
-                    # Add summary
-                    reports.add_report_summary(
-                        report_path,
-                        command=" ".join(sys.argv),
-                        raw_files=raw_files,
-                        events_files=events_files,
-                        referenced_files=referenced_files,
-                        filtered_files=filtered_files,
-                        epoched_files=epoched_files,
-                    )
+                report_name = f"sub-{subject}_preprocessing_report.h5"
+                report_path = reports.create_subject_report(
+                    str(args.bids_dir),
+                    out_dir=str(preproc_dir),
+                    filename=report_name,
+                    subject_id=subject,
+                    command=" ".join(sys.argv),
+                    overwrite=True,
+                )
 
-                    # Add all processing stages organized by task/run
-                    reports.add_processing_stages(
-                        report_path,
-                        raw_files=raw_files,
-                        events_files=events_files,
-                        referenced_files=referenced_files,
-                        filtered_files=filtered_files,
-                        epoched_files=epoched_files,
-                    )
+                # Add summary
+                reports.add_report_summary(
+                    report_path,
+                    command=" ".join(sys.argv),
+                    raw_files=raw_files,
+                    events_files=events_files,
+                    referenced_files=referenced_files,
+                    filtered_files=filtered_files,
+                    epoched_files=epoched_files,
+                )
 
-                    # Export to HTML
-                    html_path = reports.save_report(report_path, overwrite=True)
-                    print(f"\n{'='*60}")
-                    print(f"Preprocessing report written to: {html_path}")
-                    print(f"{'='*60}")
+                # Add all processing stages organized by task/run
+                reports.add_processing_stages(
+                    report_path,
+                    raw_files=raw_files,
+                    events_files=events_files,
+                    referenced_files=referenced_files,
+                    filtered_files=filtered_files,
+                    epoched_files=epoched_files,
+                )
 
-                except Exception as e:
-                    print(f"Warning: could not generate preprocessing report: {e}")
-                    import traceback
-
-                    traceback.print_exc()
+                # Export to HTML
+                html_path = reports.save_report(report_path, overwrite=True)
+                print(f"\n{'=' * 60}")
+                print(f"Preprocessing report written to: {html_path}")
+                print(f"{'=' * 60}")
 
         if args.stage in ["analysis", "both"]:
             print("\n" + "=" * 60)
             print("Running analysis workflow...")
             print("=" * 60)
 
-            # Check if preprocessing outputs exist (required for analysis)
-            if args.stage == "analysis":  # Analysis-only mode
-                preproc_exists, preproc_files = check_preprocessing_exists(args.bids_dir, subject)
+            # Locate the preprocessing outputs (epoched .fif files) we need
+            # to feed to the analysis workflow.
+            preproc_subject_dir = Path(derivatives_info["preprocessing_subject_dir"])
+            preproc_files = sorted(preproc_subject_dir.glob("*_desc-preproc_epo.fif"))
 
-                if not preproc_exists:
-                    print(f"ERROR: No preprocessing outputs found for " f"subject {subject}.")
-                    print(
-                        f"Expected location: {args.bids_dir}/derivatives/" f"ffrprep-preprocessing/sub-{subject}/"
+            if not preproc_files:
+                print(f"ERROR: No preprocessing outputs found for subject {subject}.")
+                print(f"Expected location: {preproc_subject_dir}")
+                print("Please run preprocessing stage first or use 'both' stage.")
+                continue
+            print(f"Found {len(preproc_files)} preprocessing output(s) to analyze.")
+
+            # Run the analysis workflow once per preprocessed file so each
+            # (task, run) combination produces its own evoked output.
+            import mne
+
+            for preproc_file in preproc_files:
+                print(f"\nAnalyzing: {preproc_file.name}")
+                epochs = mne.read_epochs(str(preproc_file), preload=True, verbose=False)
+
+                analysis_wf = create_analysis_workflow()
+
+                if args.work_dir:
+                    work_dir = (
+                        args.work_dir / f"sub-{subject}" / "analysis" / preproc_file.stem
                     )
-                    print("Please run preprocessing stage first or use " "'both' stage.")
-                    continue
                 else:
-                    print(f"Found preprocessing outputs: " f"{[f.name for f in preproc_files]}")
+                    work_dir = (
+                        derivatives_info["analysis_dir"] / "work"
+                        / f"sub-{subject}" / preproc_file.stem
+                    )
+                analysis_wf.base_dir = str(work_dir)
 
-            # Create analysis workflow
-            analysis_wf = create_analysis_workflow()
-
-            # Set working directory for nipype
-            if args.work_dir:
-                work_dir = args.work_dir / f"sub-{subject}" / "analysis"
-            else:
-                work_dir = derivatives_info["analysis_dir"] / "work" / f"sub-{subject}"
-
-            analysis_wf.base_dir = str(work_dir)
-
-            # Set inputs
-            analysis_wf.inputs.inputnode.by_event_type = args.by_event_type
-            analysis_wf.inputs.inputnode.bids_root = str(args.bids_dir)
-            analysis_wf.inputs.inputnode.subject = subject
-
-            # Set output directory for analysis results
-            analysis_wf.inputs.inputnode.output_dir = str(derivatives_info["analysis_subject_dir"])
-
-            # Run analysis workflow
-            # Run analysis workflow honoring --n_procs
-            if args.n_procs and int(args.n_procs) > 1:
-                analysis_wf.run(
-                    plugin="MultiProc",
-                    plugin_args={"n_procs": int(args.n_procs)},
+                analysis_wf.inputs.inputnode.epochs = epochs
+                analysis_wf.inputs.inputnode.by_event_type = args.by_event_type
+                analysis_wf.inputs.inputnode.bids_root = str(args.bids_dir)
+                analysis_wf.inputs.inputnode.subject = subject
+                analysis_wf.inputs.inputnode.original_filename = preproc_file.stem
+                analysis_wf.inputs.inputnode.output_dir = str(
+                    derivatives_info["analysis_subject_dir"]
                 )
-            else:
-                analysis_wf.run(plugin="Linear")
-            print(f"Analysis completed. Outputs saved to: " f"{derivatives_info['analysis_subject_dir']}")
+
+                if args.n_procs and int(args.n_procs) > 1:
+                    analysis_wf.run(
+                        plugin="MultiProc",
+                        plugin_args={"n_procs": int(args.n_procs)},
+                    )
+                else:
+                    analysis_wf.run(plugin="Linear")
+
+                # Propagate ConcatenatedRuns / Run from the preproc sidecar
+                # to each analysis sidecar produced from this preproc file.
+                # The analysis stage doesn't know about concat semantics on
+                # its own (it only sees the preproc filename), so carry
+                # forward the field by reading the source sidecar.
+                _propagate_run_provenance(
+                    preproc_file=preproc_file,
+                    analysis_dir=Path(derivatives_info["analysis_subject_dir"]),
+                )
+
+            print(f"Analysis completed. Outputs saved to: {derivatives_info['analysis_subject_dir']}")
             # Create analysis report using reports submodule
-            try:
-                analysis_dir = Path(derivatives_info["analysis_subject_dir"])
-                # Look for analysis outputs
-                analysis_patterns = ["*_desc-evoked.fif", "*_desc-evoked*.fif"]
-                found_outputs = []
-                for pat in analysis_patterns:
-                    found_outputs.extend(list(analysis_dir.glob(pat)))
+            analysis_dir = Path(derivatives_info["analysis_subject_dir"])
+            # Look for analysis outputs
+            analysis_patterns = ["*_desc-evoked.fif", "*_desc-evoked*.fif"]
+            found_outputs = []
+            for pat in analysis_patterns:
+                found_outputs.extend(list(analysis_dir.glob(pat)))
 
-                report_name = f"sub-{subject}_analysis_report.h5"
-                report_path = reports.create_report(
-                    str(args.bids_dir), out_dir=str(analysis_dir), filename=report_name
-                )
-                html_text = f"<h2>Analysis summary</h2><p>Subject: sub-{subject}</p>"
-                if found_outputs:
-                    html_text += "<p>Saved analysis outputs:</p><ul>"
-                    for p in found_outputs:
-                        html_text += f"<li>{str(p)}</li>"
-                    html_text += "</ul>"
-                reports.add_to_report(report_path, html_text=html_text, html_title="Analysis summary")
-                reports.save_report(report_path, overwrite=True)
-                print(f"Analysis report written to: {report_path}")
-            except Exception:
-                print("Warning: could not generate analysis report")
+            report_name = f"sub-{subject}_analysis_report.h5"
+            report_path = reports.create_report(
+                str(args.bids_dir), out_dir=str(analysis_dir),
+                filename=report_name, overwrite=True,
+            )
+            html_text = f"<h2>Analysis summary</h2><p>Subject: sub-{subject}</p>"
+            if found_outputs:
+                html_text += "<p>Saved analysis outputs:</p><ul>"
+                for p in found_outputs:
+                    html_text += f"<li>{str(p)}</li>"
+                html_text += "</ul>"
+            reports.add_to_report(report_path, html_text=html_text, html_title="Analysis summary")
+            reports.save_report(report_path, overwrite=True)
+            print(f"Analysis report written to: {report_path}")
 
     print("\n" + "=" * 60)
     print("ffrprep processing completed successfully!")

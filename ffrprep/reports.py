@@ -125,27 +125,20 @@ def add_to_report(
     report_fpath : string
         Full filepath to the report file.
     """
-    try:
-        # Open existing HDF5 report
-        report = open_report(report_fpath)
+    # Open existing HDF5 report
+    report = open_report(report_fpath)
 
-        if figure is not None:
-            title = figure_title if figure_title is not None else "Figure"
-            caption = figure_caption if figure_caption is not None else ""
-            report.add_figure(fig=figure, title=title, caption=caption)
+    if figure is not None:
+        title = figure_title if figure_title is not None else "Figure"
+        caption = figure_caption if figure_caption is not None else ""
+        report.add_figure(fig=figure, title=title, caption=caption)
 
-        if html_text is not None:
-            title_text = html_title or "Content"
-            report.add_html(html=html_text, title=title_text)
+    if html_text is not None:
+        title_text = html_title or "Content"
+        report.add_html(html=html_text, title=title_text)
 
-        # Save back to HDF5
-        report.save(report_fpath, overwrite=True, open_browser=False)
-
-    except Exception as e:
-        print(f"Warning: Could not add content to report: {e}")
-        import traceback
-
-        traceback.print_exc()
+    # Save back to HDF5
+    report.save(report_fpath, overwrite=True, open_browser=False)
 
     return report_fpath
 
@@ -177,15 +170,12 @@ def save_report(report_fpath, overwrite=True):
             new_filename = f"{fname_base}_1{fname_ext}"
             html_fpath = new_filename
 
-    try:
-        report = open_report(report_fpath)
-        report.save(html_fpath, overwrite=True, open_browser=False)
-    except Exception as e:
-        print(f"Warning: Could not save report as HTML: {e}")
-        # If report is already HTML, just return it
-        if os.path.exists(report_fpath) and report_fpath.endswith(".html"):
-            return report_fpath
+    # If the input is already an HTML file, there's nothing to convert.
+    if os.path.exists(report_fpath) and report_fpath.endswith(".html"):
+        return report_fpath
 
+    report = open_report(report_fpath)
+    report.save(html_fpath, overwrite=True, open_browser=False)
     return html_fpath
 
 
@@ -247,9 +237,11 @@ def add_report_summary(
     parts.append("<h2>Processing Summary</h2>")
 
     if command:
-        parts.append(f"<p><strong>Command:</strong></p>")
+        parts.append("<p><strong>Command:</strong></p>")
         parts.append(
-            f'<pre style="background-color: #f5f5f5; padding: 10px; border-radius: 5px; overflow-x: auto;">{_html.escape(command)}</pre>'
+            '<pre style="background-color: #f5f5f5; padding: 10px;'
+            ' border-radius: 5px; overflow-x: auto;">'
+            f"{_html.escape(command)}</pre>"
         )
 
     def _count_files(obj):
@@ -264,10 +256,9 @@ def add_report_summary(
                 elif isinstance(runs, (list, tuple)):
                     total += len(runs)
             return total
-        try:
+        if hasattr(obj, "__len__"):
             return len(obj)
-        except Exception:
-            return 0
+        return 0
 
     parts.append('<table style="border-collapse: collapse; width: 100%; margin-top: 15px;">')
     parts.append('<tr style="background-color: #0173B2; color: white;">')
@@ -313,236 +304,162 @@ def add_processing_stages(
     raw_files, events_files, referenced_files, filtered_files, epoched_files : dict
         Dictionaries with structure: {task: {run: [filepaths]}}
     """
-    try:
-        report = open_report(report_fpath)
+    report = open_report(report_fpath)
 
-        # Collect all unique task/run combinations
-        task_run_combos = set()
+    # Collect all unique task/run combinations
+    task_run_combos = set()
+    for file_dict in [raw_files, events_files, referenced_files, filtered_files, epoched_files]:
+        if file_dict:
+            for task, runs in file_dict.items():
+                if isinstance(runs, dict):
+                    for run in runs.keys():
+                        task_run_combos.add((task, run))
 
-        for file_dict in [raw_files, events_files, referenced_files, filtered_files, epoched_files]:
-            if file_dict:
-                for task, runs in file_dict.items():
-                    if isinstance(runs, dict):
-                        for run in runs.keys():
-                            task_run_combos.add((task, run))
-
-        if not task_run_combos:
-            report.add_html(html="<p>No data files found to process.</p>", title="No data")
-            report.save(report_fpath, overwrite=True, open_browser=False)
-            return report_fpath
-
-        print(f"Building report for {len(task_run_combos)} task/run combinations")
-
-        # Sort for consistent ordering
-        task_run_combos = sorted(task_run_combos)
-
-        # Group by task
-        tasks_dict = {}
-        for task, run in task_run_combos:
-            if task not in tasks_dict:
-                tasks_dict[task] = []
-            tasks_dict[task].append(run)
-
-        # Process each task
-        for task in sorted(tasks_dict.keys()):
-            runs_list = sorted(tasks_dict[task])
-
-            # Add task header ONCE
-            task_title = task if task else "unknown"
-            print(f"\nProcessing Task: {task_title}")
-            task_html = f'<div style="margin-top: 40px; padding: 15px; background-color: #E8F4F8; border-left: 5px solid #0173B2;"><h2 style="margin: 0; color: #0173B2;">Task: {_html.escape(task_title)}</h2></div>'
-            report.add_html(html=task_html, title=f"Task: {task_title}")
-
-            # Process each run within this task
-            for run in runs_list:
-                run_title = run if run else "no-run"
-                print(f"  Processing Run: {run_title}")
-
-                # Get files for this task/run
-                raw_file = _get_file(raw_files, task, run)
-                events_file = _get_file(events_files, task, run)
-                ref_file = _get_file(referenced_files, task, run)
-                filt_file = _get_file(filtered_files, task, run)
-                epoch_file = _get_file(epoched_files, task, run)
-
-                # Add run header
-                run_html = f'<div style="margin-top: 20px; padding: 10px; background-color: #F5F5F5; border-left: 3px solid #924E7D;"><h3 style="margin: 0; color: #924E7D;">Run: {_html.escape(run_title)}</h3></div>'
-                report.add_html(html=run_html, title=f"Run: {run_title}")
-
-                # Find events file if not provided
-                if events_file is None and raw_file:
-                    events_file = _find_events_tsv(Path(raw_file))
-
-                # Display events file info if found
-                if events_file and os.path.exists(events_file):
-                    try:
-                        ev_df = pd.read_csv(events_file, sep="\t", nrows=5)
-                        n_events = len(pd.read_csv(events_file, sep="\t"))
-                        events_html = f"<p><strong>Events file:</strong> <code>{Path(events_file).name}</code> ({n_events} events)</p>"
-                        events_html += f'<details><summary>Preview (first 5 events)</summary><div style="overflow-x: auto; margin-top: 10px;">{ev_df.to_html(index=False, border=0)}</div></details>'
-                        report.add_html(html=events_html, title="Events")
-                    except Exception as e:
-                        print(f"    Warning: Could not load events file: {e}")
-                else:
-                    report.add_html(
-                        html='<p style="color: #D55E00;"><em>⚠️ Events file not found</em></p>', title="Events"
-                    )
-
-                # 1. Raw data
-                if raw_file and os.path.exists(raw_file):
-                    print(f"    Adding raw data: {Path(raw_file).name}")
-                    section_html = '<div style="margin: 20px 0; padding: 10px; border-left: 3px solid #029E73;"><h4 style="color: #029E73; margin-top: 0;">Raw Data</h4></div>'
-                    report.add_html(html=section_html, title="Raw data section")
-
-                    try:
-                        raw = mne.io.read_raw_fif(raw_file, preload=False, verbose=False)
-                        pick = "Cz" if "Cz" in raw.ch_names else raw.ch_names[0]
-
-                        # Pick the channel for display
-                        raw_picked = raw.copy().pick([pick])
-
-                        # Add raw with correct signature (no picks parameter)
-                        report.add_raw(
-                            raw=raw_picked,
-                            title=f"Raw - {Path(raw_file).name}",
-                            psd=True,
-                        )
-
-                        # Add raw QA figures
-                        raw_figs = raw_qa(raw, events_fpath=events_file, save_dir=None)
-                        for fig, fig_title, caption in raw_figs:
-                            try:
-                                report.add_figure(fig=fig, title=fig_title, caption=caption)
-                            except Exception:
-                                pass
-                            finally:
-                                plt.close(fig)
-
-                    except Exception as e:
-                        error_html = (
-                            f'<p style="color: #D55E00;">Could not load raw data: {_html.escape(str(e))}</p>'
-                        )
-                        report.add_html(html=error_html, title="Raw data error")
-                        print(f"    Error loading raw data: {e}")
-
-                # 2. Referenced data
-                if ref_file and os.path.exists(ref_file):
-                    print(f"    Adding referenced data: {Path(ref_file).name}")
-                    section_html = '<div style="margin: 20px 0; padding: 10px; border-left: 3px solid #029E73;"><h4 style="color: #029E73; margin-top: 0;">Referenced Data</h4></div>'
-                    report.add_html(html=section_html, title="Referenced data section")
-
-                    try:
-                        raw_ref = mne.io.read_raw_fif(ref_file, preload=False, verbose=False)
-                        pick = "Cz" if "Cz" in raw_ref.ch_names else raw_ref.ch_names[0]
-
-                        # Pick the channel for display
-                        raw_ref_picked = raw_ref.copy().pick([pick])
-
-                        report.add_raw(
-                            raw=raw_ref_picked,
-                            title=f"Referenced - {Path(ref_file).name}",
-                            psd=True,
-                        )
-
-                        # Add referenced QA figures
-                        ref_figs = raw_qa(raw_ref, events_fpath=events_file, save_dir=None)
-                        for fig, fig_title, caption in ref_figs:
-                            try:
-                                report.add_figure(fig=fig, title=fig_title, caption=caption)
-                            except Exception:
-                                pass
-                            finally:
-                                plt.close(fig)
-
-                    except Exception as e:
-                        error_html = f'<p style="color: #D55E00;">Could not load referenced data: {_html.escape(str(e))}</p>'
-                        report.add_html(html=error_html, title="Referenced data error")
-                        print(f"    Error loading referenced data: {e}")
-
-                # 3. Filtered data
-                if filt_file and os.path.exists(filt_file):
-                    print(f"    Adding filtered data: {Path(filt_file).name}")
-                    section_html = '<div style="margin: 20px 0; padding: 10px; border-left: 3px solid #029E73;"><h4 style="color: #029E73; margin-top: 0;">Filtered Data (65-2000 Hz)</h4></div>'
-                    report.add_html(html=section_html, title="Filtered data section")
-
-                    try:
-                        raw_filt = mne.io.read_raw_fif(filt_file, preload=False, verbose=False)
-                        pick = "Cz" if "Cz" in raw_filt.ch_names else raw_filt.ch_names[0]
-
-                        # Pick the channel for display
-                        raw_filt_picked = raw_filt.copy().pick([pick])
-
-                        report.add_raw(
-                            raw=raw_filt_picked,
-                            title=f"Filtered - {Path(filt_file).name}",
-                            psd=True,
-                        )
-
-                        # Add filtered QA figures
-                        filt_figs = raw_qa(raw_filt, events_fpath=events_file, save_dir=None)
-                        for fig, fig_title, caption in filt_figs:
-                            try:
-                                report.add_figure(fig=fig, title=fig_title, caption=caption)
-                            except Exception:
-                                pass
-                            finally:
-                                plt.close(fig)
-
-                    except Exception as e:
-                        error_html = (
-                            f'<p style="color: #D55E00;">Could not load filtered data: {_html.escape(str(e))}</p>'
-                        )
-                        report.add_html(html=error_html, title="Filtered data error")
-                        print(f"    Error loading filtered data: {e}")
-
-                # 4. Epoched data
-                if epoch_file and os.path.exists(epoch_file):
-                    print(f"    Adding epoched data: {Path(epoch_file).name}")
-                    section_html = '<div style="margin: 20px 0; padding: 10px; border-left: 3px solid #029E73;"><h4 style="color: #029E73; margin-top: 0;">Epoched Data</h4></div>'
-                    report.add_html(html=section_html, title="Epoched data section")
-
-                    try:
-                        epochs = mne.read_epochs(epoch_file, preload=False, verbose=False)
-                        pick = "Cz" if "Cz" in epochs.ch_names else epochs.ch_names[0]
-
-                        # Pick the channel for display
-                        epochs_picked = epochs.copy().pick([pick])
-
-                        # Add epochs with correct signature (no picks parameter)
-                        report.add_epochs(
-                            epochs=epochs_picked,
-                            title=f"Epochs - {Path(epoch_file).name}",
-                            n_epochs=20,
-                        )
-
-                        # Add comprehensive epoch QA figures
-                        epoch_figs = epoch_qa(epochs, save_dir=None)
-                        for fig, fig_title, caption in epoch_figs:
-                            try:
-                                report.add_figure(fig=fig, title=fig_title, caption=caption)
-                            except Exception:
-                                pass
-                            finally:
-                                plt.close(fig)
-
-                    except Exception as e:
-                        error_html = (
-                            f'<p style="color: #D55E00;">Could not load epoched data: {_html.escape(str(e))}</p>'
-                        )
-                        report.add_html(html=error_html, title="Epoched data error")
-                        print(f"    Error loading epoched data: {e}")
-
-        # Save report
+    if not task_run_combos:
+        report.add_html(html="<p>No data files found to process.</p>", title="No data")
         report.save(report_fpath, overwrite=True, open_browser=False)
-        print("\nReport saved successfully")
+        return report_fpath
 
-    except Exception as e:
-        print(f"Warning: Error adding processing stages: {e}")
-        import traceback
+    print(f"Building report for {len(task_run_combos)} task/run combinations")
 
-        traceback.print_exc()
+    # Group by task, sorted for consistent ordering
+    tasks_dict = {}
+    for task, run in sorted(task_run_combos):
+        tasks_dict.setdefault(task, []).append(run)
+
+    for task in sorted(tasks_dict.keys()):
+        runs_list = sorted(tasks_dict[task])
+
+        # Add task header
+        task_title = task if task else "unknown"
+        print(f"\nProcessing Task: {task_title}")
+        task_html = (
+            '<div style="margin-top: 40px; padding: 15px; background-color: #E8F4F8;'
+            ' border-left: 5px solid #0173B2;">'
+            f'<h2 style="margin: 0; color: #0173B2;">Task: {_html.escape(task_title)}</h2></div>'
+        )
+        report.add_html(html=task_html, title=f"Task: {task_title}")
+
+        for run in runs_list:
+            run_title = run if run else "no-run"
+            print(f"  Processing Run: {run_title}")
+
+            raw_file = _get_file(raw_files, task, run)
+            events_file = _get_file(events_files, task, run)
+            ref_file = _get_file(referenced_files, task, run)
+            filt_file = _get_file(filtered_files, task, run)
+            epoch_file = _get_file(epoched_files, task, run)
+
+            # Add run header
+            run_html = (
+                '<div style="margin-top: 20px; padding: 10px; background-color: #F5F5F5;'
+                ' border-left: 3px solid #924E7D;">'
+                f'<h3 style="margin: 0; color: #924E7D;">Run: {_html.escape(run_title)}</h3></div>'
+            )
+            report.add_html(html=run_html, title=f"Run: {run_title}")
+
+            # Find events file if not provided
+            if events_file is None and raw_file:
+                events_file = _find_events_tsv(Path(raw_file))
+
+            _add_events_section(report, events_file)
+
+            _add_raw_stage(
+                report, raw_file, "Raw Data",
+                qa_fn=lambda r: raw_qa(r, events_fpath=events_file, save_dir=None),
+                add_kwargs=dict(title_prefix="Raw"),
+            )
+            _add_raw_stage(
+                report, ref_file, "Referenced Data",
+                qa_fn=lambda r: raw_qa(r, events_fpath=events_file, save_dir=None),
+                add_kwargs=dict(title_prefix="Referenced"),
+            )
+            _add_raw_stage(
+                report, filt_file, "Filtered Data (65-2000 Hz)",
+                qa_fn=lambda r: raw_qa(r, events_fpath=events_file, save_dir=None),
+                add_kwargs=dict(title_prefix="Filtered"),
+            )
+            _add_epoch_stage(report, epoch_file)
+
+    # Save report
+    report.save(report_fpath, overwrite=True, open_browser=False)
+    print("\nReport saved successfully")
 
     return report_fpath
+
+
+def _add_events_section(report, events_file):
+    """Add events.tsv preview to the report, or a 'not found' note."""
+    if not (events_file and os.path.exists(events_file)):
+        report.add_html(
+            html='<p style="color: #D55E00;"><em>⚠️ Events file not found</em></p>',
+            title="Events",
+        )
+        return
+    ev_df_full = pd.read_csv(events_file, sep="\t")
+    n_events = len(ev_df_full)
+    ev_df = ev_df_full.head(5)
+    events_html = (
+        f'<p><strong>Events file:</strong> <code>{Path(events_file).name}</code>'
+        f' ({n_events} events)</p>'
+        '<details><summary>Preview (first 5 events)</summary>'
+        '<div style="overflow-x: auto; margin-top: 10px;">'
+        f'{ev_df.to_html(index=False, border=0)}</div></details>'
+    )
+    report.add_html(html=events_html, title="Events")
+
+
+def _add_raw_stage(report, fpath, label, qa_fn, add_kwargs):
+    """Add a raw-data stage (raw / referenced / filtered) to the report."""
+    if not (fpath and os.path.exists(fpath)):
+        return
+    print(f"    Adding {label.lower()}: {Path(fpath).name}")
+    section_html = (
+        '<div style="margin: 20px 0; padding: 10px; border-left: 3px solid #029E73;">'
+        f'<h4 style="color: #029E73; margin-top: 0;">{label}</h4></div>'
+    )
+    report.add_html(html=section_html, title=f"{label} section")
+
+    # preload=True so .pick() can drop channels (modern MNE requires data
+    # to be in memory for channel-modification operations).
+    raw = mne.io.read_raw_fif(fpath, preload=True, verbose=False)
+    pick = "Cz" if "Cz" in raw.ch_names else raw.ch_names[0]
+    raw_picked = raw.copy().pick([pick])
+    report.add_raw(
+        raw=raw_picked,
+        title=f"{add_kwargs['title_prefix']} - {Path(fpath).name}",
+        psd=True,
+    )
+
+    for fig, fig_title, caption in qa_fn(raw):
+        report.add_figure(fig=fig, title=fig_title, caption=caption)
+        plt.close(fig)
+
+
+def _add_epoch_stage(report, fpath):
+    """Add the epoched-data stage to the report."""
+    if not (fpath and os.path.exists(fpath)):
+        return
+    print(f"    Adding epoched data: {Path(fpath).name}")
+    section_html = (
+        '<div style="margin: 20px 0; padding: 10px; border-left: 3px solid #029E73;">'
+        '<h4 style="color: #029E73; margin-top: 0;">Epoched Data</h4></div>'
+    )
+    report.add_html(html=section_html, title="Epoched data section")
+
+    # preload=True so .pick() can drop channels (modern MNE requires data
+    # to be in memory for channel-modification operations).
+    epochs = mne.read_epochs(fpath, preload=True, verbose=False)
+    pick = "Cz" if "Cz" in epochs.ch_names else epochs.ch_names[0]
+    epochs_picked = epochs.copy().pick([pick])
+    report.add_epochs(
+        epochs=epochs_picked,
+        title=f"Epochs - {Path(fpath).name}",
+    )
+
+    for fig, fig_title, caption in epoch_qa(epochs, save_dir=None):
+        report.add_figure(fig=fig, title=fig_title, caption=caption)
+        plt.close(fig)
 
 
 def _get_file(file_dict, task, run):
@@ -585,7 +502,8 @@ def build_toc_html(sections):
     for i, sec in enumerate(sections):
         safe = _html.escape(sec)
         parts.append(
-            f'<li style="padding: 5px 0;"><a href="#section-{i}" style="color: #0173B2; text-decoration: none;">→ {safe}</a></li>'
+            f'<li style="padding: 5px 0;"><a href="#section-{i}"'
+            f' style="color: #0173B2; text-decoration: none;">→ {safe}</a></li>'
         )
 
     parts.append("</ul>")
@@ -602,9 +520,10 @@ def epoch_qa(epochs, save_dir=None, prefix="ffr_qa"):
     if save_dir is not None:
         os.makedirs(save_dir, exist_ok=True)
 
-    # Load epochs if path provided
+    # Load epochs if path provided. preload=True so downstream
+    # operations (get_data, channel selection) work without further I/O.
     if isinstance(epochs, str):
-        epochs = mne.read_epochs(epochs, preload=False, verbose=False)
+        epochs = mne.read_epochs(epochs, preload=True, verbose=False)
 
     if not hasattr(epochs, "info") or not epochs.info.get("ch_names"):
         raise ValueError("Epochs object has no channels")
@@ -714,27 +633,20 @@ def epoch_qa(epochs, save_dir=None, prefix="ffr_qa"):
     cbar = plt.colorbar(im, ax=ax5)
     cbar.set_label("Amplitude (µV)", fontsize=9)
 
-    # 1f: PSD
+    # 1f: PSD. Use welch with an n_fft that fits the available samples to
+    # avoid edge cases where 2048 exceeds the per-epoch length.
     ax6 = fig.add_subplot(gs[2, 2])
-    try:
-        psd = epochs.compute_psd(
-            method="welch", fmin=65, fmax=min(2000, epochs.info.get("sfreq", 1000) / 2), n_fft=2048, verbose=False
-        )
-        psds, freqs = psd.get_data(return_freqs=True)
-        psd_mean = psds.mean(axis=0)[pick_idx]
-        ax6.semilogy(freqs, psd_mean, color=colors_cb["purple"], linewidth=2)
-        ax6.set_xlim([65, min(2000, epochs.info.get("sfreq", 1000) / 2)])
-    except Exception:
-        try:
-            psd = epochs.compute_psd(
-                method="multitaper", fmin=65, fmax=min(2000, epochs.info.get("sfreq", 1000) / 2), verbose=False
-            )
-            psds, freqs = psd.get_data(return_freqs=True)
-            psd_mean = psds.mean(axis=0)[pick_idx]
-            ax6.semilogy(freqs, psd_mean, color=colors_cb["purple"], linewidth=2)
-            ax6.set_xlim([65, min(2000, epochs.info.get("sfreq", 1000) / 2)])
-        except Exception:
-            ax6.text(0.5, 0.5, "PSD not available", ha="center", va="center", transform=ax6.transAxes)
+    sfreq = epochs.info.get("sfreq", 1000)
+    fmax_psd = min(2000, sfreq / 2)
+    n_samples_per_epoch = epochs.get_data().shape[-1]
+    n_fft_psd = min(2048, n_samples_per_epoch)
+    psd = epochs.compute_psd(
+        method="welch", fmin=65, fmax=fmax_psd, n_fft=n_fft_psd, verbose=False,
+    )
+    psds, freqs = psd.get_data(return_freqs=True)
+    psd_mean = psds.mean(axis=0)[pick_idx]
+    ax6.semilogy(freqs, psd_mean, color=colors_cb["purple"], linewidth=2)
+    ax6.set_xlim([65, fmax_psd])
 
     ax6.set_xlabel("Frequency (Hz)", fontsize=10)
     ax6.set_ylabel("Power (µV²/Hz)", fontsize=10)
@@ -895,33 +807,30 @@ def epoch_qa(epochs, save_dir=None, prefix="ffr_qa"):
 
 def _find_events_tsv(pth):
     """Find an events.tsv file in the same directory or parent directories."""
-    try:
-        # Try same directory first
-        parent = Path(pth).parent
-        print(f"    Looking for events file in: {parent}")
+    parent = Path(pth).parent
+    if not parent.is_dir():
+        print(f"    Parent directory does not exist: {parent}")
+        return None
+    print(f"    Looking for events file in: {parent}")
 
-        for f in parent.iterdir():
-            if f.is_file() and "events" in f.name.lower() and f.suffix == ".tsv":
-                print(f"    Found events file: {f.name}")
-                return str(f)
+    for f in parent.iterdir():
+        if f.is_file() and "events" in f.name.lower() and f.suffix == ".tsv":
+            print(f"    Found events file: {f.name}")
+            return str(f)
 
-        # Try going up to find BIDS events files
-        # Go up to subject level (eeg folder -> subject folder)
-        subject_dir = parent.parent
-        print(f"    Looking for events file in: {subject_dir}")
+    # Try going up to find BIDS events files (eeg folder -> subject folder)
+    subject_dir = parent.parent
+    if not subject_dir.is_dir():
+        print(f"    Subject directory does not exist: {subject_dir}")
+        return None
+    print(f"    Looking for events file in: {subject_dir}")
 
-        for f in subject_dir.rglob("*events*.tsv"):
-            # Check if this events file matches the current file's task/run
-            if _files_match(pth, f):
-                print(f"    Found matching events file: {f.name}")
-                return str(f)
+    for f in subject_dir.rglob("*events*.tsv"):
+        if _files_match(pth, f):
+            print(f"    Found matching events file: {f.name}")
+            return str(f)
 
-        print(f"    No events file found for {pth.name}")
-
-    except Exception as e:
-        print(f"    Error finding events file: {e}")
-        pass
-
+    print(f"    No events file found for {pth.name}")
     return None
 
 
@@ -971,13 +880,11 @@ def raw_qa(raw, events_fpath=None, save_dir=None, prefix="ffr_raw"):
     start_samp = int(start * sfreq)
     stop_samp = int(stop * sfreq)
 
-    try:
-        data, times_sec = raw.get_data(picks=[pick], start=start_samp, stop=stop_samp, return_times=True)
-        data = data[0] * 1e6  # µV
-        times = times_sec * 1000  # ms
-    except Exception:
-        data = np.zeros((stop_samp - start_samp,))
-        times = np.linspace(start * 1000, stop * 1000, len(data))
+    data, times_sec = raw.get_data(
+        picks=[pick], start=start_samp, stop=stop_samp, return_times=True,
+    )
+    data = data[0] * 1e6  # µV
+    times = times_sec * 1000  # ms
 
     figs = []
 
@@ -989,17 +896,15 @@ def raw_qa(raw, events_fpath=None, save_dir=None, prefix="ffr_raw"):
     ax.set_title(f"Raw Data Snippet ({pick}, {duration:.1f}s)", fontsize=11, fontweight="bold")
     ax.grid(True, alpha=0.3)
 
-    # Mark events if provided
+    # Mark events if provided. We only attempt to read the file when it
+    # exists; a malformed events file is a real error and propagates.
     if events_fpath and os.path.exists(events_fpath):
-        try:
-            ev_df = pd.read_csv(events_fpath, sep="\t")
-            if "onset" in ev_df.columns:
-                onsets = (ev_df["onset"].values - start) * 1000.0
-                for o in onsets:
-                    if 0 <= o <= duration * 1000:
-                        ax.axvline(o, color="#924E7D", linestyle="--", alpha=0.7, linewidth=1)
-        except Exception:
-            pass
+        ev_df = pd.read_csv(events_fpath, sep="\t")
+        if "onset" in ev_df.columns:
+            onsets = (ev_df["onset"].values - start) * 1000.0
+            for o in onsets:
+                if 0 <= o <= duration * 1000:
+                    ax.axvline(o, color="#924E7D", linestyle="--", alpha=0.7, linewidth=1)
 
     plt.tight_layout()
 
@@ -1009,20 +914,20 @@ def raw_qa(raw, events_fpath=None, save_dir=None, prefix="ffr_raw"):
 
     figs.append((fig, f"Raw Data Snippet - {pick}", f"First {duration:.1f}s of recording"))
 
-    # PSD figure
+    # PSD figure. n_fft is clamped so it never exceeds the available
+    # number of samples (avoids the only common compute_psd failure mode).
     fig2, ax2 = plt.subplots(1, 1, figsize=(8, 4))
-    try:
-        psd = raw.compute_psd(picks=[pick], fmin=1, fmax=min(2000, sfreq / 2.0), n_fft=2048, verbose=False)
-        psds, freqs = psd.get_data(return_freqs=True)
-        psd_mean = psds[0]
-        ax2.semilogy(freqs, psd_mean, color="#924E7D", linewidth=2)
-        ax2.set_xlim([1, min(2000, sfreq / 2.0)])
-        ax2.set_xlabel("Frequency (Hz)", fontsize=10)
-        ax2.set_ylabel("Power (V²/Hz)", fontsize=10)
-        ax2.set_title(f"Power Spectral Density - {pick}", fontsize=11, fontweight="bold")
-        ax2.grid(True, which="both", alpha=0.3)
-    except Exception:
-        ax2.text(0.5, 0.5, "PSD not available", ha="center", va="center", transform=ax2.transAxes)
+    fmax_psd = min(2000, sfreq / 2.0)
+    n_fft_psd = min(2048, raw.n_times)
+    psd = raw.compute_psd(picks=[pick], fmin=1, fmax=fmax_psd, n_fft=n_fft_psd, verbose=False)
+    psds, freqs = psd.get_data(return_freqs=True)
+    psd_mean = psds[0]
+    ax2.semilogy(freqs, psd_mean, color="#924E7D", linewidth=2)
+    ax2.set_xlim([1, fmax_psd])
+    ax2.set_xlabel("Frequency (Hz)", fontsize=10)
+    ax2.set_ylabel("Power (V²/Hz)", fontsize=10)
+    ax2.set_title(f"Power Spectral Density - {pick}", fontsize=11, fontweight="bold")
+    ax2.grid(True, which="both", alpha=0.3)
 
     plt.tight_layout()
 

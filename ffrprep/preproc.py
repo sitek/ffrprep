@@ -57,18 +57,37 @@ def load_data(bids_root=None, sub_label=None, session_label=None, task_label=Non
     # Create BIDSLayout for robust querying
     layout = BIDSLayout(bids_root, validate=False)
 
-    # Build query parameters, filtering out None values
+    # Build base query parameters, filtering out None values. Extension is
+    # discovered separately below so we don't bake .edf into the per-run
+    # lookup (which would silently drop .bdf/.vhdr/.fif/.set datasets).
     query_params = {
         "subject": sub_label,
         "datatype": "eeg",
-        "extension": ".edf",  # Common EEG format, adjust as needed
     }
-
-    # Add optional parameters if provided
     if session_label:
         query_params["session"] = session_label
     if task_label:
         query_params["task"] = task_label
+
+    # Discover the file extension actually present in the dataset by
+    # probing without the run filter. This must happen before any
+    # run-aware query so per-run lookups use the correct extension.
+    discovered_ext = None
+    for ext in [".edf", ".bdf", ".vhdr", ".fif", ".set"]:
+        probe_qp = dict(query_params)
+        probe_qp["extension"] = ext
+        if layout.get(**probe_qp):
+            discovered_ext = ext
+            break
+    if discovered_ext is None:
+        raise FileNotFoundError(
+            f"No EEG files found for subject {sub_label} in {bids_root} "
+            f"(no .edf/.bdf/.vhdr/.fif/.set under the requested "
+            f"task/session)."
+        )
+    query_params["extension"] = discovered_ext
+    print(f"Using EEG file extension: {discovered_ext}")
+
     # Support run_label being a single value or a list of values. When a
     # list is provided, build a combined list of matching files across the
     # requested runs (used for selective concatenation).
@@ -88,15 +107,6 @@ def load_data(bids_root=None, sub_label=None, session_label=None, task_label=Non
         if run_label:
             query_params["run"] = run_label
         eeg_files = layout.get(**query_params)
-
-    if not eeg_files:
-        # Try alternative extensions if .edf not found
-        for ext in [".bdf", ".vhdr", ".fif", ".set"]:
-            query_params["extension"] = ext
-            eeg_files = layout.get(**query_params)
-            if eeg_files:
-                print(f"Found {len(eeg_files)} EEG files with extension {ext}")
-                break
 
     if not eeg_files:
         # Provide helpful error message with available options
@@ -143,12 +153,9 @@ def load_data(bids_root=None, sub_label=None, session_label=None, task_label=Non
             raw = read_raw_bids(bids_path=bp, verbose=False)
             raws.append(raw)
 
-        # Concatenate raws into a single Raw object
-        try:
-            from mne import concatenate_raws
-        except Exception:
-            # Fallback to mne.io.concatenate_raws if available
-            from mne.io import concatenate_raws
+        # Concatenate raws into a single Raw object. mne>=1.0 exposes
+        # concatenate_raws at the package top-level; pyproject pins mne>=1.9.
+        from mne import concatenate_raws
 
         data = concatenate_raws(raws)
 
@@ -194,8 +201,16 @@ def load_data(bids_root=None, sub_label=None, session_label=None, task_label=Non
 
     # Try to find an accompanying events.tsv file for this recording via
     # the pybids layout. Prefer a file that matches subject/task/run.
-    events_file = None
-    try:
+    #
+    # Important: when concatenating multiple runs, do NOT return a single
+    # per-run events.tsv path — it would only describe one run's events
+    # while the data spans them all. Return None and let downstream
+    # epoching pull events from the concatenated raw's annotations
+    # (read_raw_bids attaches each run's events as annotations and
+    # concatenate_raws preserves them with correct time offsets).
+    if isinstance(run_label, (list, tuple)) or (run_label is None and len(eeg_files) > 1):
+        events_file = None
+    else:
         ev_qp = {"subject": sub_label, "suffix": "events", "extension": ".tsv"}
         if session_label:
             ev_qp["session"] = session_label
@@ -204,10 +219,7 @@ def load_data(bids_root=None, sub_label=None, session_label=None, task_label=Non
         if run_label:
             ev_qp["run"] = run_label
         ev_found = layout.get(**ev_qp)
-        if ev_found:
-            events_file = ev_found[0].path
-    except Exception:
-        events_file = None
+        events_file = ev_found[0].path if ev_found else None
 
     # Store original filename information for derivatives naming. If
     # original_filename was already set (e.g., when concatenating runs),
@@ -300,10 +312,7 @@ def load_data_to_fif(
             )
             raws.append(read_raw_bids(bids_path=bp, verbose=False))
 
-        try:
-            from mne import concatenate_raws
-        except Exception:
-            from mne.io import concatenate_raws
+        from mne import concatenate_raws
 
         raw = concatenate_raws(raws)
         # Build conservative original filename base
@@ -346,10 +355,13 @@ def load_data_to_fif(
     # Save as FIF
     raw.save(outpath, overwrite=True)
 
-    # Try to find an accompanying events.tsv file for this recording via
-    # the pybids layout. Prefer a file that matches subject/task/run.
-    events_file = None
-    try:
+    # Try to find an accompanying events.tsv file. Same caveat as the
+    # in-memory load_data: when concatenating runs, return None so
+    # downstream epoching uses concatenated annotations rather than a
+    # single per-run events.tsv (which would only describe one run).
+    if isinstance(run_label, (list, tuple)) or (run_label is None and len(eeg_files) > 1):
+        events_file = None
+    else:
         ev_qp = {"subject": sub_label, "suffix": "events", "extension": ".tsv"}
         if session_label:
             ev_qp["session"] = session_label
@@ -358,10 +370,7 @@ def load_data_to_fif(
         if run_label:
             ev_qp["run"] = run_label
         ev_found = layout.get(**ev_qp)
-        if ev_found:
-            events_file = ev_found[0].path
-    except Exception:
-        events_file = None
+        events_file = ev_found[0].path if ev_found else None
 
     # Return path, a minimal BIDSPath-like object, filename base, and events file
     return str(outpath), bp, original_filename, events_file
@@ -373,9 +382,7 @@ def save_raw_helper(eeg_data, subject, task=None, session=None, run=None, desc="
     with a descriptor (e.g., 'referenced', 'filtered'). Returns the path
     to the saved file.
     """
-    import numpy as _np
     from pathlib import Path
-    import mne as _mne
 
     outdir = Path(output_dir)
     outdir.mkdir(parents=True, exist_ok=True)
@@ -385,7 +392,9 @@ def save_raw_helper(eeg_data, subject, task=None, session=None, run=None, desc="
     if session:
         filename_parts.append(f"ses-{session}")
     filename_parts.append(f"task-{task}")
-    if run:
+    # Skip the run token for concatenated runs (run is a list/tuple) — the
+    # output is one merged file with no single run identifier.
+    if run and not isinstance(run, (list, tuple)):
         filename_parts.append(f"run-{run}")
     filename_parts.append(f"desc-{desc}_raw.fif")
     filename = "_".join(filename_parts)
@@ -405,25 +414,12 @@ def reference_raw_file(input_raw_path, ref_channels, output_dir, subject=None, t
     from pathlib import Path
 
     raw = mne.io.read_raw_fif(input_raw_path, preload=True, verbose=False)
-    # Call existing reference_data helper. Import it locally so that when
-    # this function is executed inside a Nipype Function subprocess the
-    # helper is available in the subprocess namespace (avoids NameError).
-    try:
-        # Preferred: import from the module so the function object is available
-        from ffrprep.preproc import reference_data as _reference_data
-    except Exception:
-        # Fallback: maybe it was defined in the local globals already
-        _reference_data = globals().get("reference_data", None)
-    if _reference_data is None:
-        raise NameError("reference_data is not available in this subprocess")
+    # Local imports keep these names resolvable inside Nipype Function
+    # subprocesses (where module-level globals may not be bound).
+    from ffrprep.preproc import reference_data as _reference_data
+    from ffrprep.preproc import save_raw_helper as _save_raw_helper
+
     referenced = _reference_data(raw, ref_channels)
-    # Ensure save_raw_helper is available in subprocesses too
-    try:
-        from ffrprep.preproc import save_raw_helper as _save_raw_helper
-    except Exception:
-        _save_raw_helper = globals().get("save_raw_helper", None)
-    if _save_raw_helper is None:
-        raise NameError("save_raw_helper is not available in this subprocess")
     outdir = Path(output_dir)
     outdir.mkdir(parents=True, exist_ok=True)
 
@@ -454,14 +450,11 @@ def filter_raw_file(
     from pathlib import Path
 
     raw = mne.io.read_raw_fif(input_raw_path, preload=True, verbose=False)
-    # Call the module-level filter_data helper. Import locally so the
-    # function exists in the Nipype Function subprocess namespace.
-    try:
-        from ffrprep.preproc import filter_data as _filter_data
-    except Exception:
-        _filter_data = globals().get("filter_data", None)
-    if _filter_data is None:
-        raise NameError("filter_data is not available in this subprocess")
+    # Local imports keep these names resolvable inside Nipype Function
+    # subprocesses (where module-level globals may not be bound).
+    from ffrprep.preproc import filter_data as _filter_data
+    from ffrprep.preproc import save_raw_helper as _save_raw_helper
+
     filtered = _filter_data(raw, high_pass=high_pass, low_pass=low_pass)
 
     # Derive identifiers from filename as in reference_raw_file
@@ -475,14 +468,6 @@ def filter_raw_file(
     ses = m3.group(1) if m3 else session
     m4 = re.search(r"run-([^_]+)", Path(input_raw_path).name)
     r = m4.group(1) if m4 else run
-
-    # Ensure save_raw_helper is available in the subprocess
-    try:
-        from ffrprep.preproc import save_raw_helper as _save_raw_helper
-    except Exception:
-        _save_raw_helper = globals().get("save_raw_helper", None)
-    if _save_raw_helper is None:
-        raise NameError("save_raw_helper is not available in this subprocess")
 
     return _save_raw_helper(filtered, subj, task=t, session=ses, run=r, desc="filtered", output_dir=output_dir)
 
@@ -768,12 +753,22 @@ def epoch_data(
         codes = None
         event_dict = None
 
-        # Helper: try to coerce a value to int when possible
+        # Helper: coerce a value to int when it looks like one. Handles
+        # ints, numpy ints, strings of digits (with optional leading "-"),
+        # and floats whose textual form is integer-only ("1", "1.0").
         def _coerce_int(val):
-            try:
+            if isinstance(val, (int, np.integer)) and not isinstance(val, bool):
                 return int(val)
-            except Exception:
+            s = str(val).strip()
+            if not s:
                 return None
+            if s.lstrip("-").isdigit():
+                return int(s)
+            if s.lstrip("-").replace(".", "", 1).isdigit():
+                f = float(s)
+                if f.is_integer():
+                    return int(f)
+            return None
 
         # If caller provided an explicit event_id mapping, use it to map
         # trial_type values (or numeric values) to codes.
@@ -817,65 +812,62 @@ def epoch_data(
         # First, try to locate stimtrack-derived events in the derivatives
         # directory if a derivatives_root was provided. This is common when
         # a separate stimulus-tracking pipeline writes event files we can
-        # reuse for epoching.
+        # reuse for epoching. Failures inside the stimtrack branch
+        # propagate — a malformed stimtrack file is a real error to fix
+        # upstream, not something to silently mask.
         events = None
         event_dict = None
+        stim_matches = []
         if derivatives_root:
-            try:
-                import os
-                from glob import glob
-                import pandas as pd
+            import os
+            from glob import glob
 
-                deriv_dir = str(derivatives_root)
-                stim_dir = os.path.join(deriv_dir, "events-stimtrack")
-                if os.path.isdir(stim_dir):
-                    subj = str(subject) if subject is not None else ""
-                    task_k = str(task) if task is not None else ""
-                    # run may be a list (when concatenating) or a scalar
-                    if isinstance(run, (list, tuple)):
-                        run_pat = "*"
-                    else:
-                        run_pat = str(run) if run is not None else "*"
-                    pattern = os.path.join(stim_dir, f"*{subj}*{task_k}*{run_pat}_stimtrack_events.tsv")
-                    matches = sorted(glob(pattern))
-                    if matches:
-                        events_fpath = matches[0]
-                        events_df = pd.read_csv(events_fpath, sep="\t")
-                        import mne
+            deriv_dir = str(derivatives_root)
+            stim_dir = os.path.join(deriv_dir, "events-stimtrack")
+            if os.path.isdir(stim_dir):
+                subj = str(subject) if subject is not None else ""
+                task_k = str(task) if task is not None else ""
+                # run may be a list (when concatenating) or a scalar
+                if isinstance(run, (list, tuple)):
+                    run_pat = "*"
+                else:
+                    run_pat = str(run) if run is not None else "*"
+                pattern = os.path.join(stim_dir, f"*{subj}*{task_k}*{run_pat}_stimtrack_events.tsv")
+                stim_matches = sorted(glob(pattern))
 
-                        # Duration here set to 0.170s as in user example
-                        annot = mne.Annotations(
-                            onset=events_df["onset"].tolist(),
-                            duration=[0.170] * len(events_df),
-                            description=events_df["type"].astype(str).tolist(),
-                        )
-                        eeg_data.set_annotations(annot)
-                        events_from_annot, event_dict2 = mne.events_from_annotations(eeg_data)
-                        events = events_from_annot
-                        event_dict = event_dict2
-            except Exception:
-                # If anything fails during stimtrack lookup, fall back to
-                # trying to extract events from annotations/triggers below.
-                events = None
-                event_dict = None
+        if stim_matches:
+            import pandas as pd
+            import mne
 
-        # If stimtrack didn't provide events, fall back to MNE event detection
-        if events is None:
-            try:
+            events_fpath = stim_matches[0]
+            events_df = pd.read_csv(events_fpath, sep="\t")
+            # Duration here set to 0.170s as in user example
+            annot = mne.Annotations(
+                onset=events_df["onset"].tolist(),
+                duration=[0.170] * len(events_df),
+                description=events_df["type"].astype(str).tolist(),
+            )
+            eeg_data.set_annotations(annot)
+            events, event_dict = mne.events_from_annotations(eeg_data)
+        else:
+            # Prefer existing annotations on the raw — read_raw_bids attaches
+            # each run's events.tsv as annotations, and concatenate_raws
+            # preserves them with correct time offsets across runs. Fall
+            # back to stim-channel find_events only if no annotations are
+            # present (e.g., a non-BIDS Raw with just trigger codes).
+            import mne
+
+            existing_ann = getattr(eeg_data, "annotations", None)
+            if existing_ann is not None and len(existing_ann) > 0:
+                events, event_dict = mne.events_from_annotations(eeg_data, verbose=verbose)
+                # User-provided mapping wins if supplied
+                if event_id is not None:
+                    event_dict = event_id
+            else:
                 from mne import find_events
 
                 events = find_events(eeg_data, verbose=verbose)
-                # If user supplied event_id mapping, prefer that; otherwise
-                # allow MNE to generate event_id from annotations/triggers
-                if event_id is not None:
-                    event_dict = event_id
-                else:
-                    event_dict = None  # Will use default event IDs
-            except Exception:
-                # If no events found, create dummy events for demonstration
-                # This should be replaced with proper event detection
-                events = None
-                event_dict = None
+                event_dict = event_id if event_id is not None else None
 
     # Define baseline window (in seconds)
     if isinstance(baseline, float):
@@ -1297,7 +1289,19 @@ def create_preprocessing_workflow(name="ffrprep_preproc", disk_backed=False):
                 (
                     inputnode,
                     epoch_node,
-                    [("baseline", "baseline"), ("tmin", "tmin"), ("tmax", "tmax"), ("reject", "reject")],
+                    [
+                        ("baseline", "baseline"),
+                        ("tmin", "tmin"),
+                        ("tmax", "tmax"),
+                        ("reject", "reject"),
+                        ("picks", "picks"),
+                        ("on_missing", "on_missing"),
+                        ("event_id", "event_id"),
+                        ("derivatives_root", "derivatives_root"),
+                        ("sub_label", "subject"),
+                        ("task_label", "task"),
+                        ("run_label", "run"),
+                    ],
                 ),
                 # Connect to save node
                 (epoch_node, save_node, [("epochs", "epochs")]),
@@ -1329,27 +1333,25 @@ def create_preprocessing_workflow(name="ffrprep_preproc", disk_backed=False):
 
 def create_analysis_workflow(name="ffrprep_analysis"):
     """
-    Makes an estimate of all epochs.
+    Build a nipype workflow that averages epochs into evoked responses
+    and saves them to BIDS-derivatives.
+
     Parameters
     ----------
-    epochs : MNE `Epochs` object
-        MNE `Epochs` object containing time-locked epochs.
-    epochs : Boolean
-        Boolean containing whether to sort epochs by event type
+    name : str
+        Workflow name. Default: "ffrprep_analysis".
+
     Returns
     -------
-    evoked : MNE `Evoked` object
-        MNE `Evoked` object containing the average epoch.
-    Examples
-    --------
-    Evoke an EEG Epochs object.
-    >>> evoked_data = make_evoked(epoched_data)
+    workflow : nipype.Workflow
+        Nipype workflow with an inputnode (fields: epochs, by_event_type,
+        bids_root, subject, original_filename) and an outputnode (fields:
+        evoked, analysis_report).
     """
-    # average the epochs
-    evoked = epochs.average(by_event_type)
+    from nipype import Workflow, Node, Function
+    from nipype.interfaces import utility as niu
 
-    # return the averaged epochs
-    return evoked
+    workflow = Workflow(name=name)
 
     # Input node
     inputnode = Node(
@@ -1382,7 +1384,6 @@ def create_analysis_workflow(name="ffrprep_analysis"):
     workflow.connect(
         [
             (inputnode, evoked_node, [("epochs", "epochs"), ("by_event_type", "by_event_type")]),
-            # Connect to save node
             (evoked_node, save_analysis_node_func, [("evoked", "evoked")]),
             (
                 inputnode,
@@ -1393,7 +1394,6 @@ def create_analysis_workflow(name="ffrprep_analysis"):
                     ("original_filename", "original_filename"),
                 ],
             ),
-            # Connect to output
             (evoked_node, outputnode, [("evoked", "evoked")]),
         ]
     )
@@ -1528,6 +1528,20 @@ def save_preprocessing_outputs(epochs, bids_root, subject, task, session=None, r
     output_path : pathlib.Path
         Path to the saved epochs file.
     """
+    # Pre-condition: an empty Epochs object can't be saved (MNE's
+    # EpochsArray constructor surfaces a cryptic
+    # ``max() iterable argument is empty`` for this case). Most common
+    # cause is amplitude-based rejection rejecting every candidate epoch
+    # because a trigger channel (e.g. Erg1) is typed as 'eeg'.
+    if len(epochs) == 0:
+        raise ValueError(
+            "Cannot save preprocessing outputs: the epochs object is empty. "
+            "All candidate epochs were rejected. Common causes: trigger "
+            "channels (e.g. Erg1) are typed as 'eeg' rather than 'stim' "
+            "and exceed --reject-eeg every epoch. Fixes: pass "
+            "--no-auto-reject, raise --reject-eeg, or correct the channel "
+            "types in the source dataset."
+        )
 
     # Set up derivatives directory
     derivatives_info = setup_derivatives_directories(
@@ -1545,8 +1559,9 @@ def save_preprocessing_outputs(epochs, bids_root, subject, task, session=None, r
     # Task is required for BIDS compliance
     filename_parts.append(f"task-{task}")
 
-    # Run is optional
-    if run:
+    # Run is optional. Skip the run token for concatenated runs (run is
+    # a list/tuple) — the merged output has no single run identifier.
+    if run and not isinstance(run, (list, tuple)):
         filename_parts.append(f"run-{run}")
 
     # Add descriptor and extension
@@ -1559,11 +1574,11 @@ def save_preprocessing_outputs(epochs, bids_root, subject, task, session=None, r
     # Write dataset_description.json once at the preprocessing root if it
     # doesn't yet exist. This must happen before the save/return below,
     # otherwise the writes never run.
+    import json as _json
+
     preprocessing_dir = derivatives_info["preprocessing_dir"]
     dataset_desc_path = preprocessing_dir / "dataset_description.json"
     if not dataset_desc_path.exists():
-        import json as _json
-
         dataset_desc = {
             "Name": "ffrprep preprocessing outputs",
             "BIDSVersion": "1.6.0",
@@ -1577,75 +1592,60 @@ def save_preprocessing_outputs(epochs, bids_root, subject, task, session=None, r
         with open(dataset_desc_path, "w") as f:
             _json.dump(dataset_desc, f, indent=2)
 
-    # Ensure epochs.times is immutable (MNE requires non-writeable times array).
-    # To be robust when this function runs inside a Nipype subprocess, make
-    # a safe copy of the Epochs object, assign a non-writeable times array to
-    # its private attribute, and save the copy. This avoids MNE's
-    # _check_consistency AssertionError that is raised when `times` is
-    # writeable.
-    # Some MNE internal checks require that `epochs.times` be a
-    # non-writeable numpy array. Setting `_times` on a shallow copy can
-    # still leave internal references writeable, so reconstruct a fresh
-    # Epochs object from the underlying arrays and info and save that.
-    import numpy as _np
+    # Reconstruct a fresh EpochsArray from the underlying data + info to
+    # avoid edge cases where the upstream Epochs object carries internal
+    # state that doesn't round-trip through .save(). On mne>=1.9 the
+    # resulting EpochsArray's ``times`` is already a read-only property,
+    # so the historical writable-times workaround is unnecessary.
     import mne as _mne
 
-    # Extract arrays and metadata from the original epochs
     data = epochs.get_data()
     info = epochs.info.copy()
     tmin = getattr(epochs, "tmin", None)
-    event_id = getattr(epochs, "event_id", None)
-    events = getattr(epochs, "events", None)
 
-    # Try to construct a fresh EpochsArray (prefer preserving events),
-    # but be tolerant to event-id mismatches.
-    new_epochs = None
-    try:
-        # Construct a fresh EpochsArray from the data and info. This avoids
-        # triggering MNE consistency assertions caused by writeable times
-        # arrays on Epochs objects returned by upstream code.
-        new_epochs = _mne.EpochsArray(data, info, tmin=tmin)
+    new_epochs = _mne.EpochsArray(data, info, tmin=tmin)
+    new_epochs.save(output_path, overwrite=True)
 
-        # Ensure the times array is non-writeable
-        times_arr = _np.array(new_epochs.times, copy=True, dtype=float)
-        times_arr.setflags(write=False)
-        try:
-            new_epochs._times = times_arr
-        except Exception:
-            try:
-                new_epochs.times = times_arr
-                try:
-                    new_epochs.times.setflags(write=False)
-                except Exception:
-                    pass
-            except Exception:
-                pass
+    # BIDS-derivatives JSON sidecar describing the saved epochs file.
+    # Sits next to the .fif and shares its basename (BIDS convention).
+    sidecar_path = output_path.with_suffix(".json")
+    sidecar = {
+        "Description": "FFR preprocessed epochs (referenced, filtered, baseline-corrected).",
+        "GeneratedBy": [
+            {
+                "Name": "ffrprep",
+                "Description": "Frequency-following response preprocessing pipeline",
+            }
+        ],
+        "Sources": [f"bids:raw:sub-{subject}/eeg/{filename.replace('_desc-preproc_epo.fif', '_eeg.bdf')}"],
+        "RawSources": [f"sub-{subject}/eeg/{filename.replace('_desc-preproc_epo.fif', '_eeg.bdf')}"],
+        "TaskName": task,
+        "SamplingFrequency": float(info["sfreq"]),
+        "EpochCount": int(len(new_epochs)),
+        "EpochTmin": float(new_epochs.tmin),
+        "EpochTmax": float(new_epochs.tmax),
+        "Channels": list(new_epochs.ch_names),
+        "Filtering": {
+            "HighpassFilterFrequency": (
+                float(info["highpass"]) if info.get("highpass") is not None else None
+            ),
+            "LowpassFilterFrequency": (
+                float(info["lowpass"]) if info.get("lowpass") is not None else None
+            ),
+        },
+    }
+    if session is not None:
+        sidecar["Session"] = str(session)
+    if run is not None:
+        if isinstance(run, (list, tuple)):
+            sidecar["ConcatenatedRuns"] = [str(r) for r in run]
+        else:
+            sidecar["Run"] = str(run)
 
-        new_epochs.save(output_path, overwrite=True)
-        return output_path
-    except Exception:
-        # Final fallback: coerce the original epochs to contain a
-        # non-writeable times ndarray and save that. If this also fails,
-        # re-raise so Nipype can capture a crashfile.
-        try:
-            times_arr = _np.array(epochs.times, copy=True, dtype=float)
-            times_arr.setflags(write=False)
-            if hasattr(epochs, "_times"):
-                epochs._times = times_arr
-            else:
-                try:
-                    epochs.times = times_arr
-                    try:
-                        epochs.times.setflags(write=False)
-                    except Exception:
-                        pass
-                except Exception:
-                    pass
+    with open(sidecar_path, "w") as f:
+        _json.dump(sidecar, f, indent=2)
 
-            epochs.save(output_path, overwrite=True)
-            return output_path
-        except Exception:
-            raise
+    return output_path
 
 
 def load_preprocessing_outputs(bids_root, subject, original_filename=None):
@@ -1668,15 +1668,7 @@ def load_preprocessing_outputs(bids_root, subject, original_filename=None):
         Loaded epoched data.
     """
     from pathlib import Path
-    import importlib
-
-    # Lazy import of mne with a helpful error if it's not installed.
-    try:
-        mne = importlib.import_module("mne")
-    except ImportError as exc:
-        raise ImportError(
-            "The 'mne' package is required to load preprocessing outputs. " "Install it with 'pip install mne'"
-        ) from exc
+    import mne
 
     bids_root = Path(bids_root)
     preproc_dir = bids_root / "derivatives" / "ffrprep-preprocessing" / f"sub-{subject}"
@@ -1750,33 +1742,67 @@ def save_analysis_outputs(evoked, bids_root, subject, task, session=None, run=No
     # Task is required for BIDS compliance
     filename_base_parts.append(f"task-{task}")
 
-    # Run is optional
-    if run:
+    # Run is optional. Skip the run token for concatenated runs (run is
+    # a list/tuple) — the merged output has no single run identifier.
+    if run and not isinstance(run, (list, tuple)):
         filename_base_parts.append(f"run-{run}")
 
     filename_base = "_".join(filename_base_parts)
+
+    import json
+
+    def _write_evoked_sidecar(evoked_obj, evoked_path, condition=None):
+        """Write a BIDS-derivatives JSON sidecar for an evoked .fif file."""
+        sidecar_path = evoked_path.with_suffix(".json")
+        sidecar = {
+            "Description": "FFR evoked response (averaged epochs).",
+            "GeneratedBy": [
+                {
+                    "Name": "ffrprep",
+                    "Description": "Frequency-following response analysis pipeline",
+                }
+            ],
+            "TaskName": task,
+            "AnalysisType": analysis_type,
+            "SamplingFrequency": float(evoked_obj.info["sfreq"]),
+            "AverageCount": int(getattr(evoked_obj, "nave", 0)),
+            "Tmin": float(evoked_obj.tmin),
+            "Tmax": float(evoked_obj.tmax),
+            "Channels": list(evoked_obj.ch_names),
+        }
+        if session is not None:
+            sidecar["Session"] = str(session)
+        if run is not None:
+            if isinstance(run, (list, tuple)):
+                sidecar["ConcatenatedRuns"] = [str(r) for r in run]
+            else:
+                sidecar["Run"] = str(run)
+        if condition is not None:
+            sidecar["Condition"] = str(condition)
+        with open(sidecar_path, "w") as f:
+            json.dump(sidecar, f, indent=2)
 
     if isinstance(evoked, dict):
         # Multiple conditions - save each separately
         for condition, evoked_data in evoked.items():
             # Format condition name with proper capitalization
             condition_formatted = str(condition).capitalize()
-            filename = f"{filename_base}_desc-{analysis_type}" f"{condition_formatted}.fif"
+            filename = f"{filename_base}_desc-{analysis_type}{condition_formatted}.fif"
             output_path = derivatives_info["analysis_subject_dir"] / filename
             evoked_data.save(output_path)
+            _write_evoked_sidecar(evoked_data, output_path, condition=condition)
             output_paths.append(output_path)
     else:
         # Single evoked response
         filename = f"{filename_base}_desc-{analysis_type}.fif"
         output_path = derivatives_info["analysis_subject_dir"] / filename
         evoked.save(output_path)
+        _write_evoked_sidecar(evoked, output_path)
         output_paths.append(output_path)
 
     # Create dataset_description.json if it doesn't exist
     dataset_desc_path = derivatives_info["analysis_dir"] / "dataset_description.json"
     if not dataset_desc_path.exists():
-        import json
-
         dataset_desc = {
             "Name": "ffrprep analysis outputs",
             "BIDSVersion": "1.6.0",
@@ -1829,25 +1855,21 @@ def save_preprocessing_node(epochs, bids_root, subject, task=None, original_file
             "contains 'task-<label>'."
         )
 
-    # Call the saver helper. In Nipype Function nodes the function may run in
-    # a fresh Python process where the module-level name may not be present
-    # in globals; try to call directly and fall back to importing the module
-    # to obtain the helper function.
-    try:
-        output_path = save_preprocessing_outputs(epochs, bids_root, subject, task, session, run)
-    except NameError:
-        # Import the module and get the helper
-        from importlib import import_module
+    # Always go through the imported module so this works whether the call
+    # happens in the host process (where save_preprocessing_outputs is in
+    # globals) or inside a Nipype Function subprocess (where the
+    # module-level name may not be bound).
+    from importlib import import_module
 
-        mod = import_module("ffrprep.preproc")
-        output_path = mod.save_preprocessing_outputs(epochs, bids_root, subject, task, session, run)
+    mod = import_module("ffrprep.preproc")
+    output_path = mod.save_preprocessing_outputs(epochs, bids_root, subject, task, session, run)
 
     return str(output_path)
 
 
-def save_analysis_node(evoked, bids_root, subject, task, session=None, run=None, analysis_type="evoked"):
+def save_analysis_node(evoked, bids_root, subject, original_filename, analysis_type="evoked"):
     """
-    Nipype-compatible function to save analysis outputs.
+    Nipype-compatible wrapper that saves analysis outputs.
 
     Parameters
     ----------
@@ -1857,12 +1879,10 @@ def save_analysis_node(evoked, bids_root, subject, task, session=None, run=None,
         Path to the BIDS dataset root directory.
     subject : str
         Subject label (without 'sub-' prefix).
-    task : str
-        Task label (without 'task-' prefix). Required for BIDS compliance.
-    session : str, optional
-        Session label (without 'ses-' prefix).
-    run : str or int, optional
-        Run label (without 'run-' prefix).
+    original_filename : str
+        BIDS basename of the source preprocessing output (e.g.
+        ``sub-03_task-active_run-1_desc-preproc_epo``). The task,
+        session, and run identifiers are parsed from this string.
     analysis_type : str
         Type of analysis output ('evoked', 'spectrum', etc.).
 
@@ -1871,14 +1891,27 @@ def save_analysis_node(evoked, bids_root, subject, task, session=None, run=None,
     output_paths : list of str
         Paths to the saved files.
     """
-    try:
-        output_paths = save_analysis_outputs(evoked, bids_root, subject, task, session, run, analysis_type)
-    except NameError:
-        # When executed inside a Nipype Function subprocess, the
-        # module-level name may not be bound; import the module and
-        # call the helper.
-        from importlib import import_module
+    import re
+    from importlib import import_module
 
-        mod = import_module("ffrprep.preproc")
-        output_paths = mod.save_analysis_outputs(evoked, bids_root, subject, task, session, run, analysis_type)
+    name = str(original_filename)
+    task_match = re.search(r"task-([^_]+)", name)
+    session_match = re.search(r"ses-([^_]+)", name)
+    run_match = re.search(r"run-([^_]+)", name)
+    if task_match is None:
+        raise ValueError(
+            f"Cannot infer task from original_filename {name!r}; expected "
+            f"a BIDS basename containing 'task-<label>'."
+        )
+    task = task_match.group(1)
+    session = session_match.group(1) if session_match else None
+    run = run_match.group(1) if run_match else None
+
+    # Always go through the imported module to handle both host and Nipype
+    # Function subprocess execution (where module-level names may not be
+    # bound in globals).
+    mod = import_module("ffrprep.preproc")
+    output_paths = mod.save_analysis_outputs(
+        evoked, bids_root, subject, task, session, run, analysis_type,
+    )
     return [str(p) for p in output_paths]
