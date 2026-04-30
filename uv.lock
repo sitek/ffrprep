@@ -499,6 +499,7 @@ dev = [
     { name = "black" },
     { name = "coverage" },
     { name = "flake8" },
+    { name = "pybv" },
     { name = "pytest" },
 ]
 docs = [
@@ -533,6 +534,7 @@ dev = [
     { name = "black", specifier = ">=25.9.0" },
     { name = "coverage", specifier = ">=7.6.10" },
     { name = "flake8", specifier = ">=7.1.1" },
+    { name = "pybv", specifier = ">=0.7.3" },
     { name = "pytest", specifier = ">=8.3.4" },
 ]
 docs = [
@@ -1692,6 +1694,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/ba/61/48e48fef36afbab3635bc4f7341641c4ed4f83bcdc3dfb484cc90a63b750/pybids-0.22.0.tar.gz", hash = "sha256:98e7957e47c08d3c131de6f6cef629d009abce888849102b33820ca6a9930152", size = 13080005, upload-time = "2026-03-12T01:57:27.318Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/76/8f/5901cde1985f92a993c39a15475b259f46590ecc33c4cdf8103b188b440b/pybids-0.22.0-py3-none-any.whl", hash = "sha256:342e560a546881be0ab42da338e38f4995d3a9063f13ec19bd14aee17a74852f", size = 229115, upload-time = "2026-03-12T01:57:25.099Z" },
+]
+
+[[package]]
+name = "pybv"
+version = "0.7.6"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e7/35/6b61dcca1386b14d368b5f927e1babcf8f6c6171a04e4e21a344d159d857/pybv-0.7.6.tar.gz", hash = "sha256:518dac9bf151601c45787bf0ddcc5e37afd61033058eb734067825f8ae46d51b", size = 16002, upload-time = "2024-11-25T20:52:38.973Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7d/7e/0041e56e455d26d5fb644dde3976cffa135e658ac5572c2ca7ab40245af2/pybv-0.7.6-py3-none-any.whl", hash = "sha256:5b2816b3547035c8b806fcca7705c67f8be5c6ca5fee26486754bd492f180139", size = 16211, upload-time = "2024-11-25T20:52:37.684Z" },
 ]
 
 [[package]]
