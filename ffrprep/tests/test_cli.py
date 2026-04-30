@@ -179,6 +179,8 @@ def test_parse_ref_channels_empty_string():
 # run_ffrprep — mocked end-to-end behavior
 # ---------------------------------------------------------------------------
 
+@patch("ffrprep.ffrprep_cli.reports")
+@patch("mne.read_epochs")
 @patch("ffrprep.ffrprep_cli.get_parser")
 @patch("ffrprep.ffrprep_cli.validate_input_dir")
 @patch("ffrprep.ffrprep_cli.get_participants")
@@ -189,6 +191,7 @@ def test_parse_ref_channels_empty_string():
 def test_run_ffrprep_both_stages(
     mock_analysis_wf, mock_preproc_wf, mock_setup_dirs,
     mock_get_sessions, mock_get_participants, mock_validate, mock_parser,
+    mock_read_epochs, mock_reports,
 ):
     """Run the full preprocessing+analysis path with mocked dependencies."""
     with tempfile.TemporaryDirectory() as tmp_dir:
@@ -236,12 +239,22 @@ def test_run_ffrprep_both_stages(
         }
 
         derivatives_root = Path(tmp_dir) / "derivatives"
+        preprocessing_subject_dir = (
+            derivatives_root / "ffrprep-preprocessing" / "sub-01"
+        )
+        # Create the directory and a placeholder .fif so the CLI's
+        # file-presence guard (which globs for *_desc-preproc_epo.fif
+        # after preprocessing returns) finds something. The workflow is
+        # mocked so it wouldn't actually write the file.
+        preprocessing_subject_dir.mkdir(parents=True, exist_ok=True)
+        (
+            preprocessing_subject_dir
+            / "sub-01_task-passive_run-1_desc-preproc_epo.fif"
+        ).touch()
         mock_setup_dirs.return_value = {
             "derivatives_root": derivatives_root,
             "preprocessing_dir": derivatives_root / "ffrprep-preprocessing",
-            "preprocessing_subject_dir": (
-                derivatives_root / "ffrprep-preprocessing" / "sub-01"
-            ),
+            "preprocessing_subject_dir": preprocessing_subject_dir,
             "analysis_dir": derivatives_root / "ffrprep-analysis",
             "analysis_subject_dir": (
                 derivatives_root / "ffrprep-analysis" / "sub-01"
@@ -309,11 +322,15 @@ def test_run_ffrprep_group_level_not_supported(mock_parser):
 @patch("ffrprep.ffrprep_cli.get_parser")
 @patch("ffrprep.ffrprep_cli.get_participants")
 @patch("ffrprep.ffrprep_cli.setup_derivatives_directories")
-@patch("ffrprep.ffrprep_cli.check_preprocessing_exists")
 def test_run_ffrprep_analysis_missing_preprocessing(
-    mock_check_preproc, mock_setup_dirs, mock_get_participants, mock_parser,
+    mock_setup_dirs, mock_get_participants, mock_parser,
 ):
-    """Analysis-only mode when preprocessing outputs are missing."""
+    """Analysis-only mode when no preprocessing outputs exist on disk.
+
+    The CLI now globs ``preprocessing_subject_dir`` for ``*_desc-preproc_epo.fif``
+    files and prints an actionable error if none are found, instead of
+    calling a separate ``check_preprocessing_exists`` helper.
+    """
     with tempfile.TemporaryDirectory() as tmp_dir:
         mock_args = MagicMock()
         mock_args.bids_dir = Path(tmp_dir) / "bids"
@@ -325,11 +342,17 @@ def test_run_ffrprep_analysis_missing_preprocessing(
 
         mock_parser.return_value.parse_args.return_value = mock_args
         mock_get_participants.return_value = ["01"]
-        mock_check_preproc.return_value = (False, [])
 
+        # Real (empty) directories so the CLI's glob returns nothing.
         derivatives_root = Path(tmp_dir) / "derivatives"
+        preproc_subject_dir = (
+            derivatives_root / "ffrprep-preprocessing" / "sub-01" / "eeg"
+        )
+        preproc_subject_dir.mkdir(parents=True)
         mock_setup_dirs.return_value = {
             "derivatives_root": derivatives_root,
+            "preprocessing_dir": derivatives_root / "ffrprep-preprocessing",
+            "preprocessing_subject_dir": preproc_subject_dir,
             "analysis_dir": derivatives_root / "ffrprep-analysis",
             "analysis_subject_dir": (
                 derivatives_root / "ffrprep-analysis" / "sub-01"

@@ -1,5 +1,4 @@
 import json
-import shutil
 import pytest
 from ffrprep.datasets import download_example_data
 from ffrprep.preproc import (
@@ -63,105 +62,56 @@ def test_load_data(tmp_path):
     from mne import io
     raw_from_file = io.read_raw_fif(temp_filename, verbose=False)
 
-    try:
-        # Create BIDS path for writing test data
-        bids_path = BIDSPath(
-            subject="03", task="passive", run=1,
-            root=bids_root, datatype="eeg"
-        )
+    # Write the data to BIDS format. Failures here propagate so a real
+    # BIDS-write regression surfaces immediately.
+    bids_path = BIDSPath(
+        subject="03", task="passive", run=1,
+        root=bids_root, datatype="eeg",
+    )
+    write_raw_bids(
+        raw=raw_from_file,
+        bids_path=bids_path,
+        overwrite=True,
+        verbose=False,
+    )
 
-        # Write the data to BIDS format
-        write_raw_bids(
-            raw=raw_from_file,
-            bids_path=bids_path,
-            overwrite=True,
-            verbose=False
-        )
-        bids_write_success = True
+    # load_data returns (raw, bids_path, original_filename, events_file)
+    loaded_data, returned_bids_path, original_filename, _events_file = load_data(
+        bids_root=str(bids_root),
+        sub_label="03",
+        task_label="passive",
+        run_label=1,
+    )
 
-    except Exception as write_error:
-        print(f"BIDS write failed: {write_error}")
-        bids_write_success = False
+    import mne
+    assert isinstance(loaded_data, mne.io.BaseRaw)
+    assert returned_bids_path is not None
+    assert original_filename is not None
 
-    # Now test the actual load_data function
-    if bids_write_success:
-        try:
-            loaded_data, returned_bids_path, original_filename = load_data(
-                bids_root=str(bids_root),
-                sub_label="03",
-                task_label="passive",
-                run_label=1
-            )
+    # Data properties
+    assert len(loaded_data.ch_names) == n_channels
+    assert loaded_data.n_times == n_times
+    assert loaded_data.info["sfreq"] == sfreq
 
-            # Test that load_data actually works and returns expected types
-            import mne
-            assert loaded_data is not None, \
-                "Data should be loaded successfully"
-            assert isinstance(loaded_data, mne.io.BaseRaw), \
-                "Loaded data should be an MNE Raw object"
-            assert returned_bids_path is not None, \
-                "BIDS path should be returned"
-            assert original_filename is not None, \
-                "Original filename should be returned"
+    ch_types_loaded = loaded_data.get_channel_types()
+    assert len(ch_types_loaded) > 0
+    assert all(ch_type == "eeg" for ch_type in ch_types_loaded)
 
-            # Test data properties
-            assert len(loaded_data.ch_names) == n_channels, \
-                "Loaded data should have correct number of channels"
-            assert loaded_data.n_times == n_times, \
-                "Loaded data should have correct number of time points"
-            assert loaded_data.info['sfreq'] == sfreq, \
-                "Loaded data should have correct sampling frequency"
+    # Data is non-empty and contains the synthetic signal
+    loaded_data_array = loaded_data.get_data()
+    assert loaded_data_array.size > 0
+    assert not (loaded_data_array == 0).all()
 
-            # Test that channels exist and have proper types
-            ch_types_loaded = loaded_data.get_channel_types()
-            assert len(ch_types_loaded) > 0, \
-                "Loaded data should have channel types defined"
-            assert all(ch_type == 'eeg' for ch_type in ch_types_loaded), \
-                "All channels should be EEG type"
+    # BIDS path properties. pybids returns ``run`` as a string ("1"),
+    # not an int, in current versions.
+    assert returned_bids_path.subject == "03"
+    assert returned_bids_path.task == "passive"
+    assert str(returned_bids_path.run) == "1"
 
-            # Verify the data actually contains signal (not all zeros)
-            loaded_data_array = loaded_data.get_data()
-            assert loaded_data_array.size > 0, \
-                "Loaded data array should not be empty"
-            assert not (loaded_data_array == 0).all(), \
-                "Loaded data should contain actual signal, not all zeros"
-
-            # Test BIDS path properties
-            assert returned_bids_path.subject == "03", \
-                "Returned BIDS path should have correct subject"
-            assert returned_bids_path.task == "passive", \
-                "Returned BIDS path should have correct task"
-            assert returned_bids_path.run == 1, \
-                "Returned BIDS path should have correct run"
-
-            # Test original filename
-            assert "sub-03" in original_filename, \
-                "Original filename should contain subject"
-            assert "task-passive" in original_filename, \
-                "Original filename should contain task"
-            assert "run-01" in original_filename, \
-                "Original filename should contain run"
-
-            print("✓ load_data function test passed!")
-
-        except Exception as e:
-            # If load_data fails, it might be due to missing dependencies
-            print(f"load_data failed (might be environment-related): {e}")
-            bids_write_success = False
-
-    if not bids_write_success:
-        # Fall back to testing the expected data format
-        print("Falling back to basic structure tests...")
-
-        # At minimum, verify the synthetic data structure
-        assert raw_from_file is not None, \
-            "Synthetic data should be created correctly"
-        assert len(raw_from_file.ch_names) == n_channels, \
-            "Synthetic data should have correct number of channels"
-        assert raw_from_file.info['sfreq'] == sfreq, \
-            "Synthetic data should have correct sampling frequency"
-
-        print("✓ Fallback synthetic data test passed!")
+    assert "sub-03" in original_filename
+    assert "task-passive" in original_filename
+    # pybids no longer zero-pads run identifiers in filenames.
+    assert "run-1" in original_filename
 
 
 def test_load_data_error_handling(tmp_path):
@@ -181,35 +131,26 @@ def test_load_data_error_handling(tmp_path):
     with open(bids_root / "dataset_description.json", 'w') as f:
         json.dump(dataset_desc, f)
 
-    # Test 1: Non-existent subject
-    try:
+    # Test 1: Non-existent subject — load_data should raise
+    # FileNotFoundError with a helpful message.
+    with pytest.raises(FileNotFoundError, match="No EEG files found"):
         load_data(
             bids_root=str(bids_root),
-            sub_label="999",  # Non-existent subject
+            sub_label="999",
             task_label="passive",
-            run_label=1
+            run_label=1,
         )
-        assert False, "Should raise FileNotFoundError for non-existent subject"
-    except FileNotFoundError as e:
-        assert "No EEG files found" in str(e), \
-            "Should provide helpful error message"
-        print("✓ Non-existent subject error handling works!")
 
-    # Test 2: Non-existent BIDS root
-    try:
+    # Test 2: Non-existent BIDS root — pybids/mne_bids surfaces this as
+    # one of FileNotFoundError, OSError, or ValueError depending on
+    # which layer hits it first.
+    with pytest.raises((FileNotFoundError, OSError, ValueError)):
         load_data(
             bids_root="/nonexistent/path",
             sub_label="03",
             task_label="passive",
-            run_label=1
+            run_label=1,
         )
-        assert False, "Should raise error for non-existent BIDS root"
-    except Exception as e:
-        # Could be FileNotFoundError, OSError, or ValidationError
-        error_type = type(e).__name__
-        print(f"✓ Non-existent BIDS root error handling works: {error_type}")
-
-    print("✓ load_data error handling tests passed!")
 
 
 def test_reference_data(tmp_path):
@@ -271,11 +212,10 @@ def test_reference_data(tmp_path):
     assert ref_data_array.size > 0, \
         "Referenced data array should not be empty"
 
-    # Should handle non-existent reference channels gracefully
-    try:
+    # A non-existent reference channel must surface as ValueError or
+    # KeyError from MNE's channel resolution.
+    with pytest.raises((ValueError, KeyError)):
         reference_data(data, ref_channels="fake_channel")
-    except (ValueError, KeyError):
-        print("Given reference channel does not exist")
 
 
 def test_filter_data(tmp_path):
@@ -507,51 +447,28 @@ def test_epoch_data(tmp_path):
         assert len(epochs4.ch_names) <= len(eeg_channels), \
             "Epochs should have fewer or equal channels when picks used"
 
-    # Test 5: With external events file (simulate TSV file)
-    import tempfile
+    # Test 5: With external events file (simulate TSV file). Use tmp_path
+    # so the file is cleaned up automatically — no need for unlink.
     import pandas as pd
 
-    # Create a temporary events file
-    with tempfile.NamedTemporaryFile(
-        mode='w', suffix='.tsv', delete=False
-    ) as f:
-        events_data = pd.DataFrame({
-            'onset': [1.0, 2.0, 3.0, 4.0, 5.0],  # Event times in seconds
-            'duration': [0.1, 0.1, 0.1, 0.1, 0.1],
-            'trial_type': [1, 2, 1, 2, 1]
-        })
-        events_data.to_csv(f.name, sep='\t', index=False)
-        events_file = f.name
+    events_file = tmp_path / "events.tsv"
+    pd.DataFrame({
+        "onset": [1.0, 2.0, 3.0, 4.0, 5.0],  # Event times in seconds
+        "duration": [0.1, 0.1, 0.1, 0.1, 0.1],
+        "trial_type": [1, 2, 1, 2, 1],
+    }).to_csv(events_file, sep="\t", index=False)
 
-    try:
-        epochs5, time_window5 = epoch_data(
-            filtered_data, baseline=-0.1, events_file=events_file,
-            tmin=-0.2, tmax=0.5, verbose=False
-        )
+    epochs5, _time_window5 = epoch_data(
+        filtered_data, baseline=-0.1, events_file=str(events_file),
+        tmin=-0.2, tmax=0.5, verbose=False,
+    )
+    assert epochs5 is not None
+    if len(epochs5) > 0:
+        assert hasattr(epochs5, "event_id")
 
-        assert epochs5 is not None, \
-            "Epochs with external events file should be created"
-        # Should have events based on the TSV file
-        if len(epochs5) > 0:
-            assert hasattr(epochs5, 'event_id'), \
-                "Epochs should have event_id when using events file"
-
-    except Exception as e:
-        # Events from file might fail due to timing issues with data
-        print(f"Events file test failed (expected with example data): {e}")
-
-    finally:
-        # Clean up temporary events file
-        import os
-        if os.path.exists(events_file):
-            os.unlink(events_file)
-
-    # Test 6: Error handling - invalid baseline
-    try:
+    # Test 6: Invalid baseline must raise TypeError or ValueError
+    with pytest.raises((TypeError, ValueError)):
         epoch_data(filtered_data, baseline="invalid")
-        assert False, "Should raise error for invalid baseline"
-    except (TypeError, ValueError):
-        pass  # Expected error
 
     # Test 7: Verify that epochs have reasonable structure
     if len(epochs1) > 0:  # If we have valid epochs
@@ -746,35 +663,22 @@ def test_preprocessing_workflow_execution(tmp_path):
     # Set up working directory for nipype
     workflow.base_dir = str(tmp_path / "working")
 
-    try:
-        # Run the workflow
-        result = workflow.run()
+    # Run the workflow. Failures propagate so workflow regressions surface
+    # immediately rather than getting masked as "environment issues".
+    result = workflow.run()
+    assert result is not None
 
-        # Verify that the workflow completed successfully
-        assert result is not None, "Workflow should complete and return result"
+    # save_preprocessing_outputs derives derivatives from ``bids_root``,
+    # not from the workflow's output_dir input — outputs land under the
+    # downloaded dataset's own derivatives/ subdirectory.
+    from pathlib import Path
 
-        # Check that output files were created
-        derivatives_dir = (
-            tmp_path / "derivatives" / "ffrprep-preprocessing" / "sub-03"
-        )
-        if derivatives_dir.exists():
-            output_files = list(derivatives_dir.glob("*desc-preproc.fif"))
-            assert len(output_files) > 0, \
-                "Preprocessing workflow should create output files"
-
-    except Exception as e:
-        # If workflow execution fails, it might be due to environment issues
-        # but the workflow structure should still be valid
-        print(f"Workflow execution failed (might be environment-related): {e}")
-
-        # At minimum, verify the workflow was set up correctly
-        assert workflow.inputs.inputnode.bids_root == str(data_path), \
-            "Workflow inputs should be set correctly"
-
-    finally:
-        # Clean up the downloaded files after the test
-        if data_path.exists():
-            shutil.rmtree(data_path)
+    derivatives_dir = (
+        Path(data_path) / "derivatives" / "ffrprep-preprocessing" / "sub-03" / "eeg"
+    )
+    assert derivatives_dir.exists()
+    output_files = list(derivatives_dir.glob("*desc-preproc_epo.fif"))
+    assert len(output_files) > 0
 
 
 def test_output_structure_and_files(tmp_path):
@@ -1136,24 +1040,16 @@ def test_make_evoked(tmp_path):
     assert 'single_condition' in evoked_single_by_type, \
         "Dict should contain the single condition key"
 
-    # Test 6: Error handling with empty epochs
-    # Create epochs with no events that pass (should be handled gracefully)
+    # Test 6: Empty events array — MNE's Epochs raises ValueError when
+    # asked to construct epochs from zero events.
     empty_events = np.empty((0, 3), dtype=int)
-    try:
-        empty_epochs = Epochs(
+    with pytest.raises(ValueError):
+        Epochs(
             raw_data, empty_events,
             tmin=-0.2, tmax=0.5,
             verbose=False,
-            preload=True
+            preload=True,
         )
-        # If empty epochs are created, make_evoked should handle them
-        if len(empty_epochs) == 0:
-            print("Empty epochs case: would need special handling")
-    except ValueError:
-        # Expected - can't create epochs with no events
-        pass
-
-    print("✓ All make_evoked tests passed!")
 
 
 def test_setup_derivatives_directories(tmp_path):
