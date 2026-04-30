@@ -1117,7 +1117,10 @@ def test_setup_derivatives_directories(tmp_path):
     assert result["analysis_subject_dir"] == analysis_subject_dir, \
         "Should return correct analysis subject directory path"
 
-    # Test 2: Only preprocessing directories
+    # Test 2: Only preprocessing directories.
+    # The create_* flags only control mkdir behaviour; paths are always
+    # resolvable so cross-stage callers can locate inputs/outputs from
+    # the *other* stage without re-deriving the canonical layout.
     bids_root_2 = tmp_path / "test_bids_2"
     bids_root_2.mkdir()
 
@@ -1128,24 +1131,26 @@ def test_setup_derivatives_directories(tmp_path):
         create_analysis=False
     )
 
-    # Should create preprocessing but not analysis
     derivatives_root_2 = bids_root_2 / "derivatives"
-    preproc_dir_2 = derivatives_root_2 / "ffrprep-preprocessing" / "sub-05"
+    preproc_subject_dir_2 = derivatives_root_2 / "ffrprep-preprocessing" / "sub-05"
     analysis_dir_2 = derivatives_root_2 / "ffrprep-analysis"
 
-    assert preproc_dir_2.exists(), \
+    assert preproc_subject_dir_2.exists(), \
         "Preprocessing directory should be created when requested"
     assert not analysis_dir_2.exists(), \
         "Analysis directory should not be created when not requested"
 
-    assert result_preproc_only["preprocessing_dir"] is not None, \
-        "Should return preprocessing directory path"
-    assert result_preproc_only["analysis_dir"] is None, \
-        "Should return None for analysis directory when not created"
-    assert result_preproc_only["analysis_subject_dir"] is None, \
-        "Should return None for analysis subject directory when not created"
+    expected_analysis_subject_dir = analysis_dir_2 / "sub-05"
+    assert result_preproc_only["analysis_dir"] == analysis_dir_2, \
+        "Analysis dir path is always resolved, even when not created"
+    assert result_preproc_only["analysis_subject_dir"] == expected_analysis_subject_dir, \
+        "Analysis subject dir path is always resolved, even when not created"
 
-    # Test 3: Only analysis directories
+    # Test 3: Only analysis directories.
+    # This is the analysis-only run path: analysis stage needs to read
+    # existing preproc outputs from the canonical preproc location, so
+    # preprocessing_subject_dir must still be a usable Path even though
+    # mkdir is skipped.
     bids_root_3 = tmp_path / "test_bids_3"
     bids_root_3.mkdir()
 
@@ -1156,27 +1161,23 @@ def test_setup_derivatives_directories(tmp_path):
         create_analysis=True
     )
 
-    # Should create analysis but not preprocessing
     derivatives_root_3 = bids_root_3 / "derivatives"
     preproc_dir_3 = derivatives_root_3 / "ffrprep-preprocessing"
-    analysis_dir_3 = derivatives_root_3 / "ffrprep-analysis" / "sub-07"
+    analysis_subject_dir_3 = derivatives_root_3 / "ffrprep-analysis" / "sub-07"
 
-    assert analysis_dir_3.exists(), \
+    assert analysis_subject_dir_3.exists(), \
         "Analysis directory should be created when requested"
     assert not preproc_dir_3.exists(), \
         "Preprocessing directory should not be created when not requested"
 
-    assert result_analysis_only["analysis_dir"] is not None, \
-        "Should return analysis directory path"
-    assert result_analysis_only["preprocessing_dir"] is None, (
-        "Should return None for preprocessing directory when not created"
-    )
-    assert result_analysis_only["preprocessing_subject_dir"] is None, (
-        "Should return None for preprocessing subject directory when not "
-        "created"
-    )
+    expected_preproc_subject_dir = preproc_dir_3 / "sub-07" / "eeg"
+    assert result_analysis_only["preprocessing_dir"] == preproc_dir_3, \
+        "Preprocessing dir path is always resolved, even when not created"
+    assert result_analysis_only["preprocessing_subject_dir"] == expected_preproc_subject_dir, \
+        "Preprocessing subject dir path is always resolved, even when not created"
 
-    # Test 4: Neither directory type (edge case)
+    # Test 4: Neither directory type (edge case).
+    # Paths still resolve so callers can introspect canonical layout.
     bids_root_4 = tmp_path / "test_bids_4"
     bids_root_4.mkdir()
 
@@ -1187,18 +1188,21 @@ def test_setup_derivatives_directories(tmp_path):
         create_analysis=False
     )
 
-    # Should still create derivatives root but no subdirectories
     derivatives_root_4 = bids_root_4 / "derivatives"
     assert derivatives_root_4.exists(), \
         "Derivatives root should always be created"
-    assert result_neither["derivatives_root"] == derivatives_root_4, \
-        "Should return derivatives root path"
+    assert result_neither["derivatives_root"] == derivatives_root_4
 
-    # No specific derivative directories should be created
-    assert result_neither["preprocessing_dir"] is None, \
-        "Should return None when no preprocessing directory created"
-    assert result_neither["analysis_dir"] is None, \
-        "Should return None when no analysis directory created"
+    expected_preproc_dir_4 = derivatives_root_4 / "ffrprep-preprocessing"
+    expected_analysis_dir_4 = derivatives_root_4 / "ffrprep-analysis"
+    assert result_neither["preprocessing_dir"] == expected_preproc_dir_4, \
+        "Preprocessing dir path is always resolved, even when not created"
+    assert result_neither["analysis_dir"] == expected_analysis_dir_4, \
+        "Analysis dir path is always resolved, even when not created"
+    assert not expected_preproc_dir_4.exists(), \
+        "Preprocessing dir should not be created when create_preprocessing=False"
+    assert not expected_analysis_dir_4.exists(), \
+        "Analysis dir should not be created when create_analysis=False"
 
     # Test 5: Path input as string vs Path object
     bids_root_str = str(tmp_path / "test_bids_str")
