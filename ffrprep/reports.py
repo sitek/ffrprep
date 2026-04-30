@@ -17,6 +17,63 @@ from matplotlib.gridspec import GridSpec
 from scipy import stats
 import pandas as pd
 import re
+from jinja2 import Environment, FileSystemLoader, select_autoescape
+
+
+_TEMPLATE_DIR = Path(__file__).parent / "templates"
+_jinja_env = Environment(
+    loader=FileSystemLoader(str(_TEMPLATE_DIR)),
+    autoescape=select_autoescape(["html", "xml"]),
+    trim_blocks=True,
+    lstrip_blocks=True,
+)
+
+
+def build_subject_report(bids_root, subject, out_dir, sections, title=None):
+    """Render a single-file HTML preprocessing report for a subject.
+
+    Parameters
+    ----------
+    bids_root : str | Path
+        Top-level BIDS dataset directory. Recorded for provenance and
+        used to resolve relative paths displayed in the report body.
+    subject : str
+        BIDS subject identifier without the ``sub-`` prefix
+        (e.g. ``"01"``).
+    out_dir : str | Path
+        Directory where the rendered ``.html`` file is written. Created
+        if missing.
+    sections : list of dict
+        Per-stage section descriptors. Each dict must provide ``id``
+        (anchor target, used by the table of contents) and ``title``
+        (header text). Phase B extends this with summary fields and
+        embedded plots; Phase A renders only headers.
+    title : str | None
+        Page title and ``<h1>`` text. Defaults to
+        ``"ffrprep preprocessing report sub-{subject}"``.
+
+    Returns
+    -------
+    str
+        Absolute path to the written HTML file.
+    """
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    if title is None:
+        title = f"ffrprep preprocessing report sub-{subject}"
+
+    template = _jinja_env.get_template("subject_report.html.j2")
+    html_text = template.render(
+        title=title,
+        subject=subject,
+        sections=sections,
+        bids_root=str(bids_root),
+    )
+
+    out_path = out_dir / f"sub-{subject}_preprocessing_report.html"
+    out_path.write_text(html_text, encoding="utf-8")
+    return str(out_path)
 
 
 def create_report(bids_root, out_dir=None, filename=None, title=None, overwrite=False):
