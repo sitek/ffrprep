@@ -1427,38 +1427,28 @@ def setup_derivatives_directories(bids_root, subject, create_preprocessing=True,
 
     bids_root = Path(bids_root)
     derivatives_root = bids_root / "derivatives"
-
-    # Create main derivatives directory if it doesn't exist
     derivatives_root.mkdir(exist_ok=True)
 
-    # Set up preprocessing derivatives
-    preproc_dir = None
+    # Always resolve canonical paths so callers can locate inputs/outputs
+    # of the *other* stage (e.g. analysis-only mode reads existing
+    # preprocessing outputs from preprocessing_subject_dir). The
+    # create_* flags only control whether the directory is materialized.
+    preproc_dir = derivatives_root / "ffrprep-preprocessing"
+    preproc_subject_eeg_dir = preproc_dir / f"sub-{subject}" / "eeg"
     if create_preprocessing:
-        preproc_dir = derivatives_root / "ffrprep-preprocessing"
-        preproc_subject_dir = preproc_dir / f"sub-{subject}"
-        preproc_subject_dir.mkdir(parents=True, exist_ok=True)
-        # Create an 'eeg' subdirectory for EEG-specific outputs
-        preproc_subject_eeg_dir = preproc_subject_dir / "eeg"
         preproc_subject_eeg_dir.mkdir(parents=True, exist_ok=True)
 
-    # Set up analysis derivatives
-    analysis_dir = None
+    analysis_dir = derivatives_root / "ffrprep-analysis"
+    analysis_subject_dir = analysis_dir / f"sub-{subject}"
     if create_analysis:
-        analysis_dir = derivatives_root / "ffrprep-analysis"
-        analysis_subject_dir = analysis_dir / f"sub-{subject}"
         analysis_subject_dir.mkdir(parents=True, exist_ok=True)
 
     return {
         "derivatives_root": derivatives_root,
         "preprocessing_dir": preproc_dir,
         "analysis_dir": analysis_dir,
-        "preprocessing_subject_dir": (
-            # point to the eeg subdirectory for preprocessing outputs when available
-            (preproc_dir / f"sub-{subject}" / "eeg")
-            if preproc_dir
-            else None
-        ),
-        "analysis_subject_dir": (analysis_dir / f"sub-{subject}" if analysis_dir else None),
+        "preprocessing_subject_dir": preproc_subject_eeg_dir,
+        "analysis_subject_dir": analysis_subject_dir,
     }
 
 

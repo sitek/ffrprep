@@ -53,24 +53,29 @@ def _propagate_run_provenance(preproc_file, analysis_dir):
             json.dump(data, f, indent=2)
 
 
-def _setup_subject_log(derivatives_info, subject):
+def _setup_subject_log(derivatives_info, subject, stage):
     """Tee stdout-style run information into a per-subject log file.
 
-    Creates ``sub-<id>_ffrprep.log`` next to the subject's preprocessing
-    derivatives. The file captures the CLI invocation, ffrprep version,
-    timestamp, and any subsequent log messages emitted via the root or
-    nipype loggers. A handler is attached per call so each subject ends
-    up with its own log file.
+    Creates ``sub-<id>_<descriptor>.log`` next to the subject's outputs
+    for the requested stage. The file captures the CLI invocation,
+    ffrprep version, timestamp, and any subsequent log messages emitted
+    via the root or nipype loggers. A handler is attached per call so
+    each subject ends up with its own log file.
+
+    For "preprocessing" or "both" stages, the log lives in the
+    preprocessing subject dir; for "analysis", in the analysis subject
+    dir. The descriptor in the filename matches.
     """
-    log_dir = derivatives_info.get("preprocessing_subject_dir") or derivatives_info.get("analysis_subject_dir")
+    if stage in ("preprocessing", "both"):
+        log_dir = derivatives_info.get("preprocessing_subject_dir")
+        descriptor = "preprocessing"
+    else:
+        log_dir = derivatives_info.get("analysis_subject_dir")
+        descriptor = "analysis"
     if log_dir is None:
         return
     log_dir = Path(log_dir)
     log_dir.mkdir(parents=True, exist_ok=True)
-    # BIDS-derivatives style: sub-XX_<descriptor>.log so the file sits
-    # alongside the corresponding stage's outputs.
-    descriptor = "preprocessing" if "preprocessing_subject_dir" in derivatives_info and \
-        derivatives_info["preprocessing_subject_dir"] is not None else "analysis"
     log_path = log_dir / f"sub-{subject}_{descriptor}.log"
 
     # Clean up the legacy log filename (pre-descriptor naming) if present.
@@ -524,7 +529,7 @@ def run_ffrprep():
         # there is a record of inputs/outputs/computing logs after the run.
         # The handler is added per-subject so each subject gets its own log
         # file in its own derivatives directory.
-        _setup_subject_log(derivatives_info, subject)
+        _setup_subject_log(derivatives_info, subject, args.stage)
 
         # Create workflow based on stage
         if args.stage in ["preprocessing", "both"]:
