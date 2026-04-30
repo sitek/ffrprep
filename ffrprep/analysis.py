@@ -3,6 +3,7 @@ from numpy import mean, sqrt, square
 import mne
 import statsmodels as sm
 from scipy import signal
+from scipy.stats import pearsonr
 import matplotlib.pyplot as plt
 
 
@@ -828,10 +829,38 @@ def plot_phase_consistency_masked(
     plt.tight_layout()
     return fig
 
+
 def corr_stim_to_resp(stim, resp, sfreq):
+    """
+    Compute the correlation between stimulus and brain response.
+
+    The function compares a stimulus waveform and a response
+    across various time lags and returns the strongest correlation
+    and lag pair where the strongest correlation is.
+
+    Parameters
+    ----------
+    stim : array-like
+        Stimulus signal file, should represent a single time-series
+    resp : array-like
+        Brain response signal, should represent a single time-series
+    sfreq : float
+        Sampling frequency, used to convert lag values to milliseconds
+
+    Returns
+    -------
+    peak_corr : float
+        The highest correlation value between the stimulus and the response
+    peak_lag : float
+        The lag at which the maximum correlation occurs.
+    """
+
+    stim = np.asarray(stim).squeeze()
+    resp = np.asarray(resp).squeeze()
+
     minimum_length = min(len(stim), len(resp))
-    stim = stim[:minimum_length, :]
-    resp = resp[:minimum_length, :]
+    stim = stim[:minimum_length]
+    resp = resp[:minimum_length]
 
     corrs = signal.correlate(resp, stim, mode="full")
     corrs = corrs / (np.std(stim) * np.std(resp) * len(stim))
@@ -843,3 +872,170 @@ def corr_stim_to_resp(stim, resp, sfreq):
     peak_lag = lag_milliseconds[peak_n]
 
     return peak_corr, peak_lag
+
+
+def corr_resp_to_resp(resp1, resp2, sfreq):
+    """
+    Compute the correlation between two brain responses.
+
+    The function compares two brain responses to each other
+    across various time lags and returns the strongest correlation
+    and lag pair where the strongest correlation is.
+
+    Parameters
+    ----------
+    resp1 : array-like
+        First brain response signal, should represent a single time-series
+    resp2 : array-like
+        Second brain response signal, should represent a single time-series
+    sfreq : float
+        Sampling frequency, used to convert lag values to milliseconds
+
+    Returns
+    -------
+    peak_corr : float
+        The highest correlation value between the two responses
+    peak_lag : float
+        The lag at which the maximum correlation occurs.
+    """
+    resp1 = np.asarray(resp1).squeeze()
+    resp2 = np.asarray(resp2).squeeze()
+
+    minimum_length = min(len(resp1), len(resp2))
+    resp1 = resp1[:minimum_length]
+    resp2 = resp2[:minimum_length]
+
+    corrs = signal.correlate(resp2, resp1, mode="full")
+    corrs = corrs / (np.std(resp1) * np.std(resp2) * len(resp1))
+
+    lag = np.arange(-len(resp1) + 1, len(resp2))
+    lag_milliseconds = lag / sfreq * 1000
+
+    peak_n = np.argmax(corrs)
+    peak_corr = corrs[peak_n]
+    peak_lag = lag_milliseconds[peak_n]
+
+    return peak_corr, peak_lag
+
+def response_consistency(epochs, tmin=None, tmax=None, picks="eeg"):
+    """
+    Compute trial-to-trial response consistency from an MNE Epochs object.
+
+    This function measures how similar individual brain response trials are to
+    each other by computing pairwise Pearson correlations between epochs and
+    averaging those correlations.
+
+    Parameters
+    ----------
+    epochs : mne.Epochs
+        Epoched EEG/FFR data containing individual trials.
+    tmin : float, optional
+        Start time in seconds for the analysis window. If None, uses the start
+        of the epoch.
+    tmax : float, optional
+        End time in seconds for the analysis window. If None, uses the end of
+        the epoch.
+    picks : str or list, optional
+        Channels to include. Default is "eeg".
+
+    Returns
+    -------
+    mean_r : float
+        Mean pairwise correlation across trials.
+    r_vals : ndarray
+        Array of all pairwise trial-to-trial correlation values.
+
+    Example usage:
+    -------------
+    mean_r, r_vals = response_consistency(
+        epochs,
+        tmin=0.05,
+        tmax=0.20,
+        picks=["Cz"]
+    )
+    """
+
+    data = epochs.copy().crop(tmin=tmin, tmax=tmax).get_data(picks=picks)
+
+    if data.shape[1] > 1:
+        data = data.mean(axis=1)
+    else:
+        data = data[:, 0, :]
+
+    r_vals = []
+
+    for i in range(data.shape[0]):
+        for j in range(i + 1, data.shape[0]):
+            r, _ = pearsonr(data[i], data[j])
+            r_vals.append(r)
+
+    r_vals = np.array(r_vals)
+    mean_r = np.mean(r_vals)
+
+    return mean_r, r_vals
+
+
+def compute_fft(signal_data, sfreq, fmin=None, fmax=None):
+    """
+    Compute the FFT amplitude spectrum for a time-domain signal.
+
+    Parameters
+    ----------
+    signal_data : array-like
+        One-dimensional brain response signal.
+    sfreq : float
+        Sampling frequency in Hz.
+    fmin : float, optional
+        Minimum frequency to include.
+    fmax : float, optional
+        Maximum frequency to include.
+
+    Returns
+    -------
+    freqs : ndarray
+        Frequency axis in Hz.
+    amplitude : ndarray
+        FFT amplitude spectrum.
+    """
+    signal_data = np.asarray(signal_data).squeeze()
+
+    if signal_data.ndim != 1:
+        raise ValueError("signal_data must be one-dimensional.")
+
+    signal_data = signal_data - np.mean(signal_data)
+
+    fft_values = np.fft.rfft(signal_data)
+    freqs = np.fft.rfftfreq(len(signal_data), d=1 / sfreq)
+
+    amplitude = np.abs(fft_values) / len(signal_data)
+
+    if fmin is not None or fmax is not None:
+        if fmin is None:
+            fmin = freqs[0]
+        if fmax is None:
+            fmax = freqs[-1]
+
+        mask = (freqs >= fmin) & (freqs <= fmax)
+        freqs = freqs[mask]
+        amplitude = amplitude[mask]
+
+    return freqs, amplitude
+
+if __name__ == "__main__":
+    import numpy as np
+
+    # test signals
+    resp = np.random.randn(1000)
+    stim = np.random.randn(1000)
+    sfreq = 1000
+
+    peak_corr, peak_lag = corr_stim_to_resp(stim, resp, sfreq)
+
+    print("Peak corr:", peak_corr)
+    print("Peak lag:", peak_lag)
+
+    pos_mean_r, pos_r_vals = response_consistency(sub_epochs["1"], tmin=0.05, tmax=0.20, picks=["Cz"])
+    neg_mean_r, neg_r_vals = response_consistency(sub_epochs["2"], tmin=0.05, tmax=0.20, picks=["Cz"])
+
+    print("Positive consistency:", pos_mean_r)
+    print("Negative consistency:", neg_mean_r)
