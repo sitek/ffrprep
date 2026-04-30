@@ -1,9 +1,14 @@
 """Unit tests for the reporting functions in ffrprep.reports."""
 
 import os.path as op
+from pathlib import Path
 import matplotlib
 import matplotlib.pyplot as plt
-from ffrprep.reports import create_report, add_to_report
+from ffrprep.reports import (
+    create_report,
+    add_to_report,
+    build_subject_report,
+)
 
 # Use non-interactive backend for testing
 matplotlib.use("Agg")
@@ -91,3 +96,66 @@ def test_add_to_report(tmp_path):
 
     # Close the figure to clean up
     plt.close(fig)
+
+
+def test_build_subject_report_writes_single_file_html(tmp_path):
+    """Smoke test for the new build_subject_report API (Phase A skeleton).
+
+    The new reporter renders a single-file HTML page from a Jinja2
+    template. No HDF5 intermediate, no MNE.Report. The page shell must
+    contain the subject identifier and a navigable structure even when
+    the sections list is empty.
+    """
+    preproc_dir = tmp_path / "derivatives" / "ffrprep-preprocessing" / "sub-01" / "eeg"
+    preproc_dir.mkdir(parents=True)
+
+    out_path = build_subject_report(
+        bids_root=str(tmp_path),
+        subject="01",
+        out_dir=str(preproc_dir),
+        sections=[],
+        title="ffrprep preprocessing report sub-01",
+    )
+
+    out = Path(out_path)
+    assert out.exists()
+    assert out.suffix == ".html"
+    assert out.parent == preproc_dir
+
+    html = out.read_text(encoding="utf-8")
+    assert "<html" in html
+    assert "</html>" in html
+    assert "sub-01" in html
+    # The page shell must include a TOC container even when sections is
+    # empty, so the layout is stable and Phase B can append entries.
+    assert 'id="toc"' in html or '<nav' in html
+
+
+def test_build_subject_report_renders_section_titles(tmp_path):
+    """Each entry in `sections` must produce a header in the output HTML.
+
+    Phase A only requires structural rendering — no plots yet. Each
+    section is a dict with at least a `title`; richer fields are added
+    in Phase B (summary tables, plot gallery).
+    """
+    preproc_dir = tmp_path / "derivatives" / "ffrprep-preprocessing" / "sub-02" / "eeg"
+    preproc_dir.mkdir(parents=True)
+
+    sections = [
+        {"id": "raw-active-1", "title": "Raw - task-active run-1"},
+        {"id": "epoched-active-1", "title": "Epoched - task-active run-1"},
+    ]
+
+    out_path = build_subject_report(
+        bids_root=str(tmp_path),
+        subject="02",
+        out_dir=str(preproc_dir),
+        sections=sections,
+        title="ffrprep preprocessing report sub-02",
+    )
+
+    html = Path(out_path).read_text(encoding="utf-8")
+    for section in sections:
+        assert section["title"] in html
+        # Anchor target so the TOC link can scroll to the section.
+        assert f'id="{section["id"]}"' in html
