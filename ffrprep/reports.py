@@ -5,6 +5,8 @@ For FFRPREP BIDS datasets, including support for figures, HTML blocks, and
 special MNE objects.
 """
 
+import base64
+import io
 import os
 import time
 from mne import Report, open_report
@@ -29,7 +31,476 @@ _jinja_env = Environment(
 )
 
 
-def build_subject_report(bids_root, subject, out_dir, sections, title=None):
+def _fig_to_data_uri(fig, dpi=150):
+    """Encode a matplotlib Figure as a ``data:image/png;base64,...`` URI.
+
+    Used to embed plots inline so the rendered report is a single
+    self-contained HTML file with no sibling assets.
+    """
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", dpi=dpi, bbox_inches="tight")
+    encoded = base64.b64encode(buf.getvalue()).decode("ascii")
+    return f"data:image/png;base64,{encoded}"
+
+
+def build_raw_section(raw, *, section_id, title, label=None, events_fpath=None):
+    """Build a section descriptor from a Raw object.
+
+    Wraps :func:`raw_qa` to produce waveform + PSD figures, encodes them
+    as inline data URIs, and pairs them with a small summary table
+    (sampling rate, duration, channel count). The returned dict is
+    consumable by :func:`build_subject_report`.
+    """
+    sfreq = float(raw.info["sfreq"])
+    n_channels = len(raw.ch_names)
+    duration_s = raw.n_times / sfreq
+
+    summary = {}
+    if label:
+        summary["Stage"] = label
+    summary["Sampling rate"] = f"{sfreq:g} Hz"
+    summary["Duration"] = f"{duration_s:.2f} s"
+    summary["Channels"] = str(n_channels)
+
+    figures = []
+    for fig, fig_title, caption in raw_qa(raw, events_fpath=events_fpath, save_dir=None):
+        figures.append({
+            "title": fig_title,
+            "caption": caption,
+            "data_uri": _fig_to_data_uri(fig),
+        })
+        plt.close(fig)
+
+    return {
+        "id": section_id,
+        "title": title,
+        "summary": summary,
+        "figures": figures,
+    }
+
+
+def build_epoch_section(epochs, *, section_id, title, extra_summary=None):
+    """Build a section descriptor from an Epochs object.
+
+    Wraps :func:`epoch_qa` to produce overview / rejection / average /
+    drift figures, encodes them as inline data URIs, and pairs them
+    with a summary table (n_epochs, channels, sfreq, time window).
+
+    `extra_summary` is appended to the summary table after the standard
+    metadata. Use it to surface info that isn't on the Epochs object
+    itself — e.g. pre-rejection counts read from a BIDS sidecar.
+    """
+    sfreq = float(epochs.info["sfreq"])
+    n_channels = len(epochs.ch_names)
+    n_epochs = len(epochs)
+
+    summary = {
+        "Number of epochs": str(n_epochs),
+        "Channels": str(n_channels),
+        "Sampling rate": f"{sfreq:g} Hz",
+        "Time window": f"{epochs.tmin * 1000:.0f} to {epochs.tmax * 1000:.0f} ms",
+    }
+    if extra_summary:
+        summary.update(extra_summary)
+
+    figures = []
+    for fig, fig_title, caption in epoch_qa(epochs, save_dir=None):
+        figures.append({
+            "title": fig_title,
+            "caption": caption,
+            "data_uri": _fig_to_data_uri(fig),
+        })
+        plt.close(fig)
+
+    return {
+        "id": section_id,
+        "title": title,
+        "summary": summary,
+        "figures": figures,
+    }
+
+
+def evoked_qa(evoked, save_dir=None, prefix="ffr_evoked"):
+    """Generate FFR-specific QA figures for an mne.Evoked object.
+
+    Returns a list of (fig, title, caption) tuples covering the views
+    that matter for FFR analysis: time-domain waveform, post-stimulus
+    PSD, time-frequency representation across the FFR band,
+    autocorrelation with confidence interval, and a pitch / confidence
+    tracking pair (delegated to analysis.plot_pitch_and_conf).
+    """
+    from .analysis import (
+        autocorrelation, compute_pitch_and_conf, plot_pitch_and_conf,
+    )
+
+    if save_dir is not None:
+        os.makedirs(save_dir, exist_ok=True)
+
+    ch_names = evoked.ch_names
+    pick = "Cz" if "Cz" in ch_names else ch_names[0]
+    pick_idx = ch_names.index(pick)
+
+    times_ms = evoked.times * 1000
+    data = evoked.data[pick_idx] * 1e6  # µV
+    sfreq = float(evoked.info["sfreq"])
+    n_ave = evoked.nave
+
+    colors = {
+        "blue": "#0173B2",
+        "purple": "#924E7D",
+        "grey": "#737373",
+        "cyan": "#029E73",
+        "vermillion": "#D55E00",
+    }
+
+    figs = []
+
+    # 1) Time-domain waveform.
+    fig, ax = plt.subplots(figsize=(12, 4))
+    ax.plot(times_ms, data, color=colors["blue"], linewidth=1.5)
+    ax.axvline(0, color=colors["purple"], linestyle="--", linewidth=1.5,
+               alpha=0.7, label="Stimulus onset")
+    ax.axhline(0, color=colors["grey"], linewidth=0.5)
+    ax.set_xlabel("Time (ms)", fontsize=10)
+    ax.set_ylabel("Amplitude (µV)", fontsize=10)
+    ax.set_title(f"Evoked Response - {pick} (N={n_ave} epochs averaged)",
+                 fontsize=11, fontweight="bold")
+    ax.legend(fontsize=9)
+    ax.grid(True, alpha=0.3)
+    plt.tight_layout()
+    if save_dir:
+        fig.savefig(os.path.join(save_dir, f"{prefix}_waveform.png"),
+                    dpi=150, bbox_inches="tight")
+    figs.append((fig, "Evoked Waveform",
+                 f"Time-domain average across {n_ave} epochs"))
+
+    # 2) Power spectral density via Welch on the post-stimulus segment.
+    post_mask = evoked.times >= 0
+    post_data = data[post_mask]
+    n_post = len(post_data)
+    if n_post > 16:
+        from scipy.signal import welch
+        nperseg = min(2048, n_post)
+        freqs, psd = welch(post_data, fs=sfreq, nperseg=nperseg)
+        fmax = min(2000.0, sfreq / 2.0)
+        mask = (freqs >= 65) & (freqs <= fmax)
+
+        fig2, ax2 = plt.subplots(figsize=(12, 4))
+        ax2.semilogy(freqs[mask], psd[mask], color=colors["purple"], linewidth=1.5)
+        ax2.set_xlim([65, fmax])
+        ax2.set_xlabel("Frequency (Hz)", fontsize=10)
+        ax2.set_ylabel("Power (µV²/Hz)", fontsize=10)
+        ax2.set_title(f"Power Spectral Density - {pick} (post-stimulus)",
+                      fontsize=11, fontweight="bold")
+        ax2.grid(True, which="both", alpha=0.3)
+        plt.tight_layout()
+        if save_dir:
+            fig2.savefig(os.path.join(save_dir, f"{prefix}_psd.png"),
+                         dpi=150, bbox_inches="tight")
+        figs.append((fig2, "Power Spectral Density",
+                     f"Spectral content of the post-stimulus response "
+                     f"(65-{fmax:.0f} Hz)"))
+
+    # 3) Time-frequency representation across the FFR band.
+    tfr_fmin, tfr_fmax = 70.0, min(300.0, sfreq / 2.0 - 1)
+    if tfr_fmax > tfr_fmin + 5:
+        tfr_freqs = np.arange(tfr_fmin, tfr_fmax + 1, 2.0)
+        tfr = mne.time_frequency.tfr_multitaper(
+            evoked, freqs=tfr_freqs, n_cycles=tfr_freqs / 4.0,
+            time_bandwidth=4.0, return_itc=False, verbose=False,
+        )
+        fig3, ax3 = plt.subplots(figsize=(12, 5))
+        tfr.copy().pick([pick]).plot(
+            picks=0, axes=ax3, show=False, colorbar=True, verbose=False,
+        )
+        ax3.set_title(f"Time-Frequency Representation - {pick}",
+                      fontsize=11, fontweight="bold")
+        plt.tight_layout()
+        if save_dir:
+            fig3.savefig(os.path.join(save_dir, f"{prefix}_tfr.png"),
+                         dpi=150, bbox_inches="tight")
+        figs.append((fig3, "Time-Frequency Representation",
+                     f"Multitaper TFR across the FFR band "
+                     f"({tfr_fmin:.0f}-{tfr_fmax:.0f} Hz)"))
+
+    # 4) Autocorrelation with 95% CI from the analysis helper.
+    # ``autocorrelation`` operates on the first channel by convention;
+    # pick that channel before calling so the ACF reflects the FFR pick.
+    evoked_pick = evoked.copy().pick([pick])
+    acf, ci = autocorrelation(evoked_pick)
+    lag_samples = np.arange(len(acf))
+    lag_ms = lag_samples / sfreq * 1000.0
+    # CI from statsmodels has shape (n_lags, 2) — the lower/upper bounds
+    # around each lag. Plot the band only when finite.
+    fig4, ax4 = plt.subplots(figsize=(12, 4))
+    show_n = min(len(acf), int(0.05 * sfreq))  # show first ~50 ms
+    ax4.plot(lag_ms[:show_n], acf[:show_n], color=colors["cyan"], linewidth=1.5)
+    if ci.ndim == 2 and ci.shape[1] == 2:
+        ax4.fill_between(lag_ms[:show_n], ci[:show_n, 0], ci[:show_n, 1],
+                         color=colors["cyan"], alpha=0.15)
+    ax4.axhline(0, color=colors["grey"], linewidth=0.5)
+    ax4.set_xlabel("Lag (ms)", fontsize=10)
+    ax4.set_ylabel("Autocorrelation", fontsize=10)
+    ax4.set_title(f"Autocorrelation Function - {pick}",
+                  fontsize=11, fontweight="bold")
+    ax4.grid(True, alpha=0.3)
+    plt.tight_layout()
+    if save_dir:
+        fig4.savefig(os.path.join(save_dir, f"{prefix}_acf.png"),
+                     dpi=150, bbox_inches="tight")
+    figs.append((fig4, "Autocorrelation",
+                 "ACF with 95% confidence interval (first 50 ms of lags)"))
+
+    # 5) Pitch tracking via the analysis helper. plot_pitch_and_conf
+    # creates its own figure and does not return it; capture it via
+    # plt.gcf() immediately after calling.
+    pitch_results = compute_pitch_and_conf(evoked_pick)
+    if np.any(~np.isnan(pitch_results.get("pitch_hz_smooth", np.array([])))):
+        plot_pitch_and_conf(pitch_results)
+        fig5 = plt.gcf()
+        fig5.set_size_inches(12, 6)
+        if save_dir:
+            fig5.savefig(os.path.join(save_dir, f"{prefix}_pitch.png"),
+                         dpi=150, bbox_inches="tight")
+        figs.append((fig5, "Pitch Track + Confidence",
+                     "Sliding-window pitch estimates (autocorrelation "
+                     "based) with per-frame confidence metrics"))
+
+    return figs
+
+
+def build_evoked_section(evoked, *, section_id, title, label=None):
+    """Build a section descriptor from an Evoked object.
+
+    Summary table includes the standard metadata plus two FFR-specific
+    scalar metrics: RMS SNR over the 100-200 ms response window and
+    average band power across 90-110 Hz over the same window (defaults
+    matching :func:`ffrprep.analysis.rms_snr` and
+    :func:`ffrprep.analysis.compute_power`).
+    """
+    from .analysis import compute_power, rms_snr
+
+    sfreq = float(evoked.info["sfreq"])
+    n_channels = len(evoked.ch_names)
+    pick = "Cz" if "Cz" in evoked.ch_names else evoked.ch_names[0]
+    evoked_pick = evoked.copy().pick([pick])
+
+    summary = {}
+    if label:
+        summary["Stage"] = label
+    summary["Epochs averaged"] = str(evoked.nave)
+    summary["Channels"] = str(n_channels)
+    summary["Sampling rate"] = f"{sfreq:g} Hz"
+    summary["Time window"] = (
+        f"{evoked.tmin * 1000:.0f} to {evoked.tmax * 1000:.0f} ms"
+    )
+    if getattr(evoked, "comment", None):
+        summary["Condition"] = str(evoked.comment)
+
+    # Scalar FFR metrics on the FFR pick. These rely on the analysis
+    # helpers' default windows; they're indicative, not authoritative.
+    if evoked.baseline is not None:
+        snr = rms_snr(evoked_pick)
+        summary["RMS SNR (100-200 ms)"] = f"{snr:.2f}"
+    band_power = compute_power(evoked_pick, f_low=90, f_high=110, t_low=0.1, t_high=0.2)
+    summary["Mean power 90-110 Hz, 100-200 ms"] = f"{band_power:.3e} V²"
+
+    figures = []
+    for fig, fig_title, caption in evoked_qa(evoked, save_dir=None):
+        figures.append({
+            "title": fig_title,
+            "caption": caption,
+            "data_uri": _fig_to_data_uri(fig),
+        })
+        plt.close(fig)
+
+    return {
+        "id": section_id,
+        "title": title,
+        "summary": summary,
+        "figures": figures,
+    }
+
+
+def make_group(*, sections, session=None, task=None, run=None,
+               title=None, group_id=None):
+    """Construct a group descriptor consumable by the report builders.
+
+    A group represents one (optional session, optional task, optional
+    run) combination and bundles all sections that belong to it (e.g.
+    raw + epoched for the same task/run). The TOC renders groups as
+    foldable containers; the main content renders one nested card per
+    group with the contained sections as sub-cards.
+
+    `title` and `group_id` default to a BIDS-style label / anchor
+    derived from the session/task/run identifiers.
+    """
+    parts = []
+    id_parts = []
+    if session is not None:
+        parts.append(f"ses-{session}")
+        id_parts.append(f"ses-{session}")
+    if task is not None:
+        parts.append(f"task-{task}")
+        id_parts.append(f"task-{task}")
+    if run is not None:
+        parts.append(f"run-{run}")
+        id_parts.append(f"run-{run}")
+
+    if title is None:
+        title = " / ".join(parts) if parts else None
+    if group_id is None:
+        group_id = "-".join(id_parts) if id_parts else "group"
+
+    return {
+        "id": group_id,
+        "title": title,
+        "session": session,
+        "task": task,
+        "run": run,
+        "sections": list(sections),
+    }
+
+
+def _normalize_groups(groups, sections):
+    """Return a list of group dicts from either the new `groups` arg or
+    the legacy `sections` arg. If both are None, returns []."""
+    if groups is not None:
+        return list(groups)
+    if sections:
+        return [{
+            "id": "all",
+            "title": None,
+            "session": None,
+            "task": None,
+            "run": None,
+            "sections": list(sections),
+        }]
+    return []
+
+
+def _sortable(value):
+    """Sort key that puts None last; otherwise compares the str form."""
+    return (value is None, str(value) if value is not None else "")
+
+
+def _build_nav_tree(flat_groups):
+    """Reorganize flat groups into a session > task > run nested tree.
+
+    Each tree node is a dict with ``id``, ``label``, ``children`` (list
+    of nodes for further nesting) and ``sections`` (section dicts at
+    that level). Intermediate nodes have ``children`` set; leaf nodes
+    have ``sections`` set; a node may have both (e.g. task-level
+    sections alongside per-run subgroups).
+
+    Empty levels are unwrapped — a dataset with no sessions doesn't
+    add a session level to the tree.
+    """
+    if not flat_groups:
+        return []
+
+    by_ses = {}
+    for g in flat_groups:
+        by_ses.setdefault(g.get("session"), []).append(g)
+
+    root_nodes = []
+    for ses in sorted(by_ses.keys(), key=_sortable):
+        ses_groups = by_ses[ses]
+        ses_prefix = f"ses-{ses}-" if ses is not None else ""
+
+        by_task = {}
+        for g in ses_groups:
+            by_task.setdefault(g.get("task"), []).append(g)
+
+        task_nodes = []
+        for task in sorted(by_task.keys(), key=_sortable):
+            task_groups = by_task[task]
+            task_prefix = (f"{ses_prefix}task-{task}-"
+                           if task is not None else ses_prefix)
+
+            run_children = []
+            task_level_sections = []
+            for g in sorted(task_groups,
+                            key=lambda x: _sortable(x.get("run"))):
+                run = g.get("run")
+                if run is not None:
+                    run_children.append({
+                        "id": g.get("id") or f"{task_prefix}run-{run}",
+                        "label": f"run-{run}",
+                        "children": [],
+                        "sections": g.get("sections", []),
+                    })
+                else:
+                    # No run identity — sections live at the task level.
+                    task_level_sections.extend(g.get("sections", []))
+
+            if task is not None:
+                task_nodes.append({
+                    "id": f"{ses_prefix}task-{task}",
+                    "label": f"task-{task}",
+                    "children": run_children,
+                    "sections": task_level_sections,
+                })
+            else:
+                # No task identity — promote children + sections to ses
+                task_nodes.extend(run_children)
+                # Pseudo-node for any session-level sections.
+                if task_level_sections:
+                    task_nodes.append({
+                        "id": (f"ses-{ses}-sections"
+                               if ses is not None else "sections"),
+                        "label": None,
+                        "children": [],
+                        "sections": task_level_sections,
+                    })
+
+        if ses is not None:
+            root_nodes.append({
+                "id": f"ses-{ses}",
+                "label": f"ses-{ses}",
+                "children": task_nodes,
+                "sections": [],
+            })
+        else:
+            # No session identity — promote tasks to root.
+            root_nodes.extend(task_nodes)
+
+    return root_nodes
+
+
+def build_analysis_report(bids_root, subject, out_dir, sections=None,
+                          title=None, overview=None, groups=None):
+    """Render a single-file HTML analysis report for a subject.
+
+    Same template + layout as :func:`build_subject_report`; the only
+    differences are the default page title and the output filename
+    (``sub-<id>_analysis_report.html``).
+
+    Either `groups` (preferred, supports nested session/task/run
+    structure) or `sections` (flat list, ungrouped) may be passed.
+    """
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    if title is None:
+        title = f"ffrprep analysis report sub-{subject}"
+
+    template = _jinja_env.get_template("subject_report.html.j2")
+    html_text = template.render(
+        title=title,
+        subject=subject,
+        overview=overview,
+        nav_tree=_build_nav_tree(_normalize_groups(groups, sections)),
+        bids_root=str(bids_root),
+    )
+
+    out_path = out_dir / f"sub-{subject}_analysis_report.html"
+    out_path.write_text(html_text, encoding="utf-8")
+    return str(out_path)
+
+
+def build_subject_report(bids_root, subject, out_dir, sections=None,
+                         title=None, overview=None, groups=None):
     """Render a single-file HTML preprocessing report for a subject.
 
     Parameters
@@ -43,11 +514,18 @@ def build_subject_report(bids_root, subject, out_dir, sections, title=None):
     out_dir : str | Path
         Directory where the rendered ``.html`` file is written. Created
         if missing.
-    sections : list of dict
-        Per-stage section descriptors. Each dict must provide ``id``
-        (anchor target, used by the table of contents) and ``title``
-        (header text). Phase B extends this with summary fields and
-        embedded plots; Phase A renders only headers.
+    sections : list of dict, optional
+        Flat list of section descriptors. Use this when there is no
+        natural session/task/run grouping. Mutually exclusive with
+        `groups`; if both are passed, `groups` wins.
+    groups : list of dict, optional
+        Nested structure. Each group dict carries ``id``, ``title``,
+        ``session``, ``task``, ``run``, and ``sections`` (list of
+        section dicts). Construct via :func:`make_group` for the BIDS
+        defaults. The TOC renders one foldable container per group.
+    overview : dict, optional
+        Top-of-report summary card. Recognised keys: ``summary``
+        (key→value table) and ``command`` (rendered as a code block).
     title : str | None
         Page title and ``<h1>`` text. Defaults to
         ``"ffrprep preprocessing report sub-{subject}"``.
@@ -67,7 +545,8 @@ def build_subject_report(bids_root, subject, out_dir, sections, title=None):
     html_text = template.render(
         title=title,
         subject=subject,
-        sections=sections,
+        overview=overview,
+        nav_tree=_build_nav_tree(_normalize_groups(groups, sections)),
         bids_root=str(bids_root),
     )
 
@@ -718,59 +1197,55 @@ def epoch_qa(epochs, save_dir=None, prefix="ffr_qa"):
 
     figs.append((fig, "Epoch QA Overview", f"Quality assessment of {n_epochs} epochs"))
 
-    # QA FIG 2: Rejection statistics
-    fig2, axes = plt.subplots(1, 2, figsize=(12, 5))
+    # QA FIG 2: Rejection statistics — only render when drop_log
+    # actually carries rejections. The saved BIDS-derivatives epochs
+    # file only contains accepted epochs (rejection happened pre-save
+    # and the discarded events leave no trace in this object's
+    # drop_log), so a pie built from this data would just say "100%
+    # accepted" — misleading. Pre-rejection counts belong in the
+    # section's summary table, sourced from the BIDS sidecar.
     n_good = len(epochs)
-    n_rejected = len([log for log in epochs.drop_log if len(log) > 0])
-    n_total = n_good + n_rejected
+    n_rejected = sum(1 for log in epochs.drop_log if len(log) > 0)
+    if n_rejected > 0:
+        n_total = n_good + n_rejected
+        fig2, axes = plt.subplots(1, 2, figsize=(12, 5))
+        pie_colors = [colors_cb["blue"], colors_cb["orange"]]
+        axes[0].pie(
+            [n_good, n_rejected],
+            labels=["Accepted", "Rejected"],
+            colors=pie_colors,
+            autopct="%1.1f%%",
+            startangle=90,
+            textprops={"fontsize": 12, "fontweight": "bold"},
+        )
+        axes[0].set_title(
+            f"Epoch Acceptance Rate\n({n_good}/{n_total} epochs)",
+            fontsize=12, fontweight="bold",
+        )
 
-    pie_colors = [colors_cb["blue"], colors_cb["orange"]]
-    axes[0].pie(
-        [n_good, n_rejected],
-        labels=["Accepted", "Rejected"],
-        colors=pie_colors,
-        autopct="%1.1f%%",
-        startangle=90,
-        textprops={"fontsize": 12, "fontweight": "bold"},
-    )
-    axes[0].set_title(f"Epoch Acceptance Rate\n({n_good}/{n_total} epochs)", fontsize=12, fontweight="bold")
+        rejection_reasons = {}
+        for log in epochs.drop_log:
+            if len(log) > 0:
+                reason = ", ".join(log)
+                rejection_reasons[reason] = rejection_reasons.get(reason, 0) + 1
 
-    rejection_reasons = {}
-    for log in epochs.drop_log:
-        if len(log) > 0:
-            reason = ", ".join(log)
-            rejection_reasons[reason] = rejection_reasons.get(reason, 0) + 1
-
-    if rejection_reasons:
         reasons = list(rejection_reasons.keys())
         counts = list(rejection_reasons.values())
         axes[1].barh(reasons, counts, color=colors_cb["orange"], edgecolor="black")
         axes[1].set_xlabel("Number of Epochs", fontsize=11)
         axes[1].set_title("Rejection Reasons", fontsize=12, fontweight="bold")
         axes[1].grid(True, alpha=0.3, axis="x")
-    else:
-        axes[1].text(
-            0.5,
-            0.5,
-            "No epochs rejected!\n✓ All epochs passed QA",
-            ha="center",
-            va="center",
-            fontsize=14,
-            transform=axes[1].transAxes,
-            color=colors_cb["cyan"],
-            fontweight="bold",
-        )
-        axes[1].set_xlim([0, 1])
-        axes[1].set_ylim([0, 1])
-        axes[1].axis("off")
 
-    plt.tight_layout()
+        plt.tight_layout()
 
-    if save_dir:
-        rej_path = os.path.join(save_dir, f"{prefix}_rejection.png")
-        fig2.savefig(rej_path, dpi=150, bbox_inches="tight")
+        if save_dir:
+            rej_path = os.path.join(save_dir, f"{prefix}_rejection.png")
+            fig2.savefig(rej_path, dpi=150, bbox_inches="tight")
 
-    figs.append((fig2, "Epoch Rejection Statistics", f"{n_rejected} of {n_total} epochs rejected"))
+        figs.append((
+            fig2, "Epoch Rejection Statistics",
+            f"{n_rejected} of {n_total} epochs rejected",
+        ))
 
     # QA FIG 3: Average and derivative
     fig3, axes = plt.subplots(2, 1, figsize=(12, 8))

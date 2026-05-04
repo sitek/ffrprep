@@ -4,30 +4,555 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title }}</title>
+    <style>
+        :root {
+            --purple: #6B4E8C;
+            --purple-dark: #4A3A6B;
+            --purple-light: #A99CC0;
+            --purple-tint: #F5F1FA;
+            --text: #1F1B2E;
+            --muted: #6B6B7B;
+            --border: #E5E0EE;
+            --bg: #FFFFFF;
+            --bg-alt: #FAFAFC;
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                         "Helvetica Neue", Arial, sans-serif;
+            font-size: 15px;
+            line-height: 1.55;
+            color: var(--text);
+            background: var(--bg-alt);
+        }
+
+        .report-layout {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            min-height: 100vh;
+        }
+
+        /* --- sidebar / TOC --- */
+        nav#toc {
+            position: sticky;
+            top: 0;
+            align-self: start;
+            height: 100vh;
+            overflow-y: auto;
+            padding: 28px 24px;
+            background: var(--purple);
+            color: #FFF;
+            box-sizing: border-box;
+        }
+        nav#toc h2 {
+            margin: 0 0 16px;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--purple-light);
+            font-weight: 600;
+        }
+        nav#toc ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        nav#toc li { margin: 0 0 2px; }
+        nav#toc a {
+            display: block;
+            padding: 6px 12px;
+            color: #FFF;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 14px;
+            line-height: 1.35;
+            transition: background 0.15s ease;
+        }
+        nav#toc a:hover { background: var(--purple-dark); }
+        nav#toc .toc-empty {
+            color: var(--purple-light);
+            font-size: 13px;
+            font-style: italic;
+        }
+
+        /* Group entries are <details>; the <summary> is the group label. */
+        nav#toc details {
+            margin: 6px 0;
+        }
+        nav#toc summary {
+            list-style: none;
+            cursor: pointer;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #FFF;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.15s ease;
+        }
+        nav#toc summary::-webkit-details-marker { display: none; }
+        nav#toc summary:hover { background: var(--purple-dark); }
+        nav#toc summary::before {
+            content: "▸";
+            display: inline-block;
+            font-size: 11px;
+            transition: transform 0.15s ease;
+            color: var(--purple-light);
+        }
+        nav#toc details[open] summary::before {
+            transform: rotate(90deg);
+        }
+        nav#toc details ul {
+            margin: 4px 0 8px 14px;
+            padding-left: 8px;
+            border-left: 1px solid var(--purple-dark);
+        }
+        nav#toc details a {
+            font-size: 13px;
+            padding: 5px 10px;
+            color: #EAE3F4;
+        }
+        /* Nested run-level summary is smaller / quieter than the task one */
+        nav#toc details details > summary {
+            font-size: 12px;
+            color: #EAE3F4;
+            text-transform: none;
+            letter-spacing: 0.02em;
+            font-weight: 500;
+            padding: 4px 10px;
+        }
+        nav#toc details details {
+            margin: 2px 0;
+        }
+        nav#toc details details > ul {
+            margin: 2px 0 4px 12px;
+            border-left: 1px solid var(--purple-light);
+        }
+        nav#toc details details > ul a {
+            color: #FFF;
+            font-size: 12px;
+            padding: 3px 10px;
+        }
+
+        /* --- header above sidebar (subject id) --- */
+        .sidebar-header {
+            margin: -28px -24px 24px;
+            padding: 24px;
+            background: var(--purple-dark);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .sidebar-header .brand {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--purple-light);
+            margin: 0 0 4px;
+        }
+        .sidebar-header .subject-id {
+            font-size: 22px;
+            font-weight: 600;
+            color: #FFF;
+            margin: 0;
+        }
+
+        /* --- main content --- */
+        main {
+            padding: 40px 48px 80px;
+            max-width: 1100px;
+        }
+        .report-header h1 {
+            margin: 0 0 8px;
+            font-size: 28px;
+            color: var(--purple-dark);
+            font-weight: 700;
+        }
+        .report-header .report-meta {
+            margin: 0 0 36px;
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        /* --- overview card --- */
+        .overview-section {
+            background: var(--purple-tint);
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--purple-dark);
+            border-radius: 8px;
+            padding: 28px 32px;
+            margin: 0 0 32px;
+        }
+        .overview-section h2 {
+            margin: 0 0 16px;
+            font-size: 22px;
+            color: var(--purple-dark);
+            font-weight: 700;
+        }
+        .overview-section h3 {
+            margin: 24px 0 8px;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--purple-dark);
+            font-weight: 600;
+        }
+        .overview-section .command-block {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 12px 16px;
+            font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+            font-size: 13px;
+            color: var(--text);
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+            margin: 0;
+        }
+
+        /* --- group container (recursive: depth-0 = task, depth-1 = run, ...) --- */
+        .report-group {
+            margin: 0 0 32px;
+        }
+        .report-group.depth-1 {
+            margin: 0 0 20px 12px;
+            padding-left: 12px;
+            border-left: 2px solid var(--border);
+        }
+        .report-group.depth-2 {
+            margin: 0 0 16px 12px;
+            padding-left: 12px;
+            border-left: 2px solid var(--border);
+        }
+        .report-group .group-heading {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 0 0 16px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-radius: 6px;
+        }
+        /* depth-0: task-level — full purple bar */
+        .report-group.depth-0 > .group-heading {
+            padding: 10px 16px 10px 14px;
+            background: var(--purple);
+            color: #FFF;
+            font-size: 16px;
+        }
+        .report-group.depth-0 > .group-heading::before {
+            content: "";
+            width: 4px;
+            height: 20px;
+            background: var(--purple-light);
+            border-radius: 2px;
+        }
+        /* depth-1: run-level — pill-style on tinted bg */
+        .report-group.depth-1 > .group-heading {
+            padding: 6px 12px;
+            background: var(--purple-tint);
+            color: var(--purple-dark);
+            font-size: 13px;
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--purple-light);
+            border-radius: 4px;
+            display: inline-flex;
+            margin-bottom: 12px;
+        }
+        /* depth-2+: just dark-text uppercase label, no pill */
+        .report-group.depth-2 > .group-heading,
+        .report-group.depth-3 > .group-heading {
+            padding: 0;
+            color: var(--purple-dark);
+            font-size: 12px;
+        }
+
+        /* --- section cards --- */
+        .report-section {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--purple);
+            border-radius: 8px;
+            padding: 0;
+            margin: 0 0 20px;
+            box-shadow: 0 1px 3px rgba(31, 27, 46, 0.04);
+            overflow: hidden;
+        }
+        .report-section.nested {
+            margin-left: 16px;
+            border-left-color: var(--purple-light);
+        }
+        .report-section > details > summary {
+            list-style: none;
+            cursor: pointer;
+            padding: 18px 28px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: background 0.15s ease;
+        }
+        .report-section > details > summary::-webkit-details-marker {
+            display: none;
+        }
+        .report-section > details > summary:hover {
+            background: var(--purple-tint);
+        }
+        .report-section > details > summary::before {
+            content: "▸";
+            display: inline-block;
+            font-size: 12px;
+            color: var(--purple-light);
+            transition: transform 0.15s ease;
+            line-height: 1;
+        }
+        .report-section > details[open] > summary::before {
+            transform: rotate(90deg);
+        }
+        .report-section > details[open] > summary {
+            border-bottom: 1px solid var(--border);
+        }
+        .report-section h2,
+        .report-section h3,
+        .report-section h4,
+        .report-section h5,
+        .report-section h6 {
+            margin: 0;
+            font-size: 18px;
+            color: var(--purple-dark);
+            font-weight: 600;
+        }
+        .report-section .section-body {
+            padding: 24px 28px 28px;
+        }
+
+        /* --- summary table --- */
+        .summary-table {
+            border-collapse: collapse;
+            width: auto;
+            margin: 0 0 24px;
+            font-size: 14px;
+        }
+        .summary-table th,
+        .summary-table td {
+            padding: 8px 16px 8px 0;
+            text-align: left;
+            vertical-align: top;
+        }
+        .summary-table th {
+            color: var(--muted);
+            font-weight: 500;
+            min-width: 180px;
+            white-space: nowrap;
+        }
+        .summary-table td {
+            color: var(--text);
+            font-weight: 500;
+            font-variant-numeric: tabular-nums;
+        }
+        .summary-table tr + tr th,
+        .summary-table tr + tr td {
+            border-top: 1px solid var(--border);
+        }
+
+        /* --- figures --- */
+        .figure-gallery {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            margin: 8px 0 0;
+        }
+        .report-figure {
+            margin: 0;
+            padding: 16px;
+            background: var(--purple-tint);
+            border-radius: 6px;
+        }
+        .report-figure img {
+            display: block;
+            max-width: 100%;
+            height: auto;
+            margin: 0 auto;
+            background: #FFF;
+            border-radius: 4px;
+        }
+        .report-figure figcaption {
+            margin: 12px 4px 0;
+            font-size: 13px;
+            color: var(--muted);
+            line-height: 1.45;
+        }
+        .report-figure figcaption strong {
+            display: block;
+            color: var(--purple-dark);
+            font-size: 14px;
+            margin-bottom: 2px;
+        }
+
+        /* --- print --- */
+        @media print {
+            body { background: #FFF; }
+            .report-layout { display: block; }
+            nav#toc { display: none; }
+            main { padding: 0; max-width: none; }
+            .report-section,
+            .overview-section {
+                box-shadow: none;
+                page-break-inside: avoid;
+                margin-bottom: 16px;
+            }
+        }
+
+        /* --- narrow viewports --- */
+        @media (max-width: 900px) {
+            .report-layout { grid-template-columns: 1fr; }
+            nav#toc {
+                position: static;
+                height: auto;
+            }
+            main { padding: 24px; }
+        }
+    </style>
 </head>
 <body>
-    <header class="report-header">
-        <h1>{{ title }}</h1>
-        <p class="subject-id">Subject: sub-{{ subject }}</p>
-    </header>
-    <nav id="toc" aria-label="Table of contents">
-        <h2>Contents</h2>
-        {% if sections %}
-        <ul>
-            {% for section in sections %}
-            <li><a href="#{{ section.id }}">{{ section.title }}</a></li>
-            {% endfor %}
-        </ul>
-        {% else %}
-        <p class="toc-empty">No sections rendered.</p>
-        {% endif %}
-    </nav>
-    <main>
-        {% for section in sections %}
-        <section id="{{ section.id }}" class="report-section">
-            <h2>{{ section.title }}</h2>
-        </section>
+{% macro render_section(section, level=2) %}
+{% set heading_level = [level, 6]|min %}
+<section id="{{ section.id }}" class="report-section{% if level > 2 %} nested{% endif %}">
+    <details open>
+        <summary>
+            <h{{ heading_level }}>{{ section.title }}</h{{ heading_level }}>
+        </summary>
+        <div class="section-body">
+            {% if section.summary %}
+            <table class="summary-table">
+                <tbody>
+                    {% for key, value in section.summary.items() %}
+                    <tr>
+                        <th scope="row">{{ key }}</th>
+                        <td>{{ value }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+            {% if section.figures %}
+            <div class="figure-gallery">
+                {% for fig in section.figures %}
+                <figure class="report-figure">
+                    <img src="{{ fig.data_uri }}" alt="{{ fig.title }}">
+                    <figcaption>
+                        <strong>{{ fig.title }}</strong>
+                        {% if fig.caption %}{{ fig.caption }}{% endif %}
+                    </figcaption>
+                </figure>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </details>
+</section>
+{% endmacro %}
+
+{% macro render_toc_node(node, depth=0) %}
+    {% if node.children or (node.label and node.sections) %}
+    <li class="toc-node toc-depth-{{ depth }}">
+        <details>
+            <summary>{{ node.label }}</summary>
+            <ul>
+                {% for child in node.children %}
+                    {{ render_toc_node(child, depth=depth + 1) }}
+                {% endfor %}
+                {% for section in node.sections %}
+                <li><a href="#{{ section.id }}">{{ section.title }}</a></li>
+                {% endfor %}
+            </ul>
+        </details>
+    </li>
+    {% else %}
+        {% for section in node.sections %}
+        <li><a href="#{{ section.id }}">{{ section.title }}</a></li>
         {% endfor %}
-    </main>
+    {% endif %}
+{% endmacro %}
+
+{% macro render_content_node(node, depth=0) %}
+    {% set heading_level = [depth + 2, 6]|min %}
+    {% if node.children or (node.label and node.sections) %}
+    <section id="{{ node.id }}" class="report-group depth-{{ depth }}">
+        {% if node.label %}
+        <h{{ heading_level }} class="group-heading">{{ node.label }}</h{{ heading_level }}>
+        {% endif %}
+        {% for child in node.children %}
+            {{ render_content_node(child, depth=depth + 1) }}
+        {% endfor %}
+        {% for section in node.sections %}
+            {{ render_section(section, level=heading_level + 1) }}
+        {% endfor %}
+    </section>
+    {% else %}
+        {% for section in node.sections %}
+            {{ render_section(section, level=heading_level) }}
+        {% endfor %}
+    {% endif %}
+{% endmacro %}
+
+    <div class="report-layout">
+        <nav id="toc" aria-label="Table of contents">
+            <div class="sidebar-header">
+                <p class="brand">ffrprep</p>
+                <p class="subject-id">sub-{{ subject }}</p>
+            </div>
+            <h2>Contents</h2>
+            <ul>
+                {% if overview %}
+                <li><a href="#overview">Overview</a></li>
+                {% endif %}
+                {% if not nav_tree and not overview %}
+                <li class="toc-empty">No sections rendered.</li>
+                {% endif %}
+                {% for node in nav_tree %}
+                    {{ render_toc_node(node) }}
+                {% endfor %}
+            </ul>
+        </nav>
+        <main>
+            <header class="report-header">
+                <h1>{{ title }}</h1>
+                <p class="report-meta">Subject: sub-{{ subject }}</p>
+            </header>
+
+            {% if overview %}
+            <section id="overview" class="overview-section">
+                <h2>Overview</h2>
+                {% if overview.summary %}
+                <table class="summary-table">
+                    <tbody>
+                        {% for key, value in overview.summary.items() %}
+                        <tr>
+                            <th scope="row">{{ key }}</th>
+                            <td>{{ value }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% endif %}
+                {% if overview.command %}
+                <h3>Command</h3>
+                <pre class="command-block">{{ overview.command }}</pre>
+                {% endif %}
+            </section>
+            {% endif %}
+
+            {% for node in nav_tree %}
+                {{ render_content_node(node) }}
+            {% endfor %}
+        </main>
+    </div>
 </body>
 </html>
