@@ -1,8 +1,11 @@
 import argparse
 import logging
+import multiprocessing
 import os
 import sys
 import time
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from ffrprep.utils import validate_input_dir
@@ -16,6 +19,20 @@ from ffrprep.preproc import (
 import ffrprep.reports as reports
 from importlib.metadata import version as _pkg_version
 import re
+
+
+@dataclass
+class IterationResult:
+    """Result returned by a successful per-(task, run) worker.
+
+    Workers raise on failure; the dispatcher does not catch. So every
+    ``IterationResult`` produced represents a successful iteration.
+    """
+
+    identifier: str
+    output_files: list = field(default_factory=list)
+    log_path: str = ""
+    duration_s: float = 0.0
 
 
 def _propagate_run_provenance(preproc_file, analysis_dir):
@@ -112,6 +129,476 @@ def _setup_subject_log(derivatives_info, subject, stage):
     root_logger.info("started at: %s", time.strftime("%Y-%m-%d %H:%M:%S"))
     root_logger.info("derivatives root: %s", derivatives_info.get("derivatives_root"))
     print(f"Run log: {log_path}")
+
+
+def _setup_worker_log(work_dir, identifier):
+    """Attach a per-iteration FileHandler to the worker's root logger.
+
+    Workers spawned by ProcessPoolExecutor inherit the parent's log
+    handlers under ``fork`` start method (under ``spawn`` they don't,
+    but we defensively detach any inherited per-subject handler anyway
+    so worker writes never reach the parent's subject log via a stale
+    file handle).
+    """
+    work_dir = Path(work_dir)
+    work_dir.mkdir(parents=True, exist_ok=True)
+    log_path = work_dir / f"{identifier}.log"
+
+    root_logger = logging.getLogger()
+    for existing in list(root_logger.handlers):
+        if getattr(existing, "_ffrprep_subject_handler", False):
+            root_logger.removeHandler(existing)
+            existing.close()
+
+    handler = logging.FileHandler(log_path, mode="w")
+    handler.setLevel(logging.INFO)
+    handler.setFormatter(
+        logging.Formatter("%(asctime)s %(name)s %(levelname)s: %(message)s")
+    )
+    handler._ffrprep_worker_handler = True
+    root_logger.setLevel(logging.INFO)
+    root_logger.addHandler(handler)
+    root_logger.info("worker iteration started: %s", identifier)
+    return log_path
+
+
+def _snapshot_args(args):
+    """Pickleable plain-dict snapshot of an argparse Namespace.
+
+    Path-typed values are stringified at the boundary so workers don't
+    accidentally couple to the parser. The snapshot is the worker
+    contract; anything not in here is unavailable inside the worker.
+    """
+    out = {}
+    for key, value in vars(args).items():
+        if isinstance(value, Path):
+            out[key] = str(value)
+        else:
+            out[key] = value
+    return out
+
+
+def _snapshot_deriv(derivatives_info):
+    """Pickleable plain-dict snapshot of `setup_derivatives_directories`."""
+    return {k: (str(v) if isinstance(v, Path) else v)
+            for k, v in derivatives_info.items()}
+
+
+def _make_preproc_payload(args_snap, deriv_snap, subject, task_label, run_label,
+                          ref_channels, effective_l, effective_h, baseline,
+                          reject_value):
+    """Assemble the input dict for one per-(task, run) preprocessing worker."""
+    if args_snap.get("work_dir"):
+        work_dir = (
+            Path(args_snap["work_dir"])
+            / f"sub-{subject}"
+            / "preprocessing"
+            / (f"task-{task_label}" if task_label is not None else "task-None")
+            / (f"run-{run_label}" if run_label is not None else "single")
+        )
+    else:
+        work_dir = (
+            Path(deriv_snap["preprocessing_dir"])
+            / "work"
+            / f"sub-{subject}"
+            / (f"task-{task_label}" if task_label is not None else "task-None")
+            / (f"run-{run_label}" if run_label is not None else "single")
+        )
+    identifier = (
+        f"task-{task_label or 'None'}_run-{run_label if run_label is not None else 'single'}"
+    )
+    return {
+        "kind": "per_run",
+        "identifier": identifier,
+        "subject": subject,
+        "task_label": task_label,
+        "run_label": run_label,
+        "work_dir": str(work_dir),
+        "bids_root": args_snap["bids_dir"],
+        "ref_channels": ref_channels,
+        "high_pass": effective_l,
+        "low_pass": effective_h,
+        "baseline": baseline,
+        "tmin": args_snap.get("tmin"),
+        "tmax": args_snap.get("tmax"),
+        "reject": reject_value,
+        "picks": parse_picks(args_snap.get("picks")),
+        "on_missing": args_snap.get("on_missing", "warn"),
+        "event_id": parse_event_id(args_snap.get("event_id")),
+        "events_file": args_snap.get("events_file"),
+        "derivatives_root": str(deriv_snap.get("derivatives_root", "")),
+        "output_dir": str(deriv_snap["preprocessing_subject_dir"]),
+        "save_each_node": bool(args_snap.get("save_each_node")),
+    }
+
+
+def _make_concat_payload(args_snap, deriv_snap, subject, task_label, runs,
+                         ref_channels, effective_l, effective_h, baseline,
+                         reject_value):
+    """Assemble the input dict for one per-task (concat-runs) worker.
+
+    `runs` is the explicit list of runs the user passed via ``--run``,
+    or ``None`` to let the loader concatenate every run available for
+    the task. The work_dir gets a per-task suffix so concurrent
+    per-task workers don't share nipype scratch.
+    """
+    if args_snap.get("work_dir"):
+        work_dir = (
+            Path(args_snap["work_dir"])
+            / f"sub-{subject}"
+            / "preprocessing"
+            / (f"task-{task_label}" if task_label is not None else "task-None")
+        )
+    else:
+        work_dir = (
+            Path(deriv_snap["preprocessing_dir"])
+            / "work"
+            / f"sub-{subject}"
+            / (f"task-{task_label}" if task_label is not None else "task-None")
+        )
+    identifier = f"task-{task_label or 'None'}_concat"
+    return {
+        "kind": "concat",
+        "identifier": identifier,
+        "subject": subject,
+        "task_label": task_label,
+        "run_label": runs,  # list when user supplied --run; else None
+        "work_dir": str(work_dir),
+        "bids_root": args_snap["bids_dir"],
+        "ref_channels": ref_channels,
+        "high_pass": effective_l,
+        "low_pass": effective_h,
+        "baseline": baseline,
+        "tmin": args_snap.get("tmin"),
+        "tmax": args_snap.get("tmax"),
+        "reject": reject_value,
+        "picks": parse_picks(args_snap.get("picks")),
+        "on_missing": args_snap.get("on_missing", "warn"),
+        "event_id": parse_event_id(args_snap.get("event_id")),
+        "events_file": args_snap.get("events_file"),
+        "derivatives_root": str(deriv_snap.get("derivatives_root", "")),
+        "output_dir": str(deriv_snap["preprocessing_subject_dir"]),
+        "save_each_node": bool(args_snap.get("save_each_node")),
+    }
+
+
+def _make_analysis_payload(args_snap, deriv_snap, subject, preproc_file):
+    """Assemble the input dict for one per-evoked analysis worker."""
+    preproc_file = Path(preproc_file)
+    if args_snap.get("work_dir"):
+        work_dir = (
+            Path(args_snap["work_dir"])
+            / f"sub-{subject}"
+            / "analysis"
+            / preproc_file.stem
+        )
+    else:
+        work_dir = (
+            Path(deriv_snap["analysis_dir"])
+            / "work"
+            / f"sub-{subject}"
+            / preproc_file.stem
+        )
+    return {
+        "identifier": f"analysis_{preproc_file.stem}",
+        "subject": subject,
+        "preproc_file": str(preproc_file),
+        "work_dir": str(work_dir),
+        "bids_root": args_snap["bids_dir"],
+        "by_event_type": bool(args_snap.get("by_event_type")),
+        "analysis_subject_dir": str(deriv_snap["analysis_subject_dir"]),
+    }
+
+
+def _build_preproc_workflow(payload):
+    """Build a fresh preprocessing workflow with inputs set from `payload`.
+
+    Handles both the per-(task, run) and concat-runs payloads — the
+    only difference between them is the value of ``run_label`` (single
+    value, list, or None) which is wired through unchanged.
+    """
+    wf = create_preprocessing_workflow(disk_backed=payload["save_each_node"])
+    wf.base_dir = payload["work_dir"]
+
+    in_node = wf.get_node("inputnode")
+    target = in_node.inputs if in_node is not None else wf.inputs.inputnode
+
+    target.bids_root = payload["bids_root"]
+    target.sub_label = payload["subject"]
+    target.run_label = payload["run_label"]
+    target.task_label = payload["task_label"]
+    target.ref_channels = payload["ref_channels"]
+    target.high_pass = payload["high_pass"]
+    target.low_pass = payload["low_pass"]
+    target.baseline = payload["baseline"]
+    target.tmin = payload["tmin"]
+    target.tmax = payload["tmax"]
+    target.reject = payload["reject"]
+    target.picks = payload["picks"]
+    target.on_missing = payload["on_missing"]
+    target.event_id = payload["event_id"]
+    if payload.get("events_file") is not None:
+        target.events_file = payload["events_file"]
+    target.derivatives_root = payload["derivatives_root"]
+    target.output_dir = payload["output_dir"]
+    return wf
+
+
+def _build_preproc_report(args, derivatives_info, subject):
+    """Assemble the legacy MNE.Report-based preprocessing report.
+
+    Runs in the parent after all per-iteration workers have drained,
+    so it can `glob` the subject's preprocessing directory for whatever
+    outputs landed (whether from one iteration or many in parallel).
+    Identical behavior to the inline blocks the per-(task, run) and
+    concat-runs branches both used to emit.
+    """
+    print("\n" + "=" * 60)
+    print("Generating preprocessing report...")
+    print("=" * 60)
+
+    preproc_dir = Path(derivatives_info["preprocessing_subject_dir"])
+
+    def _collect_grouped(base_dir, patterns):
+        grouped = {}
+        for pat in patterns:
+            for p in base_dir.glob(pat):
+                name = p.name
+                m_task = re.search(r"task-([^_]+)", name)
+                m_run = re.search(r"run-([^_]+)", name)
+                task = m_task.group(1) if m_task else ""
+                run = m_run.group(1) if m_run else ""
+                grouped.setdefault(task, {}).setdefault(run, []).append(str(p))
+        return grouped
+
+    raw_files = _collect_grouped(preproc_dir, ["*_desc-loaded_raw.fif"])
+    events_files = _collect_grouped(preproc_dir, ["*_events.tsv"])
+    referenced_files = _collect_grouped(preproc_dir, ["*_desc-referenced_raw.fif"])
+    filtered_files = _collect_grouped(preproc_dir, ["*_desc-filtered_raw.fif"])
+    epoched_files = _collect_grouped(preproc_dir, ["*_desc-preproc_epo.fif"])
+
+    def _total(grouped):
+        if not grouped:
+            return 0
+        return sum(len(r) for t in grouped.values() for r in t.values())
+
+    print("\nCollected files:")
+    print(f"  Raw files: {_total(raw_files)}")
+    print(f"  Events files: {_total(events_files)}")
+    print(f"  Referenced files: {_total(referenced_files)}")
+    print(f"  Filtered files: {_total(filtered_files)}")
+    print(f"  Epoched files: {_total(epoched_files)}")
+
+    report_name = f"sub-{subject}_preprocessing_report.h5"
+    report_path = reports.create_subject_report(
+        str(args.bids_dir),
+        out_dir=str(preproc_dir),
+        filename=report_name,
+        subject_id=subject,
+        command=" ".join(sys.argv),
+        overwrite=True,
+    )
+    reports.add_report_summary(
+        report_path,
+        command=" ".join(sys.argv),
+        raw_files=raw_files,
+        events_files=events_files,
+        referenced_files=referenced_files,
+        filtered_files=filtered_files,
+        epoched_files=epoched_files,
+    )
+    reports.add_processing_stages(
+        report_path,
+        raw_files=raw_files,
+        events_files=events_files,
+        referenced_files=referenced_files,
+        filtered_files=filtered_files,
+        epoched_files=epoched_files,
+    )
+    html_path = reports.save_report(report_path, overwrite=True)
+    print(f"\n{'=' * 60}")
+    print(f"Preprocessing report written to: {html_path}")
+    print(f"{'=' * 60}")
+
+
+def _build_analysis_report(args, derivatives_info, subject):
+    """Assemble the legacy MNE.Report-based analysis report (parent side)."""
+    analysis_dir = Path(derivatives_info["analysis_subject_dir"])
+    found_outputs = []
+    for pat in ["*_desc-evoked.fif", "*_desc-evoked*.fif"]:
+        found_outputs.extend(list(analysis_dir.glob(pat)))
+
+    report_name = f"sub-{subject}_analysis_report.h5"
+    report_path = reports.create_report(
+        str(args.bids_dir), out_dir=str(analysis_dir),
+        filename=report_name, overwrite=True,
+    )
+    html_text = f"<h2>Analysis summary</h2><p>Subject: sub-{subject}</p>"
+    if found_outputs:
+        html_text += "<p>Saved analysis outputs:</p><ul>"
+        for p in found_outputs:
+            html_text += f"<li>{str(p)}</li>"
+        html_text += "</ul>"
+    reports.add_to_report(report_path, html_text=html_text, html_title="Analysis summary")
+    reports.save_report(report_path, overwrite=True)
+    print(f"Analysis report written to: {report_path}")
+
+
+def _check_preproc_output_or_raise(payload):
+    """Confirm the expected `_desc-preproc_epo.fif` landed on disk.
+
+    nipype caches by input hash and reports "Cached, collecting
+    precomputed outputs" without checking that the recorded output
+    file still exists. If a previous run was cleaned up but the work
+    cache wasn't, the workflow silently "succeeds" without writing
+    anything. Catch that here with an actionable error.
+
+    Returns the matched output file paths.
+    """
+    expected_dir = Path(payload["output_dir"])
+    subject = payload["subject"]
+    task_label = payload["task_label"]
+    candidates = sorted(expected_dir.glob(
+        f"sub-{subject}_*task-{task_label}_*desc-preproc_epo.fif"
+    ))
+    if payload["kind"] == "per_run":
+        run_label = payload["run_label"]
+        if run_label is not None:
+            candidates = [c for c in candidates if f"run-{run_label}" in c.name]
+        marker = f"run-{run_label}" if run_label is not None else "single"
+    else:  # concat
+        candidates = [c for c in candidates if "_run-" not in c.name]
+        marker = "concat"
+    if not candidates:
+        raise FileNotFoundError(
+            f"Preprocessing reported success but no _desc-preproc_epo.fif "
+            f"appeared in {expected_dir} for sub-{subject}, task-{task_label}, "
+            f"{marker}. Most likely cause: stale nipype cache pointing at a "
+            f"previously-deleted output. Wipe the work directory "
+            f"({payload['work_dir']}) and re-run."
+        )
+    return candidates
+
+
+def _preproc_iteration(payload):
+    """Worker entry point — process one (task, run) preprocessing iteration.
+
+    Raises on any failure; the dispatcher propagates the exception up
+    to the CLI entry point and the run aborts. Returns an
+    :class:`IterationResult` on success.
+    """
+    t0 = time.time()
+    work_dir = Path(payload["work_dir"])
+    work_dir.mkdir(parents=True, exist_ok=True)
+    log_path = _setup_worker_log(work_dir, payload["identifier"])
+    wf = _build_preproc_workflow(payload)
+    wf.run(plugin="Linear")
+    outs = _check_preproc_output_or_raise(payload)
+    return IterationResult(
+        identifier=payload["identifier"],
+        output_files=[str(p) for p in outs],
+        log_path=str(log_path),
+        duration_s=time.time() - t0,
+    )
+
+
+def _concat_iteration(payload):
+    """Worker entry point — process one task in concat-runs mode.
+
+    Same shape as :func:`_preproc_iteration`; the only material
+    difference is that ``payload['run_label']`` is a list (or None)
+    instead of a single value, which the loader concatenates inside the
+    workflow. Within a task, runs are inherently serial because of the
+    shared work_dir and concatenation semantics.
+    """
+    t0 = time.time()
+    work_dir = Path(payload["work_dir"])
+    work_dir.mkdir(parents=True, exist_ok=True)
+    log_path = _setup_worker_log(work_dir, payload["identifier"])
+    wf = _build_preproc_workflow(payload)
+    wf.run(plugin="Linear")
+    outs = _check_preproc_output_or_raise(payload)
+    return IterationResult(
+        identifier=payload["identifier"],
+        output_files=[str(p) for p in outs],
+        log_path=str(log_path),
+        duration_s=time.time() - t0,
+    )
+
+
+def _analysis_iteration(payload):
+    """Worker entry point — analyze one preprocessed epochs file.
+
+    Loads epochs from disk inside the worker (epochs objects are not
+    pickle-friendly across the executor boundary; the file path is).
+    """
+    import mne
+
+    t0 = time.time()
+    work_dir = Path(payload["work_dir"])
+    work_dir.mkdir(parents=True, exist_ok=True)
+    log_path = _setup_worker_log(work_dir, payload["identifier"])
+    preproc_file = Path(payload["preproc_file"])
+    epochs = mne.read_epochs(str(preproc_file), preload=True, verbose=False)
+
+    analysis_wf = create_analysis_workflow()
+    analysis_wf.base_dir = payload["work_dir"]
+    analysis_wf.inputs.inputnode.epochs = epochs
+    analysis_wf.inputs.inputnode.by_event_type = payload["by_event_type"]
+    analysis_wf.inputs.inputnode.bids_root = payload["bids_root"]
+    analysis_wf.inputs.inputnode.subject = payload["subject"]
+    analysis_wf.inputs.inputnode.original_filename = preproc_file.stem
+    analysis_wf.inputs.inputnode.output_dir = payload["analysis_subject_dir"]
+    analysis_wf.run(plugin="Linear")
+
+    _propagate_run_provenance(
+        preproc_file=preproc_file,
+        analysis_dir=Path(payload["analysis_subject_dir"]),
+    )
+    return IterationResult(
+        identifier=payload["identifier"],
+        log_path=str(log_path),
+        duration_s=time.time() - t0,
+    )
+
+
+def _dispatch(worker_fn, payloads, n_procs, kind_label):
+    """Run `worker_fn` over `payloads` in a ProcessPoolExecutor.
+
+    Returns the list of :class:`IterationResult` for successful
+    iterations. Worker exceptions propagate up and abort the run
+    (fail-fast); the dispatcher does not catch.
+    """
+    log = logging.getLogger()
+    if not payloads:
+        log.info("No %s iterations to dispatch.", kind_label)
+        return []
+
+    n_workers = max(1, min(int(n_procs or 1), len(payloads)))
+    if n_workers == 1:
+        # In-process fast path — no executor overhead, no spawn cost.
+        results = []
+        for p in payloads:
+            r = worker_fn(p)
+            results.append(r)
+            log.info(
+                "[%s %s] OK (%.1fs) log=%s",
+                kind_label, r.identifier, r.duration_s, r.log_path,
+            )
+        return results
+
+    ctx = multiprocessing.get_context("spawn")
+    results = []
+    with ProcessPoolExecutor(max_workers=n_workers, mp_context=ctx) as ex:
+        futures = {ex.submit(worker_fn, p): p["identifier"] for p in payloads}
+        for fut in as_completed(futures):
+            r = fut.result()
+            results.append(r)
+            log.info(
+                "[%s %s] OK (%.1fs) log=%s",
+                kind_label, r.identifier, r.duration_s, r.log_path,
+            )
+    return results
 
 
 # Define parser to collect required inputs
@@ -348,7 +835,17 @@ def get_parser():
         help=("Assume the input dataset is BIDS compliant " "and skip the validation."),
     )
     parser.add_argument(
-        "--n_procs", type=int, default=1, help=("Number of processors to use for parallel execution.")
+        "--n_procs", type=int, default=1,
+        help=(
+            "Number of parallel (task, run) workers per subject. "
+            "Each worker runs its own preprocessing or analysis "
+            "workflow with the Linear plugin. Memory footprint scales "
+            "linearly with this value. A failure in any worker aborts "
+            "the run. Default: 1 (sequential). For multi-node / cluster "
+            "scaling, run one ffrprep invocation per subject (e.g. via "
+            "slurm array or GNU parallel) and use --n_procs to control "
+            "intra-subject parallelism."
+        ),
     )
     parser.add_argument("--work_dir", type=Path, help="Path where intermediate results should be " "stored.")
 
@@ -531,6 +1028,11 @@ def run_ffrprep():
         # file in its own derivatives directory.
         _setup_subject_log(derivatives_info, subject, args.stage)
 
+        # Picklable snapshots for ProcessPoolExecutor workers — every
+        # value needed by a worker must come through these dicts.
+        args_snap = _snapshot_args(args)
+        deriv_snap = _snapshot_deriv(derivatives_info)
+
         # Create workflow based on stage
         if args.stage in ["preprocessing", "both"]:
             print("\n" + "=" * 60)
@@ -630,391 +1132,34 @@ def run_ffrprep():
             # will be concatenated.
 
             if args.concat_runs:
-                # Run one workflow per task; load_data will concatenate when
-                # multiple files exist and run_label is None.
-                for task_label in tasks:
-                    print("\nConcatenating runs and processing as a single recording" f" for task {task_label}")
-                    preproc_wf_run = create_preprocessing_workflow(disk_backed=bool(args.save_each_node))
-
-                    if args.work_dir:
-                        work_dir = args.work_dir / f"sub-{subject}" / "preprocessing"
-                    else:
-                        work_dir = derivatives_info["preprocessing_dir"] / "work" / f"sub-{subject}"
-
-                    preproc_wf_run.base_dir = str(work_dir)
-
-                    # Set inputs directly on the inputnode Node to avoid
-                    # trait-notifier propagation issues when connections
-                    # already exist on the workflow. nipype's get_node
-                    # returns None when the node is missing.
-                    in_node = preproc_wf_run.get_node("inputnode")
-
-                    if in_node is not None:
-                        in_node.inputs.bids_root = str(args.bids_dir)
-                        in_node.inputs.sub_label = subject
-                        # If user supplied --run, pass that list so the loader
-                        # concatenates only the selected runs; otherwise leave
-                        # run_label as None to concatenate all runs.
-                        in_node.inputs.run_label = runs if args.run else None
-                        in_node.inputs.task_label = task_label
-                        in_node.inputs.ref_channels = ref_channels
-                        in_node.inputs.high_pass = effective_l
-                        in_node.inputs.low_pass = effective_h
-                        in_node.inputs.baseline = baseline
-                        in_node.inputs.tmin = args.tmin
-                        in_node.inputs.tmax = args.tmax
-                        # Pass reject criteria into the per-run workflow
-                        in_node.inputs.reject = reject_value
-                        # Epoching-specific inputs
-                        in_node.inputs.picks = parse_picks(getattr(args, "picks", None))
-                        in_node.inputs.on_missing = getattr(args, "on_missing", "warn")
-                        in_node.inputs.event_id = parse_event_id(getattr(args, "event_id", None))
-                        if getattr(args, "events_file", None) is not None:
-                            in_node.inputs.events_file = args.events_file
-                        in_node.inputs.derivatives_root = str(derivatives_info.get("derivatives_root", ""))
-                        in_node.inputs.output_dir = str(derivatives_info["preprocessing_subject_dir"])
-                    else:
-                        # Fallback: best-effort assign to workflow.inputs
-                        preproc_wf_run.inputs.inputnode.bids_root = str(args.bids_dir)
-                        preproc_wf_run.inputs.inputnode.sub_label = subject
-                        preproc_wf_run.inputs.inputnode.run_label = runs if args.run else None
-                        preproc_wf_run.inputs.inputnode.task_label = task_label
-                        preproc_wf_run.inputs.inputnode.ref_channels = ref_channels
-                        preproc_wf_run.inputs.inputnode.high_pass = effective_l
-                        preproc_wf_run.inputs.inputnode.low_pass = effective_h
-                        preproc_wf_run.inputs.inputnode.baseline = baseline
-                        preproc_wf_run.inputs.inputnode.tmin = args.tmin
-                        preproc_wf_run.inputs.inputnode.tmax = args.tmax
-                        preproc_wf_run.inputs.inputnode.reject = reject_value
-                        preproc_wf_run.inputs.inputnode.picks = parse_picks(getattr(args, "picks", None))
-                        preproc_wf_run.inputs.inputnode.on_missing = getattr(args, "on_missing", "warn")
-                        preproc_wf_run.inputs.inputnode.event_id = parse_event_id(getattr(args, "event_id", None))
-                        if getattr(args, "events_file", None) is not None:
-                            preproc_wf_run.inputs.inputnode.events_file = args.events_file
-                        preproc_wf_run.inputs.inputnode.derivatives_root = str(
-                            derivatives_info.get("derivatives_root", "")
-                        )
-                        preproc_wf_run.inputs.inputnode.output_dir = str(
-                            derivatives_info["preprocessing_subject_dir"]
-                        )
-
-                    # Run with requested parallelism: use MultiProc when
-                    # multiple processors requested, otherwise Linear.
-                    if args.n_procs and int(args.n_procs) > 1:
-                        preproc_wf_run.run(
-                            plugin="MultiProc",
-                            plugin_args={"n_procs": int(args.n_procs)},
-                        )
-                    else:
-                        preproc_wf_run.run(plugin="Linear")
-
-                    # Same nipype-cache safety check as the per-run branch:
-                    # confirm the concat output landed on disk. Concatenated
-                    # outputs have no run token in the filename.
-                    expected_dir = Path(derivatives_info["preprocessing_subject_dir"])
-                    candidates = sorted(expected_dir.glob(
-                        f"sub-{subject}_*task-{task_label}_desc-preproc_epo.fif"
-                    ))
-                    candidates = [c for c in candidates if "_run-" not in c.name]
-                    if not candidates:
-                        raise FileNotFoundError(
-                            f"Concatenated preprocessing reported success but "
-                            f"no _desc-preproc_epo.fif appeared in {expected_dir} "
-                            f"for sub-{subject}, task-{task_label}. Most likely "
-                            f"cause: stale nipype cache pointing at a "
-                            f"previously-deleted output. Wipe the work directory "
-                            f"({preproc_wf_run.base_dir}) and re-run."
-                        )
-
-                    print("\nPreprocessing (concatenated) completed.")
-                    print(f"Outputs saved to: {derivatives_info['preprocessing_subject_dir']}")
-
-                # After all tasks complete, generate report
-                print("\n" + "=" * 60)
-                print("Generating preprocessing report...")
-                print("=" * 60)
-
-                preproc_dir = Path(derivatives_info["preprocessing_subject_dir"])
-
-                # Collect files grouped by task/run for each stage
-                def _collect_grouped(base_dir, patterns):
-                    grouped = {}
-                    for pat in patterns:
-                        for p in base_dir.glob(pat):
-                            name = p.name
-                            # Try to extract task-<task> and run-<run>
-                            m_task = re.search(r"task-([^_]+)", name)
-                            m_run = re.search(r"run-([^_]+)", name)
-                            task = m_task.group(1) if m_task else ""
-                            run = m_run.group(1) if m_run else ""
-                            grouped.setdefault(task, {}).setdefault(run, []).append(str(p))
-                    return grouped
-
-                raw_patterns = ["*_desc-loaded_raw.fif"]
-                events_patterns = ["*_events.tsv"]
-                referenced_patterns = ["*_desc-referenced_raw.fif"]
-                filtered_patterns = ["*_desc-filtered_raw.fif"]
-                epoched_patterns = ["*_desc-preproc_epo.fif"]
-
-                raw_files = _collect_grouped(preproc_dir, raw_patterns)
-                events_files = _collect_grouped(preproc_dir, events_patterns)
-                referenced_files = _collect_grouped(preproc_dir, referenced_patterns)
-                filtered_files = _collect_grouped(preproc_dir, filtered_patterns)
-                epoched_files = _collect_grouped(preproc_dir, epoched_patterns)
-
-                def _total(grouped):
-                    if not grouped:
-                        return 0
-                    return sum(len(r) for t in grouped.values() for r in t.values())
-
-                print("\nCollected files:")
-                print(f"  Raw files: {_total(raw_files)}")
-                print(f"  Events files: {_total(events_files)}")
-                print(f"  Referenced files: {_total(referenced_files)}")
-                print(f"  Filtered files: {_total(filtered_files)}")
-                print(f"  Epoched files: {_total(epoched_files)}")
-
-                report_name = f"sub-{subject}_preprocessing_report.h5"
-                report_path = reports.create_subject_report(
-                    str(args.bids_dir),
-                    out_dir=str(preproc_dir),
-                    filename=report_name,
-                    subject_id=subject,
-                    command=" ".join(sys.argv),
-                    overwrite=True,
-                )
-
-                # Add summary
-                reports.add_report_summary(
-                    report_path,
-                    command=" ".join(sys.argv),
-                    raw_files=raw_files,
-                    events_files=events_files,
-                    referenced_files=referenced_files,
-                    filtered_files=filtered_files,
-                    epoched_files=epoched_files,
-                )
-
-                # Add all processing stages organized by task/run
-                reports.add_processing_stages(
-                    report_path,
-                    raw_files=raw_files,
-                    events_files=events_files,
-                    referenced_files=referenced_files,
-                    filtered_files=filtered_files,
-                    epoched_files=epoched_files,
-                )
-
-                # Export to HTML
-                html_path = reports.save_report(report_path, overwrite=True)
-                print(f"\n{'=' * 60}")
-                print(f"Preprocessing report written to: {html_path}")
-                print(f"{'=' * 60}")
-
+                # One worker per task; runs within a task remain serial
+                # (concatenation semantics demand it).
+                payloads = [
+                    _make_concat_payload(
+                        args_snap, deriv_snap, subject, task_label,
+                        runs if args.run else None,
+                        ref_channels, effective_l, effective_h,
+                        baseline, reject_value,
+                    )
+                    for task_label in tasks
+                ]
+                _dispatch(_concat_iteration, payloads,
+                          n_procs=args.n_procs, kind_label="concat")
+                _build_preproc_report(args, derivatives_info, subject)
             else:
-                # Process each task and run separately
-                for task_label in tasks:
-                    for run in runs:
-                        if run is None:
-                            print(f"\nProcessing subject sub-{subject}, task {task_label} (no run label)")
-                            run_label = None
-                        else:
-                            print(f"\nProcessing subject sub-{subject}, task {task_label}, run {run}")
-                            run_label = run
-
-                        # Create a fresh workflow instance per run to avoid state
-                        # contamination between runs
-                        preproc_wf_run = create_preprocessing_workflow(disk_backed=bool(args.save_each_node))
-
-                        # Set working directory for nipype per run
-                        if args.work_dir:
-                            work_dir = (
-                                args.work_dir
-                                / f"sub-{subject}"
-                                / "preprocessing"
-                                / (f"task-{task_label}" if task_label is not None else "task-None")
-                                / (f"run-{run}" if run is not None else "single")
-                            )
-                        else:
-                            work_dir = (
-                                derivatives_info["preprocessing_dir"]
-                                / "work"
-                                / f"sub-{subject}"
-                                / (f"task-{task_label}" if task_label is not None else "task-None")
-                                / (f"run-{run}" if run is not None else "single")
-                            )
-
-                        preproc_wf_run.base_dir = str(work_dir)
-
-                        # Set inputs for this run on the inputnode Node.
-                        # nipype's get_node returns None when missing.
-                        in_node = preproc_wf_run.get_node("inputnode")
-
-                        if in_node is not None:
-                            in_node.inputs.bids_root = str(args.bids_dir)
-                            in_node.inputs.sub_label = subject
-                            in_node.inputs.run_label = run_label
-                            in_node.inputs.task_label = task_label
-                            in_node.inputs.ref_channels = ref_channels
-                            in_node.inputs.high_pass = effective_l
-                            in_node.inputs.low_pass = effective_h
-                            in_node.inputs.baseline = baseline
-                            in_node.inputs.tmin = args.tmin
-                            in_node.inputs.tmax = args.tmax
-                            in_node.inputs.reject = reject_value
-                            # Epoching-specific inputs
-                            in_node.inputs.picks = parse_picks(getattr(args, "picks", None))
-                            in_node.inputs.on_missing = getattr(args, "on_missing", "warn")
-                            in_node.inputs.event_id = parse_event_id(getattr(args, "event_id", None))
-                            if getattr(args, "events_file", None) is not None:
-                                in_node.inputs.events_file = args.events_file
-                            in_node.inputs.derivatives_root = str(derivatives_info.get("derivatives_root", ""))
-                            in_node.inputs.output_dir = str(derivatives_info["preprocessing_subject_dir"])
-                        else:
-                            preproc_wf_run.inputs.inputnode.bids_root = str(args.bids_dir)
-                            preproc_wf_run.inputs.inputnode.sub_label = subject
-                            preproc_wf_run.inputs.inputnode.run_label = run_label
-                            preproc_wf_run.inputs.inputnode.task_label = task_label
-                            preproc_wf_run.inputs.inputnode.ref_channels = ref_channels
-                            preproc_wf_run.inputs.inputnode.high_pass = effective_l
-                            preproc_wf_run.inputs.inputnode.low_pass = effective_h
-                            preproc_wf_run.inputs.inputnode.baseline = baseline
-                            preproc_wf_run.inputs.inputnode.tmin = args.tmin
-                            preproc_wf_run.inputs.inputnode.tmax = args.tmax
-                            preproc_wf_run.inputs.inputnode.reject = reject_value
-                            preproc_wf_run.inputs.inputnode.picks = parse_picks(getattr(args, "picks", None))
-                            preproc_wf_run.inputs.inputnode.on_missing = getattr(args, "on_missing", "warn")
-                            preproc_wf_run.inputs.inputnode.event_id = parse_event_id(
-                                getattr(args, "event_id", None)
-                            )
-                            if getattr(args, "events_file", None) is not None:
-                                preproc_wf_run.inputs.inputnode.events_file = args.events_file
-                            preproc_wf_run.inputs.inputnode.derivatives_root = str(
-                                derivatives_info.get("derivatives_root", "")
-                            )
-                            preproc_wf_run.inputs.inputnode.output_dir = str(
-                                derivatives_info["preprocessing_subject_dir"]
-                            )
-
-                        # Run the preprocessing workflow for this run
-                        # Use requested parallelism for per-run workflow as well
-                        if args.n_procs and int(args.n_procs) > 1:
-                            preproc_wf_run.run(
-                                plugin="MultiProc",
-                                plugin_args={"n_procs": int(args.n_procs)},
-                            )
-                        else:
-                            preproc_wf_run.run(plugin="Linear")
-
-                        # Verify the expected output file actually exists. nipype
-                        # caches by input hash and reports "Cached, collecting
-                        # precomputed outputs" without checking that the recorded
-                        # output file still exists on disk. If a previous run was
-                        # cleaned up but the work cache wasn't, the workflow
-                        # silently "succeeds" without writing anything. Catch
-                        # that here with a clear actionable error.
-                        expected_dir = Path(derivatives_info["preprocessing_subject_dir"])
-                        run_token = f"run-{run_label}" if run_label is not None else None
-                        candidates = sorted(expected_dir.glob(
-                            f"sub-{subject}_*task-{task_label}_*desc-preproc_epo.fif"
-                        ))
-                        if run_token is not None:
-                            candidates = [c for c in candidates if run_token in c.name]
-                        if not candidates:
-                            raise FileNotFoundError(
-                                f"Preprocessing reported success but no "
-                                f"_desc-preproc_epo.fif appeared in {expected_dir} "
-                                f"for sub-{subject}, task-{task_label}, "
-                                f"run-{run_label}. Most likely cause: stale "
-                                f"nipype cache pointing at a previously-deleted "
-                                f"output. Wipe the work directory "
-                                f"({preproc_wf_run.base_dir}) and re-run."
-                            )
-
-                        print(f"\nPreprocessing for run {run_label} completed.")
-                        print(f"Outputs saved to: {derivatives_info['preprocessing_subject_dir']}")
-
-                # After all runs complete, generate report
-                print("\n" + "=" * 60)
-                print("Generating preprocessing report...")
-                print("=" * 60)
-
-                preproc_dir = Path(derivatives_info["preprocessing_subject_dir"])
-
-                # Collect files grouped by task/run for each stage
-                def _collect_grouped(base_dir, patterns):
-                    grouped = {}
-                    for pat in patterns:
-                        for p in base_dir.glob(pat):
-                            name = p.name
-                            # Try to extract task-<task> and run-<run>
-                            m_task = re.search(r"task-([^_]+)", name)
-                            m_run = re.search(r"run-([^_]+)", name)
-                            task = m_task.group(1) if m_task else ""
-                            run = m_run.group(1) if m_run else ""
-                            grouped.setdefault(task, {}).setdefault(run, []).append(str(p))
-                    return grouped
-
-                raw_patterns = ["*_desc-loaded_raw.fif"]
-                events_patterns = ["*_events.tsv"]
-                referenced_patterns = ["*_desc-referenced_raw.fif"]
-                filtered_patterns = ["*_desc-filtered_raw.fif"]
-                epoched_patterns = ["*_desc-preproc_epo.fif"]
-
-                raw_files = _collect_grouped(preproc_dir, raw_patterns)
-                events_files = _collect_grouped(preproc_dir, events_patterns)
-                referenced_files = _collect_grouped(preproc_dir, referenced_patterns)
-                filtered_files = _collect_grouped(preproc_dir, filtered_patterns)
-                epoched_files = _collect_grouped(preproc_dir, epoched_patterns)
-
-                def _total(grouped):
-                    if not grouped:
-                        return 0
-                    return sum(len(r) for t in grouped.values() for r in t.values())
-
-                print("\nCollected files:")
-                print(f"  Raw files: {_total(raw_files)}")
-                print(f"  Events files: {_total(events_files)}")
-                print(f"  Referenced files: {_total(referenced_files)}")
-                print(f"  Filtered files: {_total(filtered_files)}")
-                print(f"  Epoched files: {_total(epoched_files)}")
-
-                report_name = f"sub-{subject}_preprocessing_report.h5"
-                report_path = reports.create_subject_report(
-                    str(args.bids_dir),
-                    out_dir=str(preproc_dir),
-                    filename=report_name,
-                    subject_id=subject,
-                    command=" ".join(sys.argv),
-                    overwrite=True,
-                )
-
-                # Add summary
-                reports.add_report_summary(
-                    report_path,
-                    command=" ".join(sys.argv),
-                    raw_files=raw_files,
-                    events_files=events_files,
-                    referenced_files=referenced_files,
-                    filtered_files=filtered_files,
-                    epoched_files=epoched_files,
-                )
-
-                # Add all processing stages organized by task/run
-                reports.add_processing_stages(
-                    report_path,
-                    raw_files=raw_files,
-                    events_files=events_files,
-                    referenced_files=referenced_files,
-                    filtered_files=filtered_files,
-                    epoched_files=epoched_files,
-                )
-
-                # Export to HTML
-                html_path = reports.save_report(report_path, overwrite=True)
-                print(f"\n{'=' * 60}")
-                print(f"Preprocessing report written to: {html_path}")
-                print(f"{'=' * 60}")
+                # One worker per (task, run) — fully independent iterations.
+                payloads = [
+                    _make_preproc_payload(
+                        args_snap, deriv_snap, subject, task_label, run,
+                        ref_channels, effective_l, effective_h,
+                        baseline, reject_value,
+                    )
+                    for task_label in tasks
+                    for run in runs
+                ]
+                _dispatch(_preproc_iteration, payloads,
+                          n_procs=args.n_procs, kind_label="preproc")
+                _build_preproc_report(args, derivatives_info, subject)
 
         if args.stage in ["analysis", "both"]:
             print("\n" + "=" * 60)
@@ -1033,77 +1178,15 @@ def run_ffrprep():
                 continue
             print(f"Found {len(preproc_files)} preprocessing output(s) to analyze.")
 
-            # Run the analysis workflow once per preprocessed file so each
-            # (task, run) combination produces its own evoked output.
-            import mne
-
-            for preproc_file in preproc_files:
-                print(f"\nAnalyzing: {preproc_file.name}")
-                epochs = mne.read_epochs(str(preproc_file), preload=True, verbose=False)
-
-                analysis_wf = create_analysis_workflow()
-
-                if args.work_dir:
-                    work_dir = (
-                        args.work_dir / f"sub-{subject}" / "analysis" / preproc_file.stem
-                    )
-                else:
-                    work_dir = (
-                        derivatives_info["analysis_dir"] / "work"
-                        / f"sub-{subject}" / preproc_file.stem
-                    )
-                analysis_wf.base_dir = str(work_dir)
-
-                analysis_wf.inputs.inputnode.epochs = epochs
-                analysis_wf.inputs.inputnode.by_event_type = args.by_event_type
-                analysis_wf.inputs.inputnode.bids_root = str(args.bids_dir)
-                analysis_wf.inputs.inputnode.subject = subject
-                analysis_wf.inputs.inputnode.original_filename = preproc_file.stem
-                analysis_wf.inputs.inputnode.output_dir = str(
-                    derivatives_info["analysis_subject_dir"]
-                )
-
-                if args.n_procs and int(args.n_procs) > 1:
-                    analysis_wf.run(
-                        plugin="MultiProc",
-                        plugin_args={"n_procs": int(args.n_procs)},
-                    )
-                else:
-                    analysis_wf.run(plugin="Linear")
-
-                # Propagate ConcatenatedRuns / Run from the preproc sidecar
-                # to each analysis sidecar produced from this preproc file.
-                # The analysis stage doesn't know about concat semantics on
-                # its own (it only sees the preproc filename), so carry
-                # forward the field by reading the source sidecar.
-                _propagate_run_provenance(
-                    preproc_file=preproc_file,
-                    analysis_dir=Path(derivatives_info["analysis_subject_dir"]),
-                )
-
+            # One worker per preprocessed file — fully independent.
+            payloads = [
+                _make_analysis_payload(args_snap, deriv_snap, subject, pf)
+                for pf in preproc_files
+            ]
+            _dispatch(_analysis_iteration, payloads,
+                      n_procs=args.n_procs, kind_label="analysis")
             print(f"Analysis completed. Outputs saved to: {derivatives_info['analysis_subject_dir']}")
-            # Create analysis report using reports submodule
-            analysis_dir = Path(derivatives_info["analysis_subject_dir"])
-            # Look for analysis outputs
-            analysis_patterns = ["*_desc-evoked.fif", "*_desc-evoked*.fif"]
-            found_outputs = []
-            for pat in analysis_patterns:
-                found_outputs.extend(list(analysis_dir.glob(pat)))
-
-            report_name = f"sub-{subject}_analysis_report.h5"
-            report_path = reports.create_report(
-                str(args.bids_dir), out_dir=str(analysis_dir),
-                filename=report_name, overwrite=True,
-            )
-            html_text = f"<h2>Analysis summary</h2><p>Subject: sub-{subject}</p>"
-            if found_outputs:
-                html_text += "<p>Saved analysis outputs:</p><ul>"
-                for p in found_outputs:
-                    html_text += f"<li>{str(p)}</li>"
-                html_text += "</ul>"
-            reports.add_to_report(report_path, html_text=html_text, html_title="Analysis summary")
-            reports.save_report(report_path, overwrite=True)
-            print(f"Analysis report written to: {report_path}")
+            _build_analysis_report(args, derivatives_info, subject)
 
     print("\n" + "=" * 60)
     print("ffrprep processing completed successfully!")

@@ -128,7 +128,8 @@ Here's what's in this call:
 - ``/outputs`` is the output directory (inside container)
 - ``participant`` specifies participant-level analysis
 - ``--participant_label 01`` processes only subject sub-01
-- ``--n_procs 4`` uses 4 processors for parallel processing 
+- ``--n_procs 4`` runs 4 (task, run) iterations in parallel per subject (see
+  :ref:`Parallelization <parallelization>` below)
 
 
 Example 4 - Usage through Singularity
@@ -165,6 +166,79 @@ Here's what's in this call:
 - ``--ref_channels "Cz,Fz"`` uses Cz and Fz channels as reference
 - ``--tmin -0.1`` sets epoch start time to -100ms
 - ``--tmax 0.5`` sets epoch end time to 500ms
+
+
+.. _parallelization:
+
+Parallelization and cluster usage
+=================================
+
+``ffrprep`` follows the standard BIDS-App parallelism model:
+
+* **Inside one invocation** — ``--n_procs N`` runs N per-(task, run) iterations
+  concurrently for the subject(s) being processed. Each worker runs its own
+  preprocessing or analysis workflow with the Nipype ``Linear`` plugin.
+  Default: ``--n_procs 1`` (sequential). Memory footprint scales linearly
+  with N — each worker loads its own raw + epochs into memory, so dial it
+  down on small machines.
+
+* **Across invocations** — for multi-node / cluster scaling, run one
+  ``ffrprep`` invocation per subject under your scheduler (slurm job array,
+  GNU parallel, HTCondor, etc.). Both layers compose: 8 parallel slurm
+  tasks each with ``--n_procs 4`` gives 32-way effective parallelism.
+
+Single workstation
+~~~~~~~~~~~~~~~~~~
+
+.. code-block:: bash
+
+    ffrprep \
+    /data/bids_dataset \
+    /data/bids_dataset/derivatives \
+    participant \
+    --participant_label 01 02 03 \
+    --n_procs 4
+
+The 4 workers chew through each subject's (task, run) iterations in parallel,
+then move to the next subject.
+
+Cluster (slurm job array)
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Run one invocation per subject via the scheduler; each job uses
+``--n_procs`` for intra-subject parallelism. Example wrapper script:
+
+.. code-block:: bash
+
+    # ffrprep_one_subject.sh
+    #!/bin/bash
+    #SBATCH --array=0-99
+    #SBATCH --cpus-per-task=4
+    #SBATCH --mem=16G
+    SUBJECTS=(sub-01 sub-02 sub-03 ...)
+    SUB=${SUBJECTS[$SLURM_ARRAY_TASK_ID]}
+    ffrprep /data /data/derivatives participant \
+        --participant_label ${SUB#sub-} \
+        --n_procs $SLURM_CPUS_PER_TASK
+
+Cluster (GNU parallel on a single beefy box)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: bash
+
+    parallel -j 8 \
+      "ffrprep /data /data/derivatives participant \
+         --participant_label {} --n_procs 4" \
+      ::: 01 02 03 04 05 06 07 08
+
+Failure handling
+~~~~~~~~~~~~~~~~
+
+A failure in any (task, run) iteration aborts the run (fail-fast). The
+exception propagates up from the worker to the CLI entry point, so the
+underlying error is visible in the terminal output. Per-iteration logs
+land in ``<work_dir>/<task>-<run>.log`` so you can drill into the
+failing iteration without scanning the whole subject log.
 
 
 Support and communication

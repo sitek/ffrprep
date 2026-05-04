@@ -15,7 +15,11 @@ The ``ffrprep`` pipeline consists of three main stages:
 2. **Preprocessing** - Filters, re-references, and epochs the EEG data  
 3. **Analysis** - Computes evoked responses, time-frequency representations, and FFR metrics
 
-Each stage is implemented as a modular workflow using Nipype, allowing for parallel processing and robust error handling.
+Each stage is implemented as a modular Nipype workflow. The CLI parallelizes
+across (task, run) iterations within a subject via a ``ProcessPoolExecutor``
+sized by ``--n_procs``; for cross-subject scaling on clusters, run one CLI
+invocation per subject (e.g. via slurm job arrays). See the
+:ref:`Parallelization <parallelization>` section under *Usage* for details.
 
 
 
