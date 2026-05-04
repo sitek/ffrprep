@@ -344,104 +344,226 @@ def _build_preproc_workflow(payload):
     return wf
 
 
-def _build_preproc_report(args, derivatives_info, subject):
-    """Assemble the legacy MNE.Report-based preprocessing report.
+def _read_raw_any(fpath):
+    """Read an MNE-supported raw EEG file by extension."""
+    import mne
 
-    Runs in the parent after all per-iteration workers have drained,
-    so it can `glob` the subject's preprocessing directory for whatever
-    outputs landed (whether from one iteration or many in parallel).
-    Identical behavior to the inline blocks the per-(task, run) and
-    concat-runs branches both used to emit.
+    suffix = fpath.suffix.lower()
+    if suffix == ".bdf":
+        return mne.io.read_raw_bdf(str(fpath), preload=True, verbose=False)
+    if suffix == ".edf":
+        return mne.io.read_raw_edf(str(fpath), preload=True, verbose=False)
+    if suffix == ".fif":
+        return mne.io.read_raw_fif(str(fpath), preload=True, verbose=False)
+    raise ValueError(f"Unsupported raw EEG file extension: {suffix}")
+
+
+def _rejection_summary(epo_fpath, events_fpath, n_accepted):
+    """Pre-rejection / accepted / rejected counts for an Epochs section.
+
+    Reads ``EpochCount`` from the BIDS sidecar (authoritative accepted
+    count) and counts ``events.tsv`` rows for the pre-rejection total.
+    Returns an ordered dict suitable for ``extra_summary=`` on
+    :func:`reports.build_epoch_section`. Falls back to just the
+    accepted count when the sidecar or events file is missing.
     """
+    import json
+
+    import pandas as pd
+
+    sidecar = epo_fpath.with_suffix(".json")
+    if sidecar.exists():
+        meta = json.loads(sidecar.read_text())
+        n_accepted = meta.get("EpochCount", n_accepted)
+
+    if not events_fpath.exists():
+        return {"Epochs accepted": str(n_accepted)}
+
+    n_total = len(pd.read_csv(events_fpath, sep="\t"))
+    if n_total < n_accepted:
+        return {"Epochs accepted": str(n_accepted)}
+
+    n_rejected = n_total - n_accepted
+    rate = (100.0 * n_rejected / n_total) if n_total else 0.0
+    return {
+        "Epochs (total / accepted / rejected)":
+            f"{n_total} / {n_accepted} / {n_rejected}",
+        "Rejection rate": f"{rate:.1f} %",
+    }
+
+
+def _build_overview(args, subject, source_files, stage_label):
+    """Build the overview dict for the report.
+
+    The summary table lists the BIDS dataset path, subject, stage,
+    tasks and runs found in the source files, output count, ffrprep
+    version, and a render timestamp. The command field carries the
+    full CLI invocation as ``sys.argv``.
+    """
+    tasks = sorted({
+        m.group(1)
+        for f in source_files
+        for m in [re.search(r"task-([^_]+)", f.name)]
+        if m
+    })
+    runs = sorted({
+        m.group(1)
+        for f in source_files
+        for m in [re.search(r"run-([^_]+)", f.name)]
+        if m
+    })
+
+    summary = {
+        "BIDS dataset": str(args.bids_dir),
+        "Subject": f"sub-{subject}",
+        "Stage": stage_label,
+        "Tasks": ", ".join(tasks) if tasks else "—",
+        "Runs": ", ".join(runs) if runs else "—",
+        f"{stage_label.capitalize()} outputs": str(len(source_files)),
+        "ffrprep version": _pkg_version("ffrprep"),
+        "Report rendered": time.strftime("%Y-%m-%d %H:%M:%S"),
+    }
+    return {"summary": summary, "command": " ".join(sys.argv)}
+
+
+def _build_preproc_report(args, derivatives_info, subject):
+    """Render the single-file HTML preprocessing report.
+
+    Runs in the parent after all per-iteration workers have drained.
+    For each saved ``_desc-preproc_epo.fif`` the corresponding raw
+    .bdf/.edf is loaded from the BIDS dataset to produce a Raw section,
+    paired with an Epoched section computed from the .fif. Sections
+    are wrapped one (task, run) group per output via
+    :func:`reports.make_group` and rendered via
+    :func:`reports.build_subject_report`.
+    """
+    import mne
+
     print("\n" + "=" * 60)
     print("Generating preprocessing report...")
     print("=" * 60)
 
+    bids_root = Path(args.bids_dir)
     preproc_dir = Path(derivatives_info["preprocessing_subject_dir"])
+    eeg_dir = bids_root / f"sub-{subject}" / "eeg"
 
-    def _collect_grouped(base_dir, patterns):
-        grouped = {}
-        for pat in patterns:
-            for p in base_dir.glob(pat):
-                name = p.name
-                m_task = re.search(r"task-([^_]+)", name)
-                m_run = re.search(r"run-([^_]+)", name)
-                task = m_task.group(1) if m_task else ""
-                run = m_run.group(1) if m_run else ""
-                grouped.setdefault(task, {}).setdefault(run, []).append(str(p))
-        return grouped
+    epoched_files = sorted(preproc_dir.glob("*_desc-preproc_epo.fif"))
+    if not epoched_files:
+        print(f"No preprocessing outputs found for sub-{subject}; "
+              "skipping report.")
+        return
 
-    raw_files = _collect_grouped(preproc_dir, ["*_desc-loaded_raw.fif"])
-    events_files = _collect_grouped(preproc_dir, ["*_events.tsv"])
-    referenced_files = _collect_grouped(preproc_dir, ["*_desc-referenced_raw.fif"])
-    filtered_files = _collect_grouped(preproc_dir, ["*_desc-filtered_raw.fif"])
-    epoched_files = _collect_grouped(preproc_dir, ["*_desc-preproc_epo.fif"])
+    groups = []
+    for epo_fpath in epoched_files:
+        m_task = re.search(r"task-([^_]+)", epo_fpath.name)
+        m_run = re.search(r"run-([^_]+)", epo_fpath.name)
+        task = m_task.group(1) if m_task else None
+        run = m_run.group(1) if m_run else None
 
-    def _total(grouped):
-        if not grouped:
-            return 0
-        return sum(len(r) for t in grouped.values() for r in t.values())
+        # Locate the original raw file in the BIDS dataset for the Raw
+        # section (intermediate _desc-loaded_raw.fif files are only
+        # written when --save-each-node is used, and aren't reliable
+        # to depend on for the report).
+        raw_fpath = None
+        for ext in (".bdf", ".edf", ".fif"):
+            candidate = eeg_dir / f"sub-{subject}_task-{task}_run-{run}_eeg{ext}"
+            if candidate.exists():
+                raw_fpath = candidate
+                break
+        events_fpath = eeg_dir / f"sub-{subject}_task-{task}_run-{run}_events.tsv"
 
-    print("\nCollected files:")
-    print(f"  Raw files: {_total(raw_files)}")
-    print(f"  Events files: {_total(events_files)}")
-    print(f"  Referenced files: {_total(referenced_files)}")
-    print(f"  Filtered files: {_total(filtered_files)}")
-    print(f"  Epoched files: {_total(epoched_files)}")
+        sections = []
+        if raw_fpath is not None:
+            print(f"  loading raw  for sub-{subject} task-{task} run-{run}")
+            raw = _read_raw_any(raw_fpath)
+            sections.append(reports.build_raw_section(
+                raw,
+                section_id=f"raw-{task}-{run}",
+                title="Raw",
+                label="Raw",
+                events_fpath=str(events_fpath) if events_fpath.exists() else None,
+            ))
 
-    report_name = f"sub-{subject}_preprocessing_report.h5"
-    report_path = reports.create_subject_report(
-        str(args.bids_dir),
+        print(f"  loading epoch for sub-{subject} task-{task} run-{run}")
+        epochs = mne.read_epochs(str(epo_fpath), preload=True, verbose=False)
+        extra = _rejection_summary(epo_fpath, events_fpath, len(epochs))
+        sections.append(reports.build_epoch_section(
+            epochs,
+            section_id=f"epoched-{task}-{run}",
+            title="Epoched",
+            extra_summary=extra,
+        ))
+
+        groups.append(reports.make_group(task=task, run=run, sections=sections))
+
+    overview = _build_overview(args, subject, epoched_files, "preprocessing")
+
+    out_path = reports.build_subject_report(
+        bids_root=str(bids_root),
+        subject=subject,
         out_dir=str(preproc_dir),
-        filename=report_name,
-        subject_id=subject,
-        command=" ".join(sys.argv),
-        overwrite=True,
+        groups=groups,
+        overview=overview,
     )
-    reports.add_report_summary(
-        report_path,
-        command=" ".join(sys.argv),
-        raw_files=raw_files,
-        events_files=events_files,
-        referenced_files=referenced_files,
-        filtered_files=filtered_files,
-        epoched_files=epoched_files,
-    )
-    reports.add_processing_stages(
-        report_path,
-        raw_files=raw_files,
-        events_files=events_files,
-        referenced_files=referenced_files,
-        filtered_files=filtered_files,
-        epoched_files=epoched_files,
-    )
-    html_path = reports.save_report(report_path, overwrite=True)
     print(f"\n{'=' * 60}")
-    print(f"Preprocessing report written to: {html_path}")
+    print(f"Preprocessing report written to: {out_path}")
     print(f"{'=' * 60}")
 
 
 def _build_analysis_report(args, derivatives_info, subject):
-    """Assemble the legacy MNE.Report-based analysis report (parent side)."""
-    analysis_dir = Path(derivatives_info["analysis_subject_dir"])
-    found_outputs = []
-    for pat in ["*_desc-evoked.fif", "*_desc-evoked*.fif"]:
-        found_outputs.extend(list(analysis_dir.glob(pat)))
+    """Render the single-file HTML analysis report.
 
-    report_name = f"sub-{subject}_analysis_report.h5"
-    report_path = reports.create_report(
-        str(args.bids_dir), out_dir=str(analysis_dir),
-        filename=report_name, overwrite=True,
+    Iterates over the saved ``*_desc-evoked.fif`` outputs, builds one
+    Evoked section per condition (an evoked file may carry multiple
+    conditions when ``--by_event_type`` is set), wraps in (task, run)
+    groups via :func:`reports.make_group`, and renders via
+    :func:`reports.build_analysis_report`.
+    """
+    import mne
+
+    print("\n" + "=" * 60)
+    print("Generating analysis report...")
+    print("=" * 60)
+
+    bids_root = Path(args.bids_dir)
+    analysis_dir = Path(derivatives_info["analysis_subject_dir"])
+
+    evoked_files = sorted(analysis_dir.glob("*_desc-evoked.fif"))
+    if not evoked_files:
+        print(f"No analysis outputs found for sub-{subject}; "
+              "skipping report.")
+        return
+
+    groups = []
+    for evo_fpath in evoked_files:
+        m_task = re.search(r"task-([^_]+)", evo_fpath.name)
+        m_run = re.search(r"run-([^_]+)", evo_fpath.name)
+        task = m_task.group(1) if m_task else None
+        run = m_run.group(1) if m_run else None
+
+        print(f"  loading evoked for sub-{subject} task-{task} run-{run}")
+        evoked_list = mne.read_evokeds(str(evo_fpath), verbose=False)
+        sections = []
+        for idx, evoked in enumerate(evoked_list):
+            cond = evoked.comment or f"condition-{idx}"
+            sections.append(reports.build_evoked_section(
+                evoked,
+                section_id=f"evoked-{task}-{run}-{idx}",
+                title=f"Evoked ({cond})",
+                label="Evoked",
+            ))
+        groups.append(reports.make_group(task=task, run=run, sections=sections))
+
+    overview = _build_overview(args, subject, evoked_files, "analysis")
+
+    out_path = reports.build_analysis_report(
+        bids_root=str(bids_root),
+        subject=subject,
+        out_dir=str(analysis_dir),
+        groups=groups,
+        overview=overview,
     )
-    html_text = f"<h2>Analysis summary</h2><p>Subject: sub-{subject}</p>"
-    if found_outputs:
-        html_text += "<p>Saved analysis outputs:</p><ul>"
-        for p in found_outputs:
-            html_text += f"<li>{str(p)}</li>"
-        html_text += "</ul>"
-    reports.add_to_report(report_path, html_text=html_text, html_title="Analysis summary")
-    reports.save_report(report_path, overwrite=True)
-    print(f"Analysis report written to: {report_path}")
+    print(f"Analysis report written to: {out_path}")
 
 
 def _check_preproc_output_or_raise(payload):
