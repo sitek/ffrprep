@@ -200,10 +200,16 @@ Preprocessing Workflow Nodes
 
     derivatives/ffrprep-preprocessing/
     ├── sub-XX/
-    │   ├── sub-XX_task-YY_run-ZZ_epo.fif
-    │   ├── sub-XX_task-YY_run-ZZ_epo.json
-    │   ├── sub-XX_preprocessing_report.html
-    │   └── sub-XX_preprocessing_metrics.json
+    │   └── eeg/
+    │       ├── sub-XX_task-YY_run-ZZ_desc-preproc_epo.fif
+    │       ├── sub-XX_task-YY_run-ZZ_desc-preproc_epo.json
+    │       ├── sub-XX_preprocessing_report.html
+    │       └── sub-XX_preprocessing.log
+
+The sidecar JSON carries provenance, ``EpochCount`` /
+``EpochCountTotal`` / ``EpochCountRejected``, ``RejectionThresholds``,
+``Filtering`` (high-pass and low-pass cut-offs), sampling frequency,
+and run / session identifiers.
 
 *Outputs:* File paths, processing metadata
 
@@ -349,35 +355,33 @@ Analysis Workflow Nodes
 
 **6. Save Analysis Node**
 
-*Function:* `save_analysis() <https://spark-csd.github.io/ffrprep/generated/ffrprep.preproc.save_analysis.html#ffrprep.preproc.save_analysis>`_
+*Function:* `save_analysis_outputs() <https://spark-csd.github.io/ffrprep/generated/ffrprep.preproc.save_analysis_outputs.html#ffrprep.preproc.save_analysis_outputs>`_
 
-*Purpose:* Save analysis results in standard formats for further analysis.
+*Purpose:* Save the evoked response and associated BIDS sidecar.
 
 *Sub-steps:*
-   - Save evoked responses in MNE format
-   - Export time-frequency data
-   - Save FFR metrics as structured data
-   - Create BIDS-compatible metadata
-   - Generate analysis provenance
+   - Save the evoked response as MNE ``.fif``
+   - Write the BIDS sidecar JSON (provenance + ``AverageCount`` /
+     ``Baseline`` / ``SamplingFrequency`` / ``Tmin`` / ``Tmax`` /
+     condition / run identifiers)
 
 *Output Structure:* ::
 
     derivatives/ffrprep-analysis/
     ├── sub-XX/
-    │   ├── sub-XX_task-YY_run-ZZ_evoked.fif
-    │   ├── sub-XX_task-YY_run-ZZ_tfr.h5
-    │   ├── sub-XX_task-YY_run-ZZ_metrics.json
-    │   ├── sub-XX_analysis_report.html
-    │   └── figures/
-    │       ├── sub-XX_evoked.png
-    │       ├── sub-XX_tfr.png
-    │       └── sub-XX_topography.png
+    │   ├── sub-XX_task-YY_run-ZZ_desc-evoked.fif
+    │   ├── sub-XX_task-YY_run-ZZ_desc-evoked.json
+    │   └── sub-XX_analysis_report.html
+
+The single-file ``sub-XX_analysis_report.html`` embeds all per-(task,
+run) figures (waveform, PSD, time-frequency representation,
+autocorrelation, pitch tracking) as inline base64 PNGs — there is no
+sibling ``figures/`` directory.
 
 *File Formats:*
-   - **MNE format (.fif):** For evoked responses (can be loaded in MNE-Python)
-   - **HDF5 (.h5):** For time-frequency data (efficient storage)
-   - **JSON:** For metrics and metadata (human-readable, machine-parseable)
-   - **PNG/SVG:** For publication-ready figures
+   - **MNE format (.fif):** Evoked response, loadable in MNE-Python
+   - **JSON:** BIDS sidecar (human-readable, machine-parseable)
+   - **HTML:** Self-contained per-subject report
 
 *Outputs:* Analysis file paths, processing metadata
 
@@ -385,10 +389,15 @@ Pipeline Integration and Quality Control
 ========================================
 
 **Workflow Management:**
-- Each stage implemented as Nipype workflow for reproducibility
-- Automatic dependency tracking and parallel execution
-- Robust error handling and logging
-- Resumable processing after failures
+- Each stage implemented as a Nipype workflow for per-iteration
+  dependency tracking
+- Outer-loop parallelism: the CLI dispatches per-(task, run)
+  iterations to a ``ProcessPoolExecutor`` sized by ``--n_procs``
+- Fail-fast on any iteration error; the exception propagates to the
+  CLI entry point
+- nipype caches per-iteration intermediates under ``work/`` so
+  re-runs that already have a saved ``_desc-preproc_epo.fif`` skip
+  the workflow re-execution
 
 **Quality Control Checkpoints:**
 - BIDS validation before processing

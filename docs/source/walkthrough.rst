@@ -132,14 +132,14 @@ After preprocessing completes, inspect the generated reports:
 
     # Navigate to the preprocessing outputs
     cd ~/ffrprep_tutorial/bids_dataset/derivatives/ffrprep-preprocessing
-    
+
     # List the generated files
-    find . -name "*.html" -o -name "*.h5"
-    
+    find . -name "*.fif" -o -name "*.json" -o -name "*.html"
+
     # Open the preprocessing report in your browser
-    open sub-*/sub-*_preprocessing_report.html  # macOS
+    open sub-*/eeg/sub-*_preprocessing_report.html  # macOS
     # or
-    xdg-open sub-*/sub-*_preprocessing_report.html  # Linux
+    xdg-open sub-*/eeg/sub-*_preprocessing_report.html  # Linux
 
 The preprocessing report will show:
 
@@ -218,27 +218,29 @@ Examine the analysis results:
 
 The analysis outputs include:
 
-**Data files:**
+**Data files (per subject, per task / run):**
 
-- ``*_evoked.fif``: Evoked response data (can be loaded with MNE-Python)   
-- ``*_tfr.h5``: Time-frequency representations  
-- ``*_metrics.json``: Quantitative FFR metrics  
+- ``*_desc-evoked.fif``: Evoked response data (loadable with MNE-Python)
+- ``*_desc-evoked.json``: BIDS sidecar with ``AverageCount``, ``Baseline``,
+  ``SamplingFrequency``, etc.
 
-**Reports:**
+**Report:**
 
-Interactive HTML reports with:
-
-- Evoked response waveforms
-- Time-frequency plots
-- Scalp topographies
-- FFR metrics summary
+- ``sub-XX_analysis_report.html``: single-file HTML report per subject,
+  embedding waveform, PSD, time-frequency representation,
+  autocorrelation, and pitch-track figures plus FFR scalar metrics
+  (RMS SNR, mean band-power) per (task, run) section.
 
 **Key analysis features to examine:**
 
-- **Evoked waveforms**: Look for clear FFR responses
-- **Time-frequency**: Check for sustained oscillatory activity
-- **Topographies**: Verify expected scalp distributions
-- **Metrics**: Review quantitative measures (amplitude, phase-locking, etc.)
+- **Evoked waveform**: Look for the clear FFR response in the
+  post-stimulus window.
+- **Power spectral density**: Check for spectral peaks at the stimulus
+  fundamental frequency and its harmonics.
+- **Autocorrelation**: Periodic peaks at the stimulus period indicate
+  good phase-locking.
+- **RMS SNR**: Response RMS / baseline RMS over the 100–200 ms
+  response window. Higher is better.
 
 Step 7: Working with Outputs in Python
 ======================================
@@ -270,34 +272,43 @@ The evoked responses contain the averaged EEG data across trials, which is the c
 
 .. code-block:: python
 
-    evoked_files = list(analysis_path.glob("*_evoked.fif"))
+    evoked_files = list(analysis_path.glob("*_desc-evoked.fif"))
     evoked = mne.read_evokeds(evoked_files[0])
-    
+
     # Plot the evoked response
     evoked[0].plot()
 
-**Load and examine quantitative FFR metrics:**
+**Load and examine the BIDS sidecar:**
 
-``ffrprep`` computes various quantitative metrics that characterize the FFR response, such as amplitude, phase-locking values, and spectral properties.
-
-.. code-block:: python
-
-    metrics_file = list(analysis_path.glob("*_metrics.json"))[0]
-    with open(metrics_file, 'r') as f:
-        metrics = json.load(f)
-    
-    print("FFR Metrics:", metrics)
-
-**Load and visualize time-frequency representations:**
-
-Time-frequency analysis shows how spectral power changes over time, which is particularly important for understanding FFR dynamics.
+Each evoked ``.fif`` has a sibling JSON sidecar carrying provenance
+and computed metadata (``AverageCount``, ``SamplingFrequency``,
+``Tmin`` / ``Tmax``, ``Baseline``, and run/condition identifiers).
 
 .. code-block:: python
 
-    tfr_files = list(analysis_path.glob("*_tfr.h5"))
-    if tfr_files:
-        tfr = mne.time_frequency.read_tfrs(tfr_files[0])
-        tfr[0].plot()
+    sidecar_files = list(analysis_path.glob("*_desc-evoked.json"))
+    with open(sidecar_files[0], "r") as f:
+        sidecar = json.load(f)
+
+    print("Sidecar:", sidecar)
+
+**Compute time-frequency yourself:**
+
+The HTML report embeds a time-frequency representation across the
+FFR band but does not save the TFR object to a separate file.
+Recompute it from the loaded Evoked when you need it for further
+analysis:
+
+.. code-block:: python
+
+    import numpy as np
+
+    freqs = np.arange(70.0, 300.0, 2.0)
+    tfr = mne.time_frequency.tfr_multitaper(
+        evoked[0], freqs=freqs, n_cycles=freqs / 4.0,
+        time_bandwidth=4.0, return_itc=False, verbose=False,
+    )
+    tfr.plot()
 
 Complete Pipeline Example
 =========================
