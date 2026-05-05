@@ -1582,6 +1582,17 @@ def save_preprocessing_outputs(epochs, bids_root, subject, task, session=None, r
         with open(dataset_desc_path, "w") as f:
             _json.dump(dataset_desc, f, indent=2)
 
+    # Capture rejection metadata from the original Epochs object before
+    # reconstruction. drop_log carries one entry per original candidate
+    # epoch — empty tuple when accepted, non-empty when dropped (with
+    # the rejection reasons). Both drop_log and the .reject thresholds
+    # are lost when EpochsArray is constructed below, so we extract
+    # everything we want to persist while it's still available.
+    n_total_epochs = len(epochs.drop_log)
+    n_accepted = len(epochs)
+    n_rejected_epochs = n_total_epochs - n_accepted
+    reject_thresholds = getattr(epochs, "reject", None)
+
     # Reconstruct a fresh EpochsArray from the underlying data + info to
     # avoid edge cases where the upstream Epochs object carries internal
     # state that doesn't round-trip through .save(). On mne>=1.9 the
@@ -1612,6 +1623,8 @@ def save_preprocessing_outputs(epochs, bids_root, subject, task, session=None, r
         "TaskName": task,
         "SamplingFrequency": float(info["sfreq"]),
         "EpochCount": int(len(new_epochs)),
+        "EpochCountTotal": int(n_total_epochs),
+        "EpochCountRejected": int(n_rejected_epochs),
         "EpochTmin": float(new_epochs.tmin),
         "EpochTmax": float(new_epochs.tmax),
         "Channels": list(new_epochs.ch_names),
@@ -1624,6 +1637,10 @@ def save_preprocessing_outputs(epochs, bids_root, subject, task, session=None, r
             ),
         },
     }
+    if reject_thresholds:
+        sidecar["RejectionThresholds"] = {
+            k: float(v) for k, v in reject_thresholds.items()
+        }
     if session is not None:
         sidecar["Session"] = str(session)
     if run is not None:
@@ -1760,6 +1777,13 @@ def save_analysis_outputs(evoked, bids_root, subject, task, session=None, run=No
             "Tmax": float(evoked_obj.tmax),
             "Channels": list(evoked_obj.ch_names),
         }
+        # Persist the baseline window — MNE's Evoked.save() does NOT write
+        # evoked.baseline into the .fif, so without this field downstream
+        # consumers see baseline=None after a load round-trip and lose
+        # access to baseline-anchored metrics like RMS SNR.
+        baseline = getattr(evoked_obj, "baseline", None)
+        if baseline is not None:
+            sidecar["Baseline"] = [float(baseline[0]), float(baseline[1])]
         if session is not None:
             sidecar["Session"] = str(session)
         if run is not None:

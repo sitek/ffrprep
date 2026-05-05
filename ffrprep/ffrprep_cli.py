@@ -361,21 +361,42 @@ def _read_raw_any(fpath):
 def _rejection_summary(epo_fpath, events_fpath, n_accepted):
     """Pre-rejection / accepted / rejected counts for an Epochs section.
 
-    Reads ``EpochCount`` from the BIDS sidecar (authoritative accepted
-    count) and counts ``events.tsv`` rows for the pre-rejection total.
-    Returns an ordered dict suitable for ``extra_summary=`` on
-    :func:`reports.build_epoch_section`. Falls back to just the
-    accepted count when the sidecar or events file is missing.
+    Prefers the authoritative pre-rejection counts written to the BIDS
+    sidecar at preprocessing time (``EpochCountTotal`` /
+    ``EpochCountRejected`` / ``RejectionThresholds``). Falls back to
+    back-calculating from ``events.tsv`` row count vs ``EpochCount``
+    when the sidecar predates the metadata change. Returns an ordered
+    dict suitable for ``extra_summary=`` on
+    :func:`reports.build_epoch_section`.
     """
     import json
 
     import pandas as pd
 
     sidecar = epo_fpath.with_suffix(".json")
+    meta = {}
     if sidecar.exists():
         meta = json.loads(sidecar.read_text())
         n_accepted = meta.get("EpochCount", n_accepted)
 
+    # Preferred path: sidecar carries the counts directly.
+    if "EpochCountTotal" in meta and "EpochCountRejected" in meta:
+        n_total = int(meta["EpochCountTotal"])
+        n_rejected = int(meta["EpochCountRejected"])
+        rate = (100.0 * n_rejected / n_total) if n_total else 0.0
+        row = {
+            "Epochs (total / accepted / rejected)":
+                f"{n_total} / {n_accepted} / {n_rejected}",
+            "Rejection rate": f"{rate:.1f} %",
+        }
+        thresholds = meta.get("RejectionThresholds")
+        if thresholds:
+            row["Rejection thresholds"] = ", ".join(
+                f"{k}: {v:.2e}" for k, v in thresholds.items()
+            )
+        return row
+
+    # Fallback: derive total from events.tsv row count.
     if not events_fpath.exists():
         return {"Epochs accepted": str(n_accepted)}
 
@@ -519,6 +540,8 @@ def _build_analysis_report(args, derivatives_info, subject):
     groups via :func:`reports.make_group`, and renders via
     :func:`reports.build_analysis_report`.
     """
+    import json
+
     import mne
 
     print("\n" + "=" * 60)
@@ -543,6 +566,21 @@ def _build_analysis_report(args, derivatives_info, subject):
 
         print(f"  loading evoked for sub-{subject} task-{task} run-{run}")
         evoked_list = mne.read_evokeds(str(evo_fpath), verbose=False)
+        # Restore evoked.baseline from the BIDS sidecar — MNE's
+        # Evoked.save() doesn't write the baseline window into the .fif,
+        # so without this restore RMS SNR (which gates on
+        # evoked.baseline is not None) would silently disappear from
+        # the report. apply_baseline is idempotent on already-baselined
+        # data: it sets the metadata attribute and re-applies the
+        # correction (which subtracts ~zero from data already centered).
+        evo_sidecar = evo_fpath.with_suffix(".json")
+        if evo_sidecar.exists():
+            evo_meta = json.loads(evo_sidecar.read_text())
+            baseline = evo_meta.get("Baseline")
+            if baseline is not None:
+                for ev in evoked_list:
+                    if ev.baseline is None:
+                        ev.apply_baseline(tuple(baseline))
         sections = []
         for idx, evoked in enumerate(evoked_list):
             cond = evoked.comment or f"condition-{idx}"

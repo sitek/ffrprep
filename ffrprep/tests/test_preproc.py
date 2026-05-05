@@ -885,6 +885,137 @@ def test_output_structure_and_files(tmp_path):
     print("✓ All output structure and file tests passed!")
 
 
+def test_save_preprocessing_outputs_persists_rejection_metadata(tmp_path):
+    """Sidecar must carry pre-rejection counts + reject thresholds.
+
+    Without these, downstream consumers (the report builder) have to
+    back-calculate the rejected count from ``events.tsv`` row count
+    minus the saved ``EpochCount``. That back-calc breaks whenever the
+    epoching uses an event-id filter, when events.tsv is missing, or
+    when the user is just inspecting the sidecar by hand. Persisting
+    the metadata at save time makes the sidecar self-describing.
+    """
+    import numpy as np
+    from mne import Epochs, create_info
+    from mne.io import RawArray
+
+    # Synthesize 6 s of clean data on 4 channels at 1 kHz, then inject
+    # a high-amplitude excursion in one channel during the window of
+    # the third event so amplitude-based rejection drops exactly that
+    # epoch.
+    sfreq = 1000.0
+    n_channels = 4
+    n_times = int(sfreq * 6)
+    rng = np.random.default_rng(0)
+    data = rng.normal(0, 1e-6, size=(n_channels, n_times))
+    spike_start = int(sfreq * 3.0)
+    data[0, spike_start:spike_start + 100] = 1e-3  # 1 mV >> 75 µV reject
+
+    info = create_info(
+        ch_names=["Cz", "F3", "F4", "Pz"],
+        sfreq=sfreq,
+        ch_types=["eeg"] * n_channels,
+    )
+    raw = RawArray(data, info, verbose=False)
+
+    n_events = 5
+    event_samples = np.linspace(500, n_times - 500, n_events, dtype=int)
+    events = np.column_stack([
+        event_samples,
+        np.zeros(n_events, dtype=int),
+        np.ones(n_events, dtype=int),
+    ])
+
+    reject_thresholds = {"eeg": 7.5e-5}
+    epochs = Epochs(
+        raw, events, tmin=-0.04, tmax=0.4, baseline=None,
+        reject=reject_thresholds, preload=True, verbose=False,
+    )
+    epochs.drop_bad()
+
+    n_total = len(epochs.drop_log)
+    n_accepted = len(epochs)
+    n_rejected = n_total - n_accepted
+    assert n_rejected >= 1, (
+        "fixture didn't actually reject anything — adjust the spike "
+        "or the threshold"
+    )
+
+    bids_root = tmp_path / "bids"
+    bids_root.mkdir()
+    out_path = save_preprocessing_outputs(
+        epochs, bids_root, subject="01", task="active", run=1,
+    )
+
+    sidecar_path = out_path.with_suffix(".json")
+    with open(sidecar_path) as f:
+        sidecar = json.load(f)
+
+    assert sidecar["EpochCount"] == n_accepted
+    assert sidecar["EpochCountTotal"] == n_total, \
+        "sidecar must record the pre-rejection epoch count"
+    assert sidecar["EpochCountRejected"] == n_rejected, \
+        "sidecar must record the count of rejected epochs"
+    assert sidecar["RejectionThresholds"] == {"eeg": 7.5e-5}, \
+        "sidecar must record the reject thresholds that were applied"
+
+
+def test_save_analysis_outputs_persists_baseline(tmp_path):
+    """The analysis sidecar must record the baseline window.
+
+    MNE's Evoked.save() does not write ``evoked.baseline`` into the
+    .fif on disk, so after a load round-trip the attribute is None.
+    This drops the RMS SNR row from the analysis report (which gates
+    on ``evoked.baseline is not None``). Persisting the window in the
+    BIDS sidecar lets downstream consumers restore the attribute via
+    ``evoked.apply_baseline(...)`` post-load.
+    """
+    import numpy as np
+    from mne import Epochs, create_info
+    from mne.io import RawArray
+
+    sfreq = 1000.0
+    n_channels = 2
+    n_times = int(sfreq * 5)
+    rng = np.random.default_rng(1)
+    data = rng.normal(0, 1e-6, size=(n_channels, n_times))
+    info = create_info(["Cz", "F3"], sfreq=sfreq, ch_types=["eeg", "eeg"])
+    raw = RawArray(data, info, verbose=False)
+
+    n_events = 3
+    event_samples = np.linspace(500, n_times - 500, n_events, dtype=int)
+    events = np.column_stack([
+        event_samples,
+        np.zeros(n_events, dtype=int),
+        np.ones(n_events, dtype=int),
+    ])
+
+    baseline = (-0.04, 0.0)
+    epochs = Epochs(
+        raw, events, tmin=-0.04, tmax=0.4, baseline=baseline,
+        preload=True, verbose=False,
+    )
+    evoked = epochs.average()
+    assert evoked.baseline == baseline, (
+        "fixture: average() should propagate baseline metadata"
+    )
+
+    bids_root = tmp_path / "bids"
+    bids_root.mkdir()
+    out_paths = save_analysis_outputs(
+        evoked, bids_root, subject="01", task="active", run=1,
+    )
+
+    sidecar_path = out_paths[0].with_suffix(".json")
+    with open(sidecar_path) as f:
+        sidecar = json.load(f)
+
+    assert "Baseline" in sidecar, \
+        "sidecar must record the baseline window from evoked.baseline"
+    assert tuple(sidecar["Baseline"]) == baseline, \
+        "sidecar Baseline must match evoked.baseline exactly"
+
+
 def test_make_evoked(tmp_path):
     """Test the make_evoked function with synthetic data."""
     # Create synthetic EEG data for testing
