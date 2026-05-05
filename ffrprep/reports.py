@@ -5,510 +5,551 @@ For FFRPREP BIDS datasets, including support for figures, HTML blocks, and
 special MNE objects.
 """
 
+import base64
+import io
 import os
-import time
-from mne import Report, open_report
-import mne
 from pathlib import Path
-import html as _html
+
 import matplotlib.pyplot as plt
+import mne
 import numpy as np
+import pandas as pd
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 from matplotlib.gridspec import GridSpec
 from scipy import stats
-import pandas as pd
-import re
 
 
-def create_report(bids_root, out_dir=None, filename=None, title=None, overwrite=False):
+_TEMPLATE_DIR = Path(__file__).parent / "templates"
+_jinja_env = Environment(
+    loader=FileSystemLoader(str(_TEMPLATE_DIR)),
+    autoescape=select_autoescape(["html", "xml"]),
+    trim_blocks=True,
+    lstrip_blocks=True,
+)
+
+
+def _fig_to_data_uri(fig, dpi=150):
+    """Encode a matplotlib Figure as a ``data:image/png;base64,...`` URI.
+
+    Used to embed plots inline so the rendered report is a single
+    self-contained HTML file with no sibling assets.
     """
-    Initialize an MNE report.
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", dpi=dpi, bbox_inches="tight")
+    encoded = base64.b64encode(buf.getvalue()).decode("ascii")
+    return f"data:image/png;base64,{encoded}"
 
-    Parameters
-    ----------
-    bids_root : string
-        The top-level directory of the BIDS dataset.
-    out_dir : string
-        Location to save the report. If `None` (default),
-        will write the report to '{bidsroot}/derivatives/'.
-    filename : string
-        Filename for the report. If `None` (default),
-        will write the report as 'ffrprep_report_{YYYY:MM:DD:HH:MM:SS}.h5'.
-    title : string
-        Title for the report. If `None` (default),
-        will write the title as 'FFRPREP report {YYYY:MM:DD:HH:MM:SS}'.
-    overwrite : boolean
-        Whether to overwrite an existing file (`True`).
-        If `False` (default) and file exists, report will be saved as
-        '{filename}_1.h5'.
 
-    Returns
-    -------
-    report_fpath : string
-        Full filepath to the created report file.
+def build_raw_section(raw, *, section_id, title, label=None, events_fpath=None):
+    """Build a section descriptor from a Raw object.
+
+    Wraps :func:`raw_qa` to produce waveform + PSD figures, encodes them
+    as inline data URIs, and pairs them with a small summary table
+    (sampling rate, duration, channel count). The returned dict is
+    consumable by :func:`build_subject_report`.
     """
-    timenow = time.strftime("%Y-%m-%d_%Hh%Mm%Ss")
+    sfreq = float(raw.info["sfreq"])
+    n_channels = len(raw.ch_names)
+    duration_s = raw.n_times / sfreq
 
-    # Define and create the output directory
-    if out_dir is None:
-        out_dir = os.path.join(bids_root, "derivatives")
+    summary = {}
+    if label:
+        summary["Stage"] = label
+    summary["Sampling rate"] = f"{sfreq:g} Hz"
+    summary["Duration"] = f"{duration_s:.2f} s"
+    summary["Channels"] = str(n_channels)
 
-    if not os.path.isdir(out_dir):
-        os.makedirs(out_dir)
+    figures = []
+    for fig, fig_title, caption in raw_qa(raw, events_fpath=events_fpath, save_dir=None):
+        figures.append({
+            "title": fig_title,
+            "caption": caption,
+            "data_uri": _fig_to_data_uri(fig),
+        })
+        plt.close(fig)
 
-    # Define and create the output filename - use .h5 for incremental building
-    if filename is None:
-        filename = f"ffrprep_report_{timenow}.h5"
-    else:
-        # Ensure .h5 extension for working file
-        if filename.endswith(".html"):
-            filename = filename[:-5] + ".h5"
-        elif not filename.endswith(".h5"):
-            filename = f"{filename}.h5"
-
-    report_fpath = os.path.join(out_dir, filename)
-
-    if os.path.isfile(report_fpath):
-        if overwrite:
-            os.remove(report_fpath)  # Remove old file before creating new one
-        else:
-            # Find a unique filename by adding a suffix
-            fname_base, fname_ext = os.path.splitext(filename)
-            counter = 1
-            while True:
-                new_filename = f"{fname_base}_{counter}{fname_ext}"
-                new_path = os.path.join(out_dir, new_filename)
-                if not os.path.isfile(new_path):
-                    report_fpath = new_path
-                    break
-                counter += 1
-
-    # Define the report title, if None
-    if title is None:
-        timenow = time.strftime("%Y-%m-%d_%Hh%Mm%Ss")
-        title = f"FFRPREP report {timenow}"
-
-    # Create the report and save as HDF5
-    report = Report(title=title, verbose=False)
-    report.save(report_fpath, overwrite=True, open_browser=False)
-
-    return report_fpath
+    return {
+        "id": section_id,
+        "title": title,
+        "summary": summary,
+        "figures": figures,
+    }
 
 
-def add_to_report(
-    report_fpath,
-    figure=None,
-    figure_title=None,
-    figure_caption=None,
-    html_text=None,
-    html_title=None,
-):
+def build_epoch_section(epochs, *, section_id, title, extra_summary=None):
+    """Build a section descriptor from an Epochs object.
+
+    Wraps :func:`epoch_qa` to produce overview / rejection / average /
+    drift figures, encodes them as inline data URIs, and pairs them
+    with a summary table (n_epochs, channels, sfreq, time window).
+
+    `extra_summary` is appended to the summary table after the standard
+    metadata. Use it to surface info that isn't on the Epochs object
+    itself — e.g. pre-rejection counts read from a BIDS sidecar.
     """
-    Add content to an existing FFRPREP report.
+    sfreq = float(epochs.info["sfreq"])
+    n_channels = len(epochs.ch_names)
+    n_epochs = len(epochs)
 
-    Parameters
-    ----------
-    report_fpath : string
-        Full filepath to the existing FFRPREP report (.h5 file).
-    figure : matplotlib figure object
-        Figure to be added to the existing FFRPREP report.
-    figure_title : string
-        Title of the figure to be added.
-    figure_caption : string
-        Caption below the figure to be added.
-    html_text : string
-        HTML-formatted text string to be added.
-    html_title : string
-        Title of the HTML text to be added.
+    summary = {
+        "Number of epochs": str(n_epochs),
+        "Channels": str(n_channels),
+        "Sampling rate": f"{sfreq:g} Hz",
+        "Time window": f"{epochs.tmin * 1000:.0f} to {epochs.tmax * 1000:.0f} ms",
+    }
+    if extra_summary:
+        summary.update(extra_summary)
 
-    Returns
-    -------
-    report_fpath : string
-        Full filepath to the report file.
+    figures = []
+    for fig, fig_title, caption in epoch_qa(epochs, save_dir=None):
+        figures.append({
+            "title": fig_title,
+            "caption": caption,
+            "data_uri": _fig_to_data_uri(fig),
+        })
+        plt.close(fig)
+
+    return {
+        "id": section_id,
+        "title": title,
+        "summary": summary,
+        "figures": figures,
+    }
+
+
+def evoked_qa(evoked, save_dir=None, prefix="ffr_evoked"):
+    """Generate FFR-specific QA figures for an mne.Evoked object.
+
+    Returns a list of (fig, title, caption) tuples covering the views
+    that matter for FFR analysis: time-domain waveform, post-stimulus
+    PSD, time-frequency representation across the FFR band,
+    autocorrelation with confidence interval, and a pitch / confidence
+    tracking pair (delegated to analysis.plot_pitch_and_conf).
     """
-    # Open existing HDF5 report
-    report = open_report(report_fpath)
+    from .analysis import (
+        autocorrelation, compute_pitch_and_conf, plot_pitch_and_conf,
+    )
 
-    if figure is not None:
-        title = figure_title if figure_title is not None else "Figure"
-        caption = figure_caption if figure_caption is not None else ""
-        report.add_figure(fig=figure, title=title, caption=caption)
+    if save_dir is not None:
+        os.makedirs(save_dir, exist_ok=True)
 
-    if html_text is not None:
-        title_text = html_title or "Content"
-        report.add_html(html=html_text, title=title_text)
+    ch_names = evoked.ch_names
+    pick = "Cz" if "Cz" in ch_names else ch_names[0]
+    pick_idx = ch_names.index(pick)
 
-    # Save back to HDF5
-    report.save(report_fpath, overwrite=True, open_browser=False)
+    times_ms = evoked.times * 1000
+    data = evoked.data[pick_idx] * 1e6  # µV
+    sfreq = float(evoked.info["sfreq"])
+    n_ave = evoked.nave
 
-    return report_fpath
+    colors = {
+        "blue": "#0173B2",
+        "purple": "#924E7D",
+        "grey": "#737373",
+        "cyan": "#029E73",
+        "vermillion": "#D55E00",
+    }
+
+    figs = []
+
+    # 1) Time-domain waveform.
+    fig, ax = plt.subplots(figsize=(12, 4))
+    ax.plot(times_ms, data, color=colors["blue"], linewidth=1.5)
+    ax.axvline(0, color=colors["purple"], linestyle="--", linewidth=1.5,
+               alpha=0.7, label="Stimulus onset")
+    ax.axhline(0, color=colors["grey"], linewidth=0.5)
+    ax.set_xlabel("Time (ms)", fontsize=10)
+    ax.set_ylabel("Amplitude (µV)", fontsize=10)
+    ax.set_title(f"Evoked Response - {pick} (N={n_ave} epochs averaged)",
+                 fontsize=11, fontweight="bold")
+    ax.legend(fontsize=9)
+    ax.grid(True, alpha=0.3)
+    plt.tight_layout()
+    if save_dir:
+        fig.savefig(os.path.join(save_dir, f"{prefix}_waveform.png"),
+                    dpi=150, bbox_inches="tight")
+    figs.append((fig, "Evoked Waveform",
+                 f"Time-domain average across {n_ave} epochs"))
+
+    # 2) Power spectral density via Welch on the post-stimulus segment.
+    post_mask = evoked.times >= 0
+    post_data = data[post_mask]
+    n_post = len(post_data)
+    if n_post > 16:
+        from scipy.signal import welch
+        nperseg = min(2048, n_post)
+        freqs, psd = welch(post_data, fs=sfreq, nperseg=nperseg)
+        fmax = min(2000.0, sfreq / 2.0)
+        mask = (freqs >= 65) & (freqs <= fmax)
+
+        fig2, ax2 = plt.subplots(figsize=(12, 4))
+        ax2.semilogy(freqs[mask], psd[mask], color=colors["purple"], linewidth=1.5)
+        ax2.set_xlim([65, fmax])
+        ax2.set_xlabel("Frequency (Hz)", fontsize=10)
+        ax2.set_ylabel("Power (µV²/Hz)", fontsize=10)
+        ax2.set_title(f"Power Spectral Density - {pick} (post-stimulus)",
+                      fontsize=11, fontweight="bold")
+        ax2.grid(True, which="both", alpha=0.3)
+        plt.tight_layout()
+        if save_dir:
+            fig2.savefig(os.path.join(save_dir, f"{prefix}_psd.png"),
+                         dpi=150, bbox_inches="tight")
+        figs.append((fig2, "Power Spectral Density",
+                     f"Spectral content of the post-stimulus response "
+                     f"(65-{fmax:.0f} Hz)"))
+
+    # 3) Time-frequency representation across the FFR band.
+    tfr_fmin, tfr_fmax = 70.0, min(300.0, sfreq / 2.0 - 1)
+    if tfr_fmax > tfr_fmin + 5:
+        tfr_freqs = np.arange(tfr_fmin, tfr_fmax + 1, 2.0)
+        tfr = mne.time_frequency.tfr_multitaper(
+            evoked, freqs=tfr_freqs, n_cycles=tfr_freqs / 4.0,
+            time_bandwidth=4.0, return_itc=False, verbose=False,
+        )
+        fig3, ax3 = plt.subplots(figsize=(12, 5))
+        tfr.copy().pick([pick]).plot(
+            picks=0, axes=ax3, show=False, colorbar=True, verbose=False,
+        )
+        ax3.set_title(f"Time-Frequency Representation - {pick}",
+                      fontsize=11, fontweight="bold")
+        plt.tight_layout()
+        if save_dir:
+            fig3.savefig(os.path.join(save_dir, f"{prefix}_tfr.png"),
+                         dpi=150, bbox_inches="tight")
+        figs.append((fig3, "Time-Frequency Representation",
+                     f"Multitaper TFR across the FFR band "
+                     f"({tfr_fmin:.0f}-{tfr_fmax:.0f} Hz)"))
+
+    # 4) Autocorrelation with 95% CI from the analysis helper.
+    # ``autocorrelation`` operates on the first channel by convention;
+    # pick that channel before calling so the ACF reflects the FFR pick.
+    evoked_pick = evoked.copy().pick([pick])
+    acf, ci = autocorrelation(evoked_pick)
+    lag_samples = np.arange(len(acf))
+    lag_ms = lag_samples / sfreq * 1000.0
+    # CI from statsmodels has shape (n_lags, 2) — the lower/upper bounds
+    # around each lag. Plot the band only when finite.
+    fig4, ax4 = plt.subplots(figsize=(12, 4))
+    show_n = min(len(acf), int(0.05 * sfreq))  # show first ~50 ms
+    ax4.plot(lag_ms[:show_n], acf[:show_n], color=colors["cyan"], linewidth=1.5)
+    if ci.ndim == 2 and ci.shape[1] == 2:
+        ax4.fill_between(lag_ms[:show_n], ci[:show_n, 0], ci[:show_n, 1],
+                         color=colors["cyan"], alpha=0.15)
+    ax4.axhline(0, color=colors["grey"], linewidth=0.5)
+    ax4.set_xlabel("Lag (ms)", fontsize=10)
+    ax4.set_ylabel("Autocorrelation", fontsize=10)
+    ax4.set_title(f"Autocorrelation Function - {pick}",
+                  fontsize=11, fontweight="bold")
+    ax4.grid(True, alpha=0.3)
+    plt.tight_layout()
+    if save_dir:
+        fig4.savefig(os.path.join(save_dir, f"{prefix}_acf.png"),
+                     dpi=150, bbox_inches="tight")
+    figs.append((fig4, "Autocorrelation",
+                 "ACF with 95% confidence interval (first 50 ms of lags)"))
+
+    # 5) Pitch tracking via the analysis helper. plot_pitch_and_conf
+    # creates its own figure and does not return it; capture it via
+    # plt.gcf() immediately after calling.
+    pitch_results = compute_pitch_and_conf(evoked_pick)
+    if np.any(~np.isnan(pitch_results.get("pitch_hz_smooth", np.array([])))):
+        plot_pitch_and_conf(pitch_results)
+        fig5 = plt.gcf()
+        fig5.set_size_inches(12, 6)
+        if save_dir:
+            fig5.savefig(os.path.join(save_dir, f"{prefix}_pitch.png"),
+                         dpi=150, bbox_inches="tight")
+        figs.append((fig5, "Pitch Track + Confidence",
+                     "Sliding-window pitch estimates (autocorrelation "
+                     "based) with per-frame confidence metrics"))
+
+    return figs
 
 
-def save_report(report_fpath, overwrite=True):
+def build_evoked_section(evoked, *, section_id, title, label=None):
+    """Build a section descriptor from an Evoked object.
+
+    Summary table includes the standard metadata plus two FFR-specific
+    scalar metrics: RMS SNR over the 100-200 ms response window and
+    average band power across 90-110 Hz over the same window (defaults
+    matching :func:`ffrprep.analysis.rms_snr` and
+    :func:`ffrprep.analysis.compute_power`).
     """
-    Save the existing FFRPREP report to an HTML file.
+    from .analysis import compute_power, rms_snr
 
-    Parameters
-    ----------
-    report_fpath : string
-        Full filepath to the existing .h5 FFRPREP report.
-    overwrite : boolean
-        Whether to overwrite an existing HTML file.
+    sfreq = float(evoked.info["sfreq"])
+    n_channels = len(evoked.ch_names)
+    pick = "Cz" if "Cz" in evoked.ch_names else evoked.ch_names[0]
+    evoked_pick = evoked.copy().pick([pick])
 
-    Returns
-    -------
-    html_fpath : string
-        Full filepath to the saved HTML report file.
-    """
-    if report_fpath.endswith(".h5"):
-        html_fpath = report_fpath[:-3] + ".html"
-    else:
-        html_fpath = f"{report_fpath}.html"
+    summary = {}
+    if label:
+        summary["Stage"] = label
+    summary["Epochs averaged"] = str(evoked.nave)
+    summary["Channels"] = str(n_channels)
+    summary["Sampling rate"] = f"{sfreq:g} Hz"
+    summary["Time window"] = (
+        f"{evoked.tmin * 1000:.0f} to {evoked.tmax * 1000:.0f} ms"
+    )
+    if getattr(evoked, "comment", None):
+        summary["Condition"] = str(evoked.comment)
 
-    if overwrite is False:
-        if os.path.isfile(html_fpath):
-            fname_base, fname_ext = os.path.splitext(html_fpath)
-            new_filename = f"{fname_base}_1{fname_ext}"
-            html_fpath = new_filename
+    # Scalar FFR metrics on the FFR pick. These rely on the analysis
+    # helpers' default windows; they're indicative, not authoritative.
+    if evoked.baseline is not None:
+        snr = rms_snr(evoked_pick)
+        summary["RMS SNR (100-200 ms)"] = f"{snr:.2f}"
+    band_power = compute_power(evoked_pick, f_low=90, f_high=110, t_low=0.1, t_high=0.2)
+    summary["Mean power 90-110 Hz, 100-200 ms"] = f"{band_power:.3e} V²"
 
-    # If the input is already an HTML file, there's nothing to convert.
-    if os.path.exists(report_fpath) and report_fpath.endswith(".html"):
-        return report_fpath
+    figures = []
+    for fig, fig_title, caption in evoked_qa(evoked, save_dir=None):
+        figures.append({
+            "title": fig_title,
+            "caption": caption,
+            "data_uri": _fig_to_data_uri(fig),
+        })
+        plt.close(fig)
 
-    report = open_report(report_fpath)
-    report.save(html_fpath, overwrite=True, open_browser=False)
-    return html_fpath
-
-
-def create_subject_report(bids_root, out_dir=None, filename=None, subject_id=None, command=None, overwrite=False):
-    """
-    Create a report file for a specific subject with a standardized title.
-
-    Parameters
-    ----------
-    bids_root : str
-        Top-level BIDS directory.
-    out_dir, filename, overwrite : see `create_report`.
-    subject_id : str
-        The BIDS subject identifier (e.g. '01' or 'sub-01').
-    command : str | None
-        Optional command string to include in the summary.
-
-    Returns
-    -------
-    report_fpath : str
-        Filepath to the created report (.h5)
-    """
-    title = None
-    if subject_id is not None:
-        sid = subject_id
-        if not sid.startswith("sub-"):
-            sid = f"sub-{sid}"
-        title = f"ffrprep report {sid}"
-
-    report_fpath = create_report(bids_root, out_dir=out_dir, filename=filename, title=title, overwrite=overwrite)
-
-    return report_fpath
+    return {
+        "id": section_id,
+        "title": title,
+        "summary": summary,
+        "figures": figures,
+    }
 
 
-def add_report_summary(
-    report_fpath,
-    command=None,
-    raw_files=None,
-    events_files=None,
-    referenced_files=None,
-    filtered_files=None,
-    epoched_files=None,
-):
-    """
-    Add a summary block to the report describing the command run and
-    the top-level lists/counts of files processed.
+def make_group(*, sections, session=None, task=None, run=None,
+               title=None, group_id=None):
+    """Construct a group descriptor consumable by the report builders.
 
-    Parameters
-    ----------
-    report_fpath : str
-        Path to the report file (.h5).
-    command : str
-        Command that was run.
-    raw_files, events_files, referenced_files, filtered_files, epoched_files : dict
-        Dictionaries mapping task -> run -> list of files.
+    A group represents one (optional session, optional task, optional
+    run) combination and bundles all sections that belong to it (e.g.
+    raw + epoched for the same task/run). The TOC renders groups as
+    foldable containers; the main content renders one nested card per
+    group with the contained sections as sub-cards.
+
+    `title` and `group_id` default to a BIDS-style label / anchor
+    derived from the session/task/run identifiers.
     """
     parts = []
-    parts.append('<div style="margin: 20px 0;">')
-    parts.append("<h2>Processing Summary</h2>")
+    id_parts = []
+    if session is not None:
+        parts.append(f"ses-{session}")
+        id_parts.append(f"ses-{session}")
+    if task is not None:
+        parts.append(f"task-{task}")
+        id_parts.append(f"task-{task}")
+    if run is not None:
+        parts.append(f"run-{run}")
+        id_parts.append(f"run-{run}")
 
-    if command:
-        parts.append("<p><strong>Command:</strong></p>")
-        parts.append(
-            '<pre style="background-color: #f5f5f5; padding: 10px;'
-            ' border-radius: 5px; overflow-x: auto;">'
-            f"{_html.escape(command)}</pre>"
-        )
+    if title is None:
+        title = " / ".join(parts) if parts else None
+    if group_id is None:
+        group_id = "-".join(id_parts) if id_parts else "group"
 
-    def _count_files(obj):
-        if obj is None:
-            return 0
-        if isinstance(obj, dict):
-            total = 0
-            for task, runs in obj.items():
-                if isinstance(runs, dict):
-                    for run, files in runs.items():
-                        total += len(files) if files else 0
-                elif isinstance(runs, (list, tuple)):
-                    total += len(runs)
-            return total
-        if hasattr(obj, "__len__"):
-            return len(obj)
-        return 0
-
-    parts.append('<table style="border-collapse: collapse; width: 100%; margin-top: 15px;">')
-    parts.append('<tr style="background-color: #0173B2; color: white;">')
-    parts.append('<th style="padding: 10px; text-align: left;">Processing Stage</th>')
-    parts.append('<th style="padding: 10px; text-align: right;">Files Processed</th>')
-    parts.append("</tr>")
-
-    stages = [
-        ("Raw data loaded", raw_files),
-        ("Events files", events_files),
-        ("Referenced data", referenced_files),
-        ("Filtered data", filtered_files),
-        ("Epoched data", epoched_files),
-    ]
-
-    for i, (name, obj) in enumerate(stages):
-        bg_color = "#f9f9f9" if i % 2 == 0 else "white"
-        count = _count_files(obj)
-        parts.append(f'<tr style="background-color: {bg_color};">')
-        parts.append(f'<td style="padding: 10px;">{name}</td>')
-        parts.append(f'<td style="padding: 10px; text-align: right;"><strong>{count}</strong></td>')
-        parts.append("</tr>")
-
-    parts.append("</table>")
-    parts.append("</div>")
-
-    html_text = "\n".join(parts)
-    return add_to_report(report_fpath, html_text=html_text, html_title="Summary")
+    return {
+        "id": group_id,
+        "title": title,
+        "session": session,
+        "task": task,
+        "run": run,
+        "sections": list(sections),
+    }
 
 
-def add_processing_stages(
-    report_fpath, raw_files=None, events_files=None, referenced_files=None, filtered_files=None, epoched_files=None
-):
+def _normalize_groups(groups, sections):
+    """Return a list of group dicts from either the new `groups` arg or
+    the legacy `sections` arg. If both are None, returns []."""
+    if groups is not None:
+        return list(groups)
+    if sections:
+        return [{
+            "id": "all",
+            "title": None,
+            "session": None,
+            "task": None,
+            "run": None,
+            "sections": list(sections),
+        }]
+    return []
+
+
+def _sortable(value):
+    """Sort key that puts None last; otherwise compares the str form."""
+    return (value is None, str(value) if value is not None else "")
+
+
+def _build_nav_tree(flat_groups):
+    """Reorganize flat groups into a session > task > run nested tree.
+
+    Each tree node is a dict with ``id``, ``label``, ``children`` (list
+    of nodes for further nesting) and ``sections`` (section dicts at
+    that level). Intermediate nodes have ``children`` set; leaf nodes
+    have ``sections`` set; a node may have both (e.g. task-level
+    sections alongside per-run subgroups).
+
+    Empty levels are unwrapped — a dataset with no sessions doesn't
+    add a session level to the tree.
     """
-    Add all processing stages organized by task and run.
+    if not flat_groups:
+        return []
 
-    Structure: Task -> Run -> [Raw, Referenced, Filtered, Epoched stages]
+    by_ses = {}
+    for g in flat_groups:
+        by_ses.setdefault(g.get("session"), []).append(g)
+
+    root_nodes = []
+    for ses in sorted(by_ses.keys(), key=_sortable):
+        ses_groups = by_ses[ses]
+        ses_prefix = f"ses-{ses}-" if ses is not None else ""
+
+        by_task = {}
+        for g in ses_groups:
+            by_task.setdefault(g.get("task"), []).append(g)
+
+        task_nodes = []
+        for task in sorted(by_task.keys(), key=_sortable):
+            task_groups = by_task[task]
+            task_prefix = (f"{ses_prefix}task-{task}-"
+                           if task is not None else ses_prefix)
+
+            run_children = []
+            task_level_sections = []
+            for g in sorted(task_groups,
+                            key=lambda x: _sortable(x.get("run"))):
+                run = g.get("run")
+                if run is not None:
+                    run_children.append({
+                        "id": g.get("id") or f"{task_prefix}run-{run}",
+                        "label": f"run-{run}",
+                        "children": [],
+                        "sections": g.get("sections", []),
+                    })
+                else:
+                    # No run identity — sections live at the task level.
+                    task_level_sections.extend(g.get("sections", []))
+
+            if task is not None:
+                task_nodes.append({
+                    "id": f"{ses_prefix}task-{task}",
+                    "label": f"task-{task}",
+                    "children": run_children,
+                    "sections": task_level_sections,
+                })
+            else:
+                # No task identity — promote children + sections to ses
+                task_nodes.extend(run_children)
+                # Pseudo-node for any session-level sections.
+                if task_level_sections:
+                    task_nodes.append({
+                        "id": (f"ses-{ses}-sections"
+                               if ses is not None else "sections"),
+                        "label": None,
+                        "children": [],
+                        "sections": task_level_sections,
+                    })
+
+        if ses is not None:
+            root_nodes.append({
+                "id": f"ses-{ses}",
+                "label": f"ses-{ses}",
+                "children": task_nodes,
+                "sections": [],
+            })
+        else:
+            # No session identity — promote tasks to root.
+            root_nodes.extend(task_nodes)
+
+    return root_nodes
+
+
+def build_analysis_report(bids_root, subject, out_dir, sections=None,
+                          title=None, overview=None, groups=None):
+    """Render a single-file HTML analysis report for a subject.
+
+    Same template + layout as :func:`build_subject_report`; the only
+    differences are the default page title and the output filename
+    (``sub-<id>_analysis_report.html``).
+
+    Either `groups` (preferred, supports nested session/task/run
+    structure) or `sections` (flat list, ungrouped) may be passed.
+    """
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    if title is None:
+        title = f"ffrprep analysis report sub-{subject}"
+
+    template = _jinja_env.get_template("subject_report.html.j2")
+    html_text = template.render(
+        title=title,
+        subject=subject,
+        overview=overview,
+        nav_tree=_build_nav_tree(_normalize_groups(groups, sections)),
+        bids_root=str(bids_root),
+    )
+
+    out_path = out_dir / f"sub-{subject}_analysis_report.html"
+    out_path.write_text(html_text, encoding="utf-8")
+    return str(out_path)
+
+
+def build_subject_report(bids_root, subject, out_dir, sections=None,
+                         title=None, overview=None, groups=None):
+    """Render a single-file HTML preprocessing report for a subject.
 
     Parameters
     ----------
-    report_fpath : str
-        Path to report .h5 file.
-    raw_files, events_files, referenced_files, filtered_files, epoched_files : dict
-        Dictionaries with structure: {task: {run: [filepaths]}}
-    """
-    report = open_report(report_fpath)
-
-    # Collect all unique task/run combinations
-    task_run_combos = set()
-    for file_dict in [raw_files, events_files, referenced_files, filtered_files, epoched_files]:
-        if file_dict:
-            for task, runs in file_dict.items():
-                if isinstance(runs, dict):
-                    for run in runs.keys():
-                        task_run_combos.add((task, run))
-
-    if not task_run_combos:
-        report.add_html(html="<p>No data files found to process.</p>", title="No data")
-        report.save(report_fpath, overwrite=True, open_browser=False)
-        return report_fpath
-
-    print(f"Building report for {len(task_run_combos)} task/run combinations")
-
-    # Group by task, sorted for consistent ordering
-    tasks_dict = {}
-    for task, run in sorted(task_run_combos):
-        tasks_dict.setdefault(task, []).append(run)
-
-    for task in sorted(tasks_dict.keys()):
-        runs_list = sorted(tasks_dict[task])
-
-        # Add task header
-        task_title = task if task else "unknown"
-        print(f"\nProcessing Task: {task_title}")
-        task_html = (
-            '<div style="margin-top: 40px; padding: 15px; background-color: #E8F4F8;'
-            ' border-left: 5px solid #0173B2;">'
-            f'<h2 style="margin: 0; color: #0173B2;">Task: {_html.escape(task_title)}</h2></div>'
-        )
-        report.add_html(html=task_html, title=f"Task: {task_title}")
-
-        for run in runs_list:
-            run_title = run if run else "no-run"
-            print(f"  Processing Run: {run_title}")
-
-            raw_file = _get_file(raw_files, task, run)
-            events_file = _get_file(events_files, task, run)
-            ref_file = _get_file(referenced_files, task, run)
-            filt_file = _get_file(filtered_files, task, run)
-            epoch_file = _get_file(epoched_files, task, run)
-
-            # Add run header
-            run_html = (
-                '<div style="margin-top: 20px; padding: 10px; background-color: #F5F5F5;'
-                ' border-left: 3px solid #924E7D;">'
-                f'<h3 style="margin: 0; color: #924E7D;">Run: {_html.escape(run_title)}</h3></div>'
-            )
-            report.add_html(html=run_html, title=f"Run: {run_title}")
-
-            # Find events file if not provided
-            if events_file is None and raw_file:
-                events_file = _find_events_tsv(Path(raw_file))
-
-            _add_events_section(report, events_file)
-
-            _add_raw_stage(
-                report, raw_file, "Raw Data",
-                qa_fn=lambda r: raw_qa(r, events_fpath=events_file, save_dir=None),
-                add_kwargs=dict(title_prefix="Raw"),
-            )
-            _add_raw_stage(
-                report, ref_file, "Referenced Data",
-                qa_fn=lambda r: raw_qa(r, events_fpath=events_file, save_dir=None),
-                add_kwargs=dict(title_prefix="Referenced"),
-            )
-            _add_raw_stage(
-                report, filt_file, "Filtered Data (65-2000 Hz)",
-                qa_fn=lambda r: raw_qa(r, events_fpath=events_file, save_dir=None),
-                add_kwargs=dict(title_prefix="Filtered"),
-            )
-            _add_epoch_stage(report, epoch_file)
-
-    # Save report
-    report.save(report_fpath, overwrite=True, open_browser=False)
-    print("\nReport saved successfully")
-
-    return report_fpath
-
-
-def _add_events_section(report, events_file):
-    """Add events.tsv preview to the report, or a 'not found' note."""
-    if not (events_file and os.path.exists(events_file)):
-        report.add_html(
-            html='<p style="color: #D55E00;"><em>⚠️ Events file not found</em></p>',
-            title="Events",
-        )
-        return
-    ev_df_full = pd.read_csv(events_file, sep="\t")
-    n_events = len(ev_df_full)
-    ev_df = ev_df_full.head(5)
-    events_html = (
-        f'<p><strong>Events file:</strong> <code>{Path(events_file).name}</code>'
-        f' ({n_events} events)</p>'
-        '<details><summary>Preview (first 5 events)</summary>'
-        '<div style="overflow-x: auto; margin-top: 10px;">'
-        f'{ev_df.to_html(index=False, border=0)}</div></details>'
-    )
-    report.add_html(html=events_html, title="Events")
-
-
-def _add_raw_stage(report, fpath, label, qa_fn, add_kwargs):
-    """Add a raw-data stage (raw / referenced / filtered) to the report."""
-    if not (fpath and os.path.exists(fpath)):
-        return
-    print(f"    Adding {label.lower()}: {Path(fpath).name}")
-    section_html = (
-        '<div style="margin: 20px 0; padding: 10px; border-left: 3px solid #029E73;">'
-        f'<h4 style="color: #029E73; margin-top: 0;">{label}</h4></div>'
-    )
-    report.add_html(html=section_html, title=f"{label} section")
-
-    # preload=True so .pick() can drop channels (modern MNE requires data
-    # to be in memory for channel-modification operations).
-    raw = mne.io.read_raw_fif(fpath, preload=True, verbose=False)
-    pick = "Cz" if "Cz" in raw.ch_names else raw.ch_names[0]
-    raw_picked = raw.copy().pick([pick])
-    report.add_raw(
-        raw=raw_picked,
-        title=f"{add_kwargs['title_prefix']} - {Path(fpath).name}",
-        psd=True,
-    )
-
-    for fig, fig_title, caption in qa_fn(raw):
-        report.add_figure(fig=fig, title=fig_title, caption=caption)
-        plt.close(fig)
-
-
-def _add_epoch_stage(report, fpath):
-    """Add the epoched-data stage to the report."""
-    if not (fpath and os.path.exists(fpath)):
-        return
-    print(f"    Adding epoched data: {Path(fpath).name}")
-    section_html = (
-        '<div style="margin: 20px 0; padding: 10px; border-left: 3px solid #029E73;">'
-        '<h4 style="color: #029E73; margin-top: 0;">Epoched Data</h4></div>'
-    )
-    report.add_html(html=section_html, title="Epoched data section")
-
-    # preload=True so .pick() can drop channels (modern MNE requires data
-    # to be in memory for channel-modification operations).
-    epochs = mne.read_epochs(fpath, preload=True, verbose=False)
-    pick = "Cz" if "Cz" in epochs.ch_names else epochs.ch_names[0]
-    epochs_picked = epochs.copy().pick([pick])
-    report.add_epochs(
-        epochs=epochs_picked,
-        title=f"Epochs - {Path(fpath).name}",
-    )
-
-    for fig, fig_title, caption in epoch_qa(epochs, save_dir=None):
-        report.add_figure(fig=fig, title=fig_title, caption=caption)
-        plt.close(fig)
-
-
-def _get_file(file_dict, task, run):
-    """Helper to extract a single file from the file dictionary."""
-    if not file_dict:
-        return None
-
-    task_data = file_dict.get(task, {})
-    if not isinstance(task_data, dict):
-        return None
-
-    run_files = task_data.get(run, [])
-    if run_files and len(run_files) > 0:
-        filepath = str(run_files[0])
-        print(f"    Found file for task={task}, run={run}: {Path(filepath).name}")
-        return filepath
-
-    print(f"    No file found for task={task}, run={run}")
-    return None
-
-
-def build_toc_html(sections):
-    """
-    Build a simple HTML table-of-contents.
-
-    Parameters
-    ----------
-    sections : list
-        List of section names.
+    bids_root : str | Path
+        Top-level BIDS dataset directory. Recorded for provenance and
+        used to resolve relative paths displayed in the report body.
+    subject : str
+        BIDS subject identifier without the ``sub-`` prefix
+        (e.g. ``"01"``).
+    out_dir : str | Path
+        Directory where the rendered ``.html`` file is written. Created
+        if missing.
+    sections : list of dict, optional
+        Flat list of section descriptors. Use this when there is no
+        natural session/task/run grouping. Mutually exclusive with
+        `groups`; if both are passed, `groups` wins.
+    groups : list of dict, optional
+        Nested structure. Each group dict carries ``id``, ``title``,
+        ``session``, ``task``, ``run``, and ``sections`` (list of
+        section dicts). Construct via :func:`make_group` for the BIDS
+        defaults. The TOC renders one foldable container per group.
+    overview : dict, optional
+        Top-of-report summary card. Recognised keys: ``summary``
+        (key→value table) and ``command`` (rendered as a code block).
+    title : str | None
+        Page title and ``<h1>`` text. Defaults to
+        ``"ffrprep preprocessing report sub-{subject}"``.
 
     Returns
     -------
-    toc_html : str
-        HTML string for the table of contents.
+    str
+        Absolute path to the written HTML file.
     """
-    parts = ['<div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">']
-    parts.append("<h2>Contents</h2>")
-    parts.append('<ul style="list-style-type: none; padding-left: 0;">')
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
 
-    for i, sec in enumerate(sections):
-        safe = _html.escape(sec)
-        parts.append(
-            f'<li style="padding: 5px 0;"><a href="#section-{i}"'
-            f' style="color: #0173B2; text-decoration: none;">→ {safe}</a></li>'
-        )
+    if title is None:
+        title = f"ffrprep preprocessing report sub-{subject}"
 
-    parts.append("</ul>")
-    parts.append("</div>")
-    return "\n".join(parts)
+    template = _jinja_env.get_template("subject_report.html.j2")
+    html_text = template.render(
+        title=title,
+        subject=subject,
+        overview=overview,
+        nav_tree=_build_nav_tree(_normalize_groups(groups, sections)),
+        bids_root=str(bids_root),
+    )
+
+    out_path = out_dir / f"sub-{subject}_preprocessing_report.html"
+    out_path.write_text(html_text, encoding="utf-8")
+    return str(out_path)
 
 
 def epoch_qa(epochs, save_dir=None, prefix="ffr_qa"):
@@ -661,59 +702,55 @@ def epoch_qa(epochs, save_dir=None, prefix="ffr_qa"):
 
     figs.append((fig, "Epoch QA Overview", f"Quality assessment of {n_epochs} epochs"))
 
-    # QA FIG 2: Rejection statistics
-    fig2, axes = plt.subplots(1, 2, figsize=(12, 5))
+    # QA FIG 2: Rejection statistics — only render when drop_log
+    # actually carries rejections. The saved BIDS-derivatives epochs
+    # file only contains accepted epochs (rejection happened pre-save
+    # and the discarded events leave no trace in this object's
+    # drop_log), so a pie built from this data would just say "100%
+    # accepted" — misleading. Pre-rejection counts belong in the
+    # section's summary table, sourced from the BIDS sidecar.
     n_good = len(epochs)
-    n_rejected = len([log for log in epochs.drop_log if len(log) > 0])
-    n_total = n_good + n_rejected
+    n_rejected = sum(1 for log in epochs.drop_log if len(log) > 0)
+    if n_rejected > 0:
+        n_total = n_good + n_rejected
+        fig2, axes = plt.subplots(1, 2, figsize=(12, 5))
+        pie_colors = [colors_cb["blue"], colors_cb["orange"]]
+        axes[0].pie(
+            [n_good, n_rejected],
+            labels=["Accepted", "Rejected"],
+            colors=pie_colors,
+            autopct="%1.1f%%",
+            startangle=90,
+            textprops={"fontsize": 12, "fontweight": "bold"},
+        )
+        axes[0].set_title(
+            f"Epoch Acceptance Rate\n({n_good}/{n_total} epochs)",
+            fontsize=12, fontweight="bold",
+        )
 
-    pie_colors = [colors_cb["blue"], colors_cb["orange"]]
-    axes[0].pie(
-        [n_good, n_rejected],
-        labels=["Accepted", "Rejected"],
-        colors=pie_colors,
-        autopct="%1.1f%%",
-        startangle=90,
-        textprops={"fontsize": 12, "fontweight": "bold"},
-    )
-    axes[0].set_title(f"Epoch Acceptance Rate\n({n_good}/{n_total} epochs)", fontsize=12, fontweight="bold")
+        rejection_reasons = {}
+        for log in epochs.drop_log:
+            if len(log) > 0:
+                reason = ", ".join(log)
+                rejection_reasons[reason] = rejection_reasons.get(reason, 0) + 1
 
-    rejection_reasons = {}
-    for log in epochs.drop_log:
-        if len(log) > 0:
-            reason = ", ".join(log)
-            rejection_reasons[reason] = rejection_reasons.get(reason, 0) + 1
-
-    if rejection_reasons:
         reasons = list(rejection_reasons.keys())
         counts = list(rejection_reasons.values())
         axes[1].barh(reasons, counts, color=colors_cb["orange"], edgecolor="black")
         axes[1].set_xlabel("Number of Epochs", fontsize=11)
         axes[1].set_title("Rejection Reasons", fontsize=12, fontweight="bold")
         axes[1].grid(True, alpha=0.3, axis="x")
-    else:
-        axes[1].text(
-            0.5,
-            0.5,
-            "No epochs rejected!\n✓ All epochs passed QA",
-            ha="center",
-            va="center",
-            fontsize=14,
-            transform=axes[1].transAxes,
-            color=colors_cb["cyan"],
-            fontweight="bold",
-        )
-        axes[1].set_xlim([0, 1])
-        axes[1].set_ylim([0, 1])
-        axes[1].axis("off")
 
-    plt.tight_layout()
+        plt.tight_layout()
 
-    if save_dir:
-        rej_path = os.path.join(save_dir, f"{prefix}_rejection.png")
-        fig2.savefig(rej_path, dpi=150, bbox_inches="tight")
+        if save_dir:
+            rej_path = os.path.join(save_dir, f"{prefix}_rejection.png")
+            fig2.savefig(rej_path, dpi=150, bbox_inches="tight")
 
-    figs.append((fig2, "Epoch Rejection Statistics", f"{n_rejected} of {n_total} epochs rejected"))
+        figs.append((
+            fig2, "Epoch Rejection Statistics",
+            f"{n_rejected} of {n_total} epochs rejected",
+        ))
 
     # QA FIG 3: Average and derivative
     fig3, axes = plt.subplots(2, 1, figsize=(12, 8))
@@ -803,60 +840,6 @@ def epoch_qa(epochs, save_dir=None, prefix="ffr_qa"):
     figs.append((fig4, "Drift Analysis", f"{drift_status} (p={p_value:.4f})"))
 
     return figs
-
-
-def _find_events_tsv(pth):
-    """Find an events.tsv file in the same directory or parent directories."""
-    parent = Path(pth).parent
-    if not parent.is_dir():
-        print(f"    Parent directory does not exist: {parent}")
-        return None
-    print(f"    Looking for events file in: {parent}")
-
-    for f in parent.iterdir():
-        if f.is_file() and "events" in f.name.lower() and f.suffix == ".tsv":
-            print(f"    Found events file: {f.name}")
-            return str(f)
-
-    # Try going up to find BIDS events files (eeg folder -> subject folder)
-    subject_dir = parent.parent
-    if not subject_dir.is_dir():
-        print(f"    Subject directory does not exist: {subject_dir}")
-        return None
-    print(f"    Looking for events file in: {subject_dir}")
-
-    for f in subject_dir.rglob("*events*.tsv"):
-        if _files_match(pth, f):
-            print(f"    Found matching events file: {f.name}")
-            return str(f)
-
-    print(f"    No events file found for {pth.name}")
-    return None
-
-
-def _files_match(data_file, events_file):
-    """Check if data file and events file belong to same recording."""
-    data_name = Path(data_file).name
-    events_name = Path(events_file).name
-
-    # Extract task and run from both
-    data_task = re.search(r"task-([^_]+)", data_name)
-    events_task = re.search(r"task-([^_]+)", events_name)
-
-    data_run = re.search(r"run-([^_]+)", data_name)
-    events_run = re.search(r"run-([^_]+)", events_name)
-
-    # Must match on task
-    if data_task and events_task:
-        if data_task.group(1) != events_task.group(1):
-            return False
-
-    # If both have run, must match
-    if data_run and events_run:
-        if data_run.group(1) != events_run.group(1):
-            return False
-
-    return True
 
 
 def raw_qa(raw, events_fpath=None, save_dir=None, prefix="ffr_raw"):

@@ -373,6 +373,7 @@ def plot_pitch_and_conf(results):
     plot_pitch_and_conf(results)
     """
     import matplotlib.pyplot as plt
+    from mpl_toolkits.axes_grid1 import make_axes_locatable
 
     # basic validation:
     # expect a dict like the output of compute_pitch_and_conf()
@@ -404,6 +405,7 @@ def plot_pitch_and_conf(results):
     mask = (~np.isnan(pitch_smooth))
 
     fig, (ax_top, ax_bot) = plt.subplots(2, 1, figsize=(10, 6),
+                                         sharex=True,
                                          gridspec_kw={'height_ratios': [3, 1]})
 
     # top: pitch track colored by confidence
@@ -435,8 +437,14 @@ def plot_pitch_and_conf(results):
             c = color_vals
         sc = ax_top.scatter(times[mask], pitch_smooth[mask], c=c,
                             cmap='viridis', s=40, edgecolor='k', lw=0.3)
-        cbar = fig.colorbar(sc, ax=ax_top, pad=0.01)
+        # Place the colorbar in a divider axis so ax_top's plot width
+        # is unchanged. Mirror the divider on ax_bot with an invisible
+        # gutter so both panels have identical x-extents.
+        cax = make_axes_locatable(ax_top).append_axes("right", size="2%", pad=0.1)
+        cbar = fig.colorbar(sc, cax=cax)
         cbar.set_label(color_label)
+        cax_bot = make_axes_locatable(ax_bot).append_axes("right", size="2%", pad=0.1)
+        cax_bot.axis("off")
     else:
         ax_top.plot(times[mask], pitch_smooth[mask], '-o', markersize=4)
 

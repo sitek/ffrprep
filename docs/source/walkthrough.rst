@@ -348,7 +348,8 @@ Troubleshooting
    - On Linux, you may need to add ``--user $(id -u):$(id -g)`` to Docker commands
 
 2. **Memory issues:**
-   - Reduce the number of parallel processes with ``--n_procs 1``
+   - Reduce the number of parallel workers with ``--n_procs 1`` (each worker
+     loads its own raw + epochs into memory; footprint scales linearly with N)
    - Process fewer subjects at once
 
 3. **BIDS validation errors:**
