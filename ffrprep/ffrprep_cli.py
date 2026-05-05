@@ -413,6 +413,44 @@ def _rejection_summary(epo_fpath, events_fpath, n_accepted):
     }
 
 
+def _resolve_condition_labels(event_ids, events_fpath):
+    """Translate evoked.comment-style event-id strings to trial_type names.
+
+    `event_ids` is the value of ``evoked.comment`` — typically a single
+    numeric event id like ``"1"`` (default-mode averaging produces a
+    single id per Evoked when only one event_id is present), or a
+    comma-separated list like ``"1, 2"`` when multiple ids were
+    averaged together. When the BIDS ``events.tsv`` carries both a
+    ``value`` and a ``trial_type`` column, this helper joins on
+    ``value`` and substitutes the corresponding ``trial_type`` name
+    (so ``"1"`` becomes ``"deviant"`` etc.). Falls back to the
+    original string when the events file is missing, lacks a
+    ``trial_type`` column, or has no row matching the requested id.
+    """
+    if not event_ids:
+        return event_ids
+    if not events_fpath.exists():
+        return event_ids
+
+    import pandas as pd
+
+    events = pd.read_csv(events_fpath, sep="\t")
+    if "value" not in events.columns or "trial_type" not in events.columns:
+        return event_ids
+
+    # value→trial_type mapping (first occurrence wins on duplicates).
+    mapping = {}
+    for value, trial_type in zip(
+        events["value"].astype(str), events["trial_type"].astype(str)
+    ):
+        if value not in mapping:
+            mapping[value] = trial_type
+
+    parts = [p.strip() for p in str(event_ids).split(",")]
+    translated = [mapping.get(p, p) for p in parts]
+    return ", ".join(translated)
+
+
 def _build_overview(args, subject, source_files, stage_label):
     """Build the overview dict for the report.
 
@@ -581,9 +619,17 @@ def _build_analysis_report(args, derivatives_info, subject):
                 for ev in evoked_list:
                     if ev.baseline is None:
                         ev.apply_baseline(tuple(baseline))
+        # Translate numeric event ids in evoked.comment to trial_type
+        # names from the BIDS events.tsv so section titles read
+        # "Evoked (deviant)" instead of the opaque "Evoked (1)".
+        events_fpath = (
+            bids_root / f"sub-{subject}" / "eeg"
+            / f"sub-{subject}_task-{task}_run-{run}_events.tsv"
+        )
         sections = []
         for idx, evoked in enumerate(evoked_list):
-            cond = evoked.comment or f"condition-{idx}"
+            raw_cond = evoked.comment or f"condition-{idx}"
+            cond = _resolve_condition_labels(raw_cond, events_fpath)
             sections.append(reports.build_evoked_section(
                 evoked,
                 section_id=f"evoked-{task}-{run}-{idx}",

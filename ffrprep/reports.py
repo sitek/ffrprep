@@ -202,9 +202,10 @@ def evoked_qa(evoked, save_dir=None, prefix="ffr_evoked"):
     tfr_fmin, tfr_fmax = 70.0, min(300.0, sfreq / 2.0 - 1)
     if tfr_fmax > tfr_fmin + 5:
         tfr_freqs = np.arange(tfr_fmin, tfr_fmax + 1, 2.0)
-        tfr = mne.time_frequency.tfr_multitaper(
-            evoked, freqs=tfr_freqs, n_cycles=tfr_freqs / 4.0,
-            time_bandwidth=4.0, return_itc=False, verbose=False,
+        tfr = evoked.compute_tfr(
+            method="multitaper", freqs=tfr_freqs,
+            n_cycles=tfr_freqs / 4.0, time_bandwidth=4.0,
+            verbose=False,
         )
         fig3, ax3 = plt.subplots(figsize=(12, 5))
         tfr.copy().pick([pick]).plot(

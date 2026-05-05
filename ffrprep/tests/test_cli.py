@@ -12,6 +12,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from ffrprep.ffrprep_cli import (
+    _resolve_condition_labels,
     get_parser,
     parse_baseline,
     parse_ref_channels,
@@ -440,3 +441,75 @@ def test_parser_comprehensive():
     assert args.by_event_type is True
     assert args.skip_bids_validation is True
     assert args.n_procs == 8
+
+
+# ---------------------------------------------------------------------------
+# _resolve_condition_labels: events.tsv trial_type lookup for evoked titles
+# ---------------------------------------------------------------------------
+
+def _write_events_tsv(path, rows):
+    """Write a minimal events.tsv with the given rows."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    cols = sorted({k for row in rows for k in row.keys()})
+    with open(path, "w") as f:
+        f.write("\t".join(cols) + "\n")
+        for row in rows:
+            f.write("\t".join(str(row.get(c, "n/a")) for c in cols) + "\n")
+
+
+def test_resolve_condition_labels_single_id(tmp_path):
+    """A single numeric event id resolves to its trial_type."""
+    events_fpath = tmp_path / "events.tsv"
+    _write_events_tsv(events_fpath, [
+        {"onset": 0.5, "duration": 0.17, "value": 1, "trial_type": "deviant"},
+        {"onset": 1.0, "duration": 0.17, "value": 1, "trial_type": "deviant"},
+        {"onset": 1.5, "duration": 0.17, "value": 2, "trial_type": "standard"},
+    ])
+    assert _resolve_condition_labels("1", events_fpath) == "deviant"
+    assert _resolve_condition_labels("2", events_fpath) == "standard"
+
+
+def test_resolve_condition_labels_comma_separated(tmp_path):
+    """A comma-separated list resolves each id independently."""
+    events_fpath = tmp_path / "events.tsv"
+    _write_events_tsv(events_fpath, [
+        {"onset": 0.5, "duration": 0.17, "value": 1, "trial_type": "deviant"},
+        {"onset": 1.5, "duration": 0.17, "value": 2, "trial_type": "standard"},
+    ])
+    out = _resolve_condition_labels("1, 2", events_fpath)
+    # Order preserved as in input; both translated.
+    assert out == "deviant, standard"
+
+
+def test_resolve_condition_labels_unknown_id_passes_through(tmp_path):
+    """Ids without a row in events.tsv come through unchanged."""
+    events_fpath = tmp_path / "events.tsv"
+    _write_events_tsv(events_fpath, [
+        {"onset": 0.5, "duration": 0.17, "value": 1, "trial_type": "deviant"},
+    ])
+    assert _resolve_condition_labels("99", events_fpath) == "99"
+
+
+def test_resolve_condition_labels_missing_events_file(tmp_path):
+    """When events.tsv is absent, return the original event-id string."""
+    missing = tmp_path / "no-such-events.tsv"
+    assert _resolve_condition_labels("1", missing) == "1"
+
+
+def test_resolve_condition_labels_missing_trial_type_column(tmp_path):
+    """When events.tsv lacks a trial_type column, return the input."""
+    events_fpath = tmp_path / "events.tsv"
+    _write_events_tsv(events_fpath, [
+        {"onset": 0.5, "duration": 0.17, "value": 1},
+    ])
+    assert _resolve_condition_labels("1", events_fpath) == "1"
+
+
+def test_resolve_condition_labels_empty_input(tmp_path):
+    """Empty / falsy input returns unchanged (caller's None / '' default)."""
+    events_fpath = tmp_path / "events.tsv"
+    _write_events_tsv(events_fpath, [
+        {"onset": 0.5, "duration": 0.17, "value": 1, "trial_type": "deviant"},
+    ])
+    assert _resolve_condition_labels("", events_fpath) == ""
+    assert _resolve_condition_labels(None, events_fpath) is None
