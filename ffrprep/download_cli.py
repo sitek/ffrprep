@@ -29,6 +29,7 @@ def _parse_subjects(values):
 
 
 def _add_out_argument(parser):
+    """Attach the shared ``--out`` destination-directory option to `parser`."""
     parser.add_argument(
         "--out",
         type=Path,
@@ -38,6 +39,7 @@ def _add_out_argument(parser):
 
 
 def _add_subjects_argument(parser):
+    """Attach the shared ``--subjects`` selector option to `parser`."""
     parser.add_argument(
         "--subjects",
         nargs="+",
@@ -88,10 +90,12 @@ def get_parser():
 
 
 def _dispatch_example(args):
+    """Run the ``ffrprep-download example`` subcommand."""
     return download_example_data(dataset_path=args.out)
 
 
 def _dispatch_raw(args):
+    """Run the ``ffrprep-download raw`` subcommand."""
     return download_raw_data(
         subjects=_parse_subjects(args.subjects),
         dataset_path=args.out,
@@ -99,6 +103,7 @@ def _dispatch_raw(args):
 
 
 def _dispatch_epoch(args):
+    """Run the ``ffrprep-download epoch`` subcommand."""
     return download_epoch_data(
         subjects=_parse_subjects(args.subjects),
         dataset_path=args.out,

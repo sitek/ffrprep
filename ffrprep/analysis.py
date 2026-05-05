@@ -107,6 +107,22 @@ def rms_snr(evoked, response_lower=0.100, response_upper=0.200):
 
 
 def autocorrelation(evoked):
+    """Autocorrelation function and 95% CI for the first channel of `evoked`.
+
+    Parameters
+    ----------
+    evoked : mne.Evoked
+        Evoked response. Only the first channel's time series is used.
+
+    Returns
+    -------
+    acf : ndarray of shape (n_times,)
+        Autocorrelation values from lag 0 up to ``n_times - 1``.
+    confidence_interval : ndarray of shape (n_times, 2)
+        Lower and upper bounds of the 95% confidence interval at each
+        lag, as returned by :func:`statsmodels.tsa.stattools.acf` with
+        ``alpha=0.05``.
+    """
     # statsmodels.acf needs a 1-D sequence. Match compute_pitch_and_conf
     # by taking the first channel's time series.
     signal = evoked.data[0]
@@ -278,8 +294,10 @@ def compute_pitch_and_conf(evoked,
     pitch_hz = np.array(pitch_hz)
     peak_strength = np.array(peak_strength)
 
-    # smoothing that ignores NaNs
     def moving_avg_ignore_nan(x, k=3):
+        """Centered moving average of `x` over a window of `k` samples,
+        ignoring NaN entries. Output positions where the window covers
+        only NaNs become NaN themselves."""
         mask = ~np.isnan(x)
         x0 = np.where(mask, x, 0.0)
         num = np.convolve(x0, np.ones(k), mode='same')

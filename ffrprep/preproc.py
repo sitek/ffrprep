@@ -753,10 +753,14 @@ def epoch_data(
         codes = None
         event_dict = None
 
-        # Helper: coerce a value to int when it looks like one. Handles
-        # ints, numpy ints, strings of digits (with optional leading "-"),
-        # and floats whose textual form is integer-only ("1", "1.0").
         def _coerce_int(val):
+            """Return ``val`` as int when it cleanly represents an integer.
+
+            Handles ints, numpy ints, strings of digits (with optional
+            leading minus sign), and floats whose textual form is
+            integer-only (``"1"``, ``"1.0"``). Returns ``None`` for
+            anything else, including booleans and non-integer floats.
+            """
             if isinstance(val, (int, np.integer)) and not isinstance(val, bool):
                 return int(val)
             s = str(val).strip()
