@@ -307,6 +307,7 @@ def _make_analysis_payload(args_snap, deriv_snap, subject, preproc_file):
         "bids_root": args_snap["bids_dir"],
         "by_event_type": bool(args_snap.get("by_event_type")),
         "analysis_subject_dir": str(deriv_snap["analysis_subject_dir"]),
+        "derivatives_root": str(deriv_snap.get("derivatives_root", "")),
     }
 
 
@@ -342,6 +343,32 @@ def _build_preproc_workflow(payload):
     target.derivatives_root = payload["derivatives_root"]
     target.output_dir = payload["output_dir"]
     return wf
+
+
+def _find_raw_paths_for_section(eeg_dir, subject, task, runs):
+    """Locate raw EEG files for a (task, runs) combination.
+
+    `runs` is either a single run identifier (string), a list/tuple
+    of run identifiers (concat-runs case, in which case the caller is
+    expected to concatenate the loaded raws), or ``None``. The first
+    matching extension among .bdf, .edf, .fif is used per run; missing
+    runs are silently skipped (the caller decides how to handle a
+    partial result). Returns a list of :class:`pathlib.Path`.
+    """
+    if runs is None:
+        return []
+    if not isinstance(runs, (list, tuple)):
+        runs = [runs]
+    paths = []
+    for r in runs:
+        if r is None:
+            continue
+        for ext in (".bdf", ".edf", ".fif"):
+            candidate = eeg_dir / f"sub-{subject}_task-{task}_run-{r}_eeg{ext}"
+            if candidate.exists():
+                paths.append(candidate)
+                break
+    return paths
 
 
 def _read_raw_any(fpath):
@@ -451,6 +478,35 @@ def _resolve_condition_labels(event_ids, events_fpath):
     return ", ".join(translated)
 
 
+def _restore_epochs_baseline(epochs, sidecar_path):
+    """Re-apply ``epochs.baseline`` from the BIDS sidecar's Baseline field.
+
+    ``mne.EpochsArray`` (used inside ``save_preprocessing_outputs``)
+    doesn't take a ``baseline`` constructor argument, so the saved
+    .fif's baseline metadata round-trips as ``None``. The
+    preprocessing sidecar carries a ``Baseline`` field for this
+    reason; restoring it here puts ``epochs.baseline`` back so that
+    downstream consumers (analysis-side averaging, the report's
+    RMS SNR row) keep working.
+
+    ``Epochs.apply_baseline`` is idempotent on already-baselined data:
+    it sets the metadata attribute and re-applies the correction
+    (which subtracts ~zero from data already centered).
+    """
+    import json
+
+    if epochs.baseline is not None:
+        return epochs
+    if not sidecar_path.exists():
+        return epochs
+    meta = json.loads(sidecar_path.read_text())
+    baseline = meta.get("Baseline")
+    if baseline is None:
+        return epochs
+    epochs.apply_baseline(tuple(baseline))
+    return epochs
+
+
 def _build_overview(args, subject, source_files, stage_label):
     """Build the overview dict for the report.
 
@@ -496,6 +552,8 @@ def _build_preproc_report(args, derivatives_info, subject):
     :func:`reports.make_group` and rendered via
     :func:`reports.build_subject_report`.
     """
+    import json
+
     import mne
 
     print("\n" + "=" * 60)
@@ -519,36 +577,75 @@ def _build_preproc_report(args, derivatives_info, subject):
         task = m_task.group(1) if m_task else None
         run = m_run.group(1) if m_run else None
 
-        # Locate the original raw file in the BIDS dataset for the Raw
-        # section (intermediate _desc-loaded_raw.fif files are only
-        # written when --save-each-node is used, and aren't reliable
-        # to depend on for the report).
-        raw_fpath = None
-        for ext in (".bdf", ".edf", ".fif"):
-            candidate = eeg_dir / f"sub-{subject}_task-{task}_run-{run}_eeg{ext}"
-            if candidate.exists():
-                raw_fpath = candidate
-                break
-        events_fpath = eeg_dir / f"sub-{subject}_task-{task}_run-{run}_events.tsv"
+        # Determine which run(s) the saved epochs came from. Per-run
+        # mode: filename has _run-X. Concat-runs mode: filename has no
+        # _run- token; the sidecar's ConcatenatedRuns field tells us
+        # which runs were merged together.
+        sidecar_path = epo_fpath.with_suffix(".json")
+        sidecar_meta = (
+            json.loads(sidecar_path.read_text())
+            if sidecar_path.exists() else {}
+        )
+        runs_for_section = sidecar_meta.get("ConcatenatedRuns") or [run]
+
+        # Locate the original raw file(s) in the BIDS dataset. For
+        # concat-runs we load + concatenate the raws so the Raw QA
+        # plot reflects what the workflow actually processed.
+        # Intermediate _desc-loaded_raw.fif files are only written
+        # under --save-each-node and aren't reliable to depend on.
+        raw_paths = _find_raw_paths_for_section(
+            eeg_dir, subject, task, runs_for_section,
+        )
+
+        # Events sidecar: for the Raw QA waveform's event-marker
+        # overlay, point at the first run's events.tsv (the snippet
+        # only spans the first ~10 s of the recording, where any
+        # cross-run concatenation hasn't kicked in yet).
+        first_run = next(
+            (r for r in runs_for_section if r is not None), None
+        )
+        events_fpath = (
+            eeg_dir / f"sub-{subject}_task-{task}_run-{first_run}_events.tsv"
+            if first_run is not None
+            else eeg_dir / f"sub-{subject}_task-{task}_events.tsv"
+        )
+
+        # Section identifier / title for the Raw section. Concat-runs
+        # gets "concat" plus an explanatory title; per-run keeps the
+        # run-token form.
+        is_concat = len(runs_for_section) > 1
+        section_run_token = "concat" if is_concat else (run or "single")
+        raw_title = (
+            f"Raw (concatenated runs: {', '.join(runs_for_section)})"
+            if is_concat else "Raw"
+        )
 
         sections = []
-        if raw_fpath is not None:
-            print(f"  loading raw  for sub-{subject} task-{task} run-{run}")
-            raw = _read_raw_any(raw_fpath)
+        if raw_paths:
+            if len(raw_paths) == 1:
+                print(f"  loading raw  for sub-{subject} task-{task} "
+                      f"{section_run_token}")
+                raw = _read_raw_any(raw_paths[0])
+            else:
+                print(f"  loading {len(raw_paths)} raws for sub-{subject} "
+                      f"task-{task} (concat)")
+                raws = [_read_raw_any(p) for p in raw_paths]
+                raw = mne.concatenate_raws(raws)
             sections.append(reports.build_raw_section(
                 raw,
-                section_id=f"raw-{task}-{run}",
-                title="Raw",
+                section_id=f"raw-{task}-{section_run_token}",
+                title=raw_title,
                 label="Raw",
                 events_fpath=str(events_fpath) if events_fpath.exists() else None,
             ))
 
-        print(f"  loading epoch for sub-{subject} task-{task} run-{run}")
+        print(f"  loading epoch for sub-{subject} task-{task} "
+              f"{section_run_token}")
         epochs = mne.read_epochs(str(epo_fpath), preload=True, verbose=False)
         extra = _rejection_summary(epo_fpath, events_fpath, len(epochs))
         sections.append(reports.build_epoch_section(
             epochs,
-            section_id=f"epoched-{task}-{run}",
+            section_id=f"epoched-{task}-{section_run_token}",
             title="Epoched",
             extra_summary=extra,
         ))
@@ -746,6 +843,13 @@ def _analysis_iteration(payload):
     log_path = _setup_worker_log(work_dir, payload["identifier"])
     preproc_file = Path(payload["preproc_file"])
     epochs = mne.read_epochs(str(preproc_file), preload=True, verbose=False)
+    # Restore epochs.baseline from the preprocessing sidecar's
+    # Baseline field. EpochsArray (used in save_preprocessing_outputs)
+    # doesn't carry baseline metadata, so without this restore the
+    # downstream evoked.baseline would be None and the analysis
+    # sidecar would silently drop its Baseline field, breaking the
+    # report's RMS SNR row.
+    epochs = _restore_epochs_baseline(epochs, preproc_file.with_suffix(".json"))
 
     analysis_wf = create_analysis_workflow()
     analysis_wf.base_dir = payload["work_dir"]
@@ -755,6 +859,10 @@ def _analysis_iteration(payload):
     analysis_wf.inputs.inputnode.subject = payload["subject"]
     analysis_wf.inputs.inputnode.original_filename = preproc_file.stem
     analysis_wf.inputs.inputnode.output_dir = payload["analysis_subject_dir"]
+    # derivatives_root is the BIDS-App output_dir (e.g.
+    # /data/derivatives_concat). save_analysis_outputs uses it as the
+    # derivatives root and constructs the per-subject path internally.
+    analysis_wf.inputs.inputnode.derivatives_root = payload["derivatives_root"]
     analysis_wf.run(plugin="Linear")
 
     _propagate_run_provenance(
@@ -1218,12 +1326,17 @@ def run_ffrprep():
         print(f"Processing subject: sub-{subject}")
         print(f"{'='*60}")
 
-        # Set up derivatives directories within the BIDS dataset
+        # Set up derivatives directories. The user-supplied
+        # args.output_dir (the second positional CLI argument) is the
+        # destination root for ffrprep-preprocessing/ and
+        # ffrprep-analysis/. When omitted, setup_derivatives_directories
+        # falls back to the BIDS-conventional bids_root/derivatives/.
         derivatives_info = setup_derivatives_directories(
             args.bids_dir,
             subject,
             create_preprocessing=args.stage in ["preprocessing", "both"],
             create_analysis=args.stage in ["analysis", "both"],
+            output_dir=args.output_dir,
         )
 
         print(f"Derivatives will be stored in: " f"{derivatives_info['derivatives_root']}")
