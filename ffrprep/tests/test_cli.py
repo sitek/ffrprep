@@ -13,6 +13,7 @@ import pytest
 
 from ffrprep.ffrprep_cli import (
     _resolve_condition_labels,
+    _restore_epochs_baseline,
     get_parser,
     parse_baseline,
     parse_ref_channels,
@@ -513,3 +514,142 @@ def test_resolve_condition_labels_empty_input(tmp_path):
     ])
     assert _resolve_condition_labels("", events_fpath) == ""
     assert _resolve_condition_labels(None, events_fpath) is None
+
+
+# ---------------------------------------------------------------------------
+# _restore_epochs_baseline: re-apply baseline from preproc sidecar after load
+# ---------------------------------------------------------------------------
+
+def _make_synthetic_epochs(baseline=None):
+    """Build a tiny in-memory mne.Epochs object for baseline tests."""
+    import numpy as np
+    import mne
+    sfreq = 1000.0
+    n_channels = 2
+    n_times = int(sfreq * 5)
+    rng = np.random.default_rng(7)
+    data = rng.normal(0, 1e-6, size=(n_channels, n_times))
+    info = mne.create_info(["Cz", "F3"], sfreq=sfreq, ch_types=["eeg"] * 2)
+    raw = mne.io.RawArray(data, info, verbose=False)
+    n_events = 3
+    event_samples = np.linspace(500, n_times - 500, n_events, dtype=int)
+    events = np.column_stack([
+        event_samples,
+        np.zeros(n_events, dtype=int),
+        np.ones(n_events, dtype=int),
+    ])
+    return mne.Epochs(
+        raw, events, tmin=-0.04, tmax=0.4, baseline=baseline,
+        preload=True, verbose=False,
+    )
+
+
+def _write_sidecar(path, payload):
+    """Write a JSON sidecar with the given payload."""
+    import json
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload))
+
+
+def test_restore_epochs_baseline_reapplies_window_from_sidecar(tmp_path):
+    """When the sidecar has a Baseline window and epochs.baseline is None,
+    the helper applies it back."""
+    epochs = _make_synthetic_epochs(baseline=None)
+    assert epochs.baseline is None
+
+    sidecar = tmp_path / "sidecar.json"
+    _write_sidecar(sidecar, {"Baseline": [-0.04, 0.0]})
+
+    restored = _restore_epochs_baseline(epochs, sidecar)
+    assert restored.baseline == (-0.04, 0.0)
+
+
+def test_restore_epochs_baseline_no_op_when_already_set(tmp_path):
+    """When epochs.baseline is already set, the helper leaves it alone."""
+    epochs = _make_synthetic_epochs(baseline=(-0.04, 0.0))
+    assert epochs.baseline == (-0.04, 0.0)
+
+    sidecar = tmp_path / "sidecar.json"
+    _write_sidecar(sidecar, {"Baseline": [-0.1, 0.0]})  # different window
+
+    restored = _restore_epochs_baseline(epochs, sidecar)
+    # Helper must not overwrite an already-set baseline.
+    assert restored.baseline == (-0.04, 0.0)
+
+
+def test_restore_epochs_baseline_no_op_when_sidecar_missing(tmp_path):
+    """No sidecar file → epochs come back unchanged (still baseline=None)."""
+    epochs = _make_synthetic_epochs(baseline=None)
+    missing = tmp_path / "no-such.json"
+    restored = _restore_epochs_baseline(epochs, missing)
+    assert restored.baseline is None
+
+
+def test_restore_epochs_baseline_no_op_when_field_absent(tmp_path):
+    """Sidecar present but no Baseline key → leave epochs unchanged."""
+    epochs = _make_synthetic_epochs(baseline=None)
+    sidecar = tmp_path / "sidecar.json"
+    _write_sidecar(sidecar, {"EpochCount": 3})  # no Baseline key
+    restored = _restore_epochs_baseline(epochs, sidecar)
+    assert restored.baseline is None
+
+
+# ---------------------------------------------------------------------------
+# _find_raw_paths_for_section: locate raw EEG files for a (task, runs) combo
+# ---------------------------------------------------------------------------
+
+from ffrprep.ffrprep_cli import _find_raw_paths_for_section  # noqa: E402
+
+
+def _touch(path):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b"")
+
+
+def test_find_raw_paths_for_section_single_run(tmp_path):
+    """A single-run identifier returns one path when the file exists."""
+    eeg_dir = tmp_path / "sub-03" / "eeg"
+    f = eeg_dir / "sub-03_task-active_run-1_eeg.bdf"
+    _touch(f)
+    paths = _find_raw_paths_for_section(eeg_dir, "03", "active", "1")
+    assert paths == [f]
+
+
+def test_find_raw_paths_for_section_concat_runs_list(tmp_path):
+    """A list of run ids returns the matching paths in order."""
+    eeg_dir = tmp_path / "sub-03" / "eeg"
+    f1 = eeg_dir / "sub-03_task-active_run-1_eeg.bdf"
+    f2 = eeg_dir / "sub-03_task-active_run-2_eeg.bdf"
+    f3 = eeg_dir / "sub-03_task-active_run-3_eeg.bdf"
+    for f in (f1, f2, f3):
+        _touch(f)
+    paths = _find_raw_paths_for_section(eeg_dir, "03", "active", ["1", "2", "3"])
+    assert paths == [f1, f2, f3]
+
+
+def test_find_raw_paths_for_section_skips_missing(tmp_path):
+    """Missing files are silently skipped; the caller decides what to do."""
+    eeg_dir = tmp_path / "sub-03" / "eeg"
+    f1 = eeg_dir / "sub-03_task-active_run-1_eeg.bdf"
+    f3 = eeg_dir / "sub-03_task-active_run-3_eeg.bdf"
+    _touch(f1)
+    _touch(f3)
+    # run-2 missing
+    paths = _find_raw_paths_for_section(eeg_dir, "03", "active", ["1", "2", "3"])
+    assert paths == [f1, f3]
+
+
+def test_find_raw_paths_for_section_extension_fallback(tmp_path):
+    """When .bdf isn't present, .edf / .fif are tried in order."""
+    eeg_dir = tmp_path / "sub-03" / "eeg"
+    edf = eeg_dir / "sub-03_task-active_run-1_eeg.edf"
+    _touch(edf)
+    paths = _find_raw_paths_for_section(eeg_dir, "03", "active", "1")
+    assert paths == [edf]
+
+
+def test_find_raw_paths_for_section_none_when_run_is_none(tmp_path):
+    """When the run identifier is None and no list is given, returns []."""
+    eeg_dir = tmp_path / "sub-03" / "eeg"
+    paths = _find_raw_paths_for_section(eeg_dir, "03", "active", None)
+    assert paths == []
