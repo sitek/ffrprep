@@ -61,7 +61,11 @@ def test_optional_arguments_defaults():
     assert args.tmin == -0.2
     assert args.tmax == 0.6
     assert args.n_procs == 1
-    assert args.by_event_type is False
+    # Default flipped: per-trial-type outputs are emitted out of the box
+    # for the canonical FFR setup. --no-split-by-trial-type opts out.
+    assert args.split_by_trial_type is True
+    assert args.trial_types is None
+    assert args.difference_pairs is None
     assert args.skip_bids_validation is False
     assert args.participant_label is None
     assert args.work_dir is None
@@ -106,10 +110,63 @@ def test_preprocessing_parameters():
     assert args.low_pass == 30.0
 
 
-def test_analysis_parameters():
+def test_analysis_parameters_split_default_true():
+    """Default is to split outputs by trial type."""
     parser = get_parser()
-    args = parser.parse_args(["/bids", "/output", "participant", "--by_event_type"])
-    assert args.by_event_type is True
+    args = parser.parse_args(["/bids", "/output", "participant"])
+    assert args.split_by_trial_type is True
+
+
+def test_no_split_by_trial_type_opt_out():
+    """--no-split-by-trial-type forces a single combined output."""
+    parser = get_parser()
+    args = parser.parse_args([
+        "/bids", "/output", "participant",
+        "--no-split-by-trial-type",
+    ])
+    assert args.split_by_trial_type is False
+
+
+def test_by_event_type_deprecated_alias():
+    """--by_event_type is preserved as a deprecated alias.
+
+    Both the long-form ``--split-by-trial-type`` and the legacy
+    ``--by_event_type`` resolve to the same destination so existing
+    user scripts keep working for one release.
+    """
+    parser = get_parser()
+    args = parser.parse_args([
+        "/bids", "/output", "participant", "--by_event_type",
+    ])
+    assert args.split_by_trial_type is True
+
+
+def test_trial_types_subset():
+    """--trial-types accepts one or more trial-type tokens."""
+    parser = get_parser()
+    args = parser.parse_args([
+        "/bids", "/output", "participant",
+        "--trial-types", "Pos", "Neg",
+    ])
+    assert args.trial_types == ["Pos", "Neg"]
+
+    args = parser.parse_args([
+        "/bids", "/output", "participant",
+        "--trial-types", "Pos",
+    ])
+    assert args.trial_types == ["Pos"]
+
+
+def test_difference_pairs_argument():
+    """--difference-pairs accepts ``A:B`` tokens, parsed downstream."""
+    parser = get_parser()
+    args = parser.parse_args([
+        "/bids", "/output", "participant",
+        "--difference-pairs", "Pos:Neg", "Tone1:Tone2",
+    ])
+    # Stored as raw string list at parse time; parse_difference_pairs
+    # converts to list of tuples.
+    assert args.difference_pairs == ["Pos:Neg", "Tone1:Tone2"]
 
 
 def test_general_options():
@@ -430,7 +487,7 @@ def test_parser_comprehensive():
         "--participant_label", "01", "02",
         "--stage", "preprocessing",
         "--ref_channels", "TP9,TP10",
-        "--by_event_type",
+        "--no-split-by-trial-type",
         "--skip_bids_validation",
         "--n_procs", "8",
     ])
@@ -439,7 +496,7 @@ def test_parser_comprehensive():
     # ref_channels uses nargs="+"; comma-separated tokens are kept as a
     # single list element here (parse_ref_channels later splits them).
     assert args.ref_channels == ["TP9,TP10"]
-    assert args.by_event_type is True
+    assert args.split_by_trial_type is False
     assert args.skip_bids_validation is True
     assert args.n_procs == 8
 
@@ -653,3 +710,62 @@ def test_find_raw_paths_for_section_none_when_run_is_none(tmp_path):
     eeg_dir = tmp_path / "sub-03" / "eeg"
     paths = _find_raw_paths_for_section(eeg_dir, "03", "active", None)
     assert paths == []
+
+
+# ---------------------------------------------------------------------------
+# parse_difference_pairs
+# ---------------------------------------------------------------------------
+
+def test_parse_difference_pairs_returns_list_of_tuples():
+    """``A:B,C:D`` → ``[("A","B"), ("C","D")]``."""
+    from ffrprep.ffrprep_cli import parse_difference_pairs
+
+    pairs = parse_difference_pairs(["Pos:Neg", "Tone1:Tone2"])
+    assert pairs == [("Pos", "Neg"), ("Tone1", "Tone2")]
+
+
+def test_parse_difference_pairs_none_passthrough():
+    """A None argument round-trips as None (no diff requested)."""
+    from ffrprep.ffrprep_cli import parse_difference_pairs
+
+    assert parse_difference_pairs(None) is None
+
+
+def test_parse_difference_pairs_empty_list_returns_none():
+    """An empty list normalizes to None."""
+    from ffrprep.ffrprep_cli import parse_difference_pairs
+
+    assert parse_difference_pairs([]) is None
+
+
+def test_parse_difference_pairs_strips_whitespace():
+    """Whitespace around tokens is tolerated."""
+    from ffrprep.ffrprep_cli import parse_difference_pairs
+
+    assert parse_difference_pairs([" Pos : Neg "]) == [("Pos", "Neg")]
+
+
+def test_parse_difference_pairs_rejects_missing_colon():
+    """A token without ``:`` is malformed and raises."""
+    from ffrprep.ffrprep_cli import parse_difference_pairs
+
+    with pytest.raises(argparse.ArgumentTypeError):
+        parse_difference_pairs(["PosNeg"])
+
+
+def test_parse_difference_pairs_rejects_self_pair():
+    """``A:A`` is a degenerate diff and must be rejected."""
+    from ffrprep.ffrprep_cli import parse_difference_pairs
+
+    with pytest.raises(argparse.ArgumentTypeError):
+        parse_difference_pairs(["Pos:Pos"])
+
+
+def test_parse_difference_pairs_rejects_empty_side():
+    """``A:`` or ``:B`` is malformed and raises."""
+    from ffrprep.ffrprep_cli import parse_difference_pairs
+
+    with pytest.raises(argparse.ArgumentTypeError):
+        parse_difference_pairs(["Pos:"])
+    with pytest.raises(argparse.ArgumentTypeError):
+        parse_difference_pairs([":Neg"])
