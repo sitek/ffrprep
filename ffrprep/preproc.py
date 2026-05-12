@@ -916,52 +916,36 @@ def epoch_data(
     return epoched_data, (tmin, tmax)
 
 
-def make_evoked(epochs, by_event_type: bool):
+def make_evoked(epochs, by_event_type: bool = True):
     """
     Create evoked responses by averaging epochs.
-
-    This function computes the average response across all epochs,
-    optionally grouping by event type to create separate evoked
-    responses for different experimental conditions.
 
     Parameters
     ----------
     epochs : mne.Epochs
         MNE `Epochs` object containing time-locked epochs.
-    by_event_type : bool
-        Whether to sort epochs by event type when averaging.
-        If True, creates separate evoked responses for each event type.
-        If False, averages all epochs together.
+    by_event_type : bool, default=True
+        If True (default), return a dict with one Evoked per event type
+        (each Evoked's ``.comment`` is set to the event name so
+        downstream reports show meaningful condition labels).
+        If False, average all epochs together into a single Evoked.
 
     Returns
     -------
     evoked : mne.Evoked or dict of mne.Evoked
-        If by_event_type is False: single MNE `Evoked` object containing
-        the average across all epochs.
-        If by_event_type is True: dictionary with event names as keys and
-        corresponding `Evoked` objects as values.
-
-    Examples
-    --------
-    Average all epochs together:
-
-    >>> evoked_data = make_evoked(epoched_data, by_event_type=False)
-
-    Create separate evoked responses for each event type:
-
-    >>> evoked_by_condition = make_evoked(epoched_data, by_event_type=True)
+        Single MNE `Evoked` when ``by_event_type=False``; otherwise a
+        dict keyed by event name.
     """
     if by_event_type:
-        # Create separate evoked responses for each event type
         evoked = dict()
         for event_name, event_id in epochs.event_id.items():
             epochs_subset = epochs[event_name]
-            evoked[event_name] = epochs_subset.average()
+            ev = epochs_subset.average()
+            ev.comment = event_name
+            evoked[event_name] = ev
     else:
-        # Average all epochs together
         evoked = epochs.average()
 
-    # Return the averaged epochs (evoked responses)
     return evoked
 
 
@@ -1164,6 +1148,7 @@ def create_preprocessing_workflow(name="ffrprep_preproc", disk_backed=False):
                 "original_filename",
                 "session",
                 "run",
+                "output_dir",
             ],
             output_names=["output_path"],
             function=save_preprocessing_node,
@@ -1257,6 +1242,14 @@ def create_preprocessing_workflow(name="ffrprep_preproc", disk_backed=False):
                         ("task_label", "task"),
                         ("session_label", "session"),
                         ("run_label", "run"),
+                        # derivatives_root is the BIDS-App output_dir
+                        # (e.g. /data/derivatives_concat) — the save
+                        # function uses it as the derivatives root and
+                        # constructs the per-subject path internally.
+                        # The inputnode's "output_dir" field carries
+                        # the SUBJECT-level eeg dir for intermediate
+                        # disk-backed saves; that's a different value.
+                        ("derivatives_root", "output_dir"),
                     ],
                 ),
                 (load_node, save_node, [("original_filename", "original_filename")]),
@@ -1318,6 +1311,14 @@ def create_preprocessing_workflow(name="ffrprep_preproc", disk_backed=False):
                         ("task_label", "task"),
                         ("session_label", "session"),
                         ("run_label", "run"),
+                        # derivatives_root is the BIDS-App output_dir
+                        # (e.g. /data/derivatives_concat) — the save
+                        # function uses it as the derivatives root and
+                        # constructs the per-subject path internally.
+                        # The inputnode's "output_dir" field carries
+                        # the SUBJECT-level eeg dir for intermediate
+                        # disk-backed saves; that's a different value.
+                        ("derivatives_root", "output_dir"),
                     ],
                 ),
                 (
@@ -1360,7 +1361,10 @@ def create_analysis_workflow(name="ffrprep_analysis"):
     # Input node
     inputnode = Node(
         niu.IdentityInterface(
-            fields=["epochs", "by_event_type", "bids_root", "subject", "output_dir", "original_filename"]
+            fields=[
+                "epochs", "by_event_type", "bids_root", "subject",
+                "output_dir", "derivatives_root", "original_filename",
+            ]
         ),
         name="inputnode",
     )
@@ -1377,7 +1381,10 @@ def create_analysis_workflow(name="ffrprep_analysis"):
     # Save analysis outputs node
     save_analysis_node_func = Node(
         Function(
-            input_names=["evoked", "bids_root", "subject", "original_filename"],
+            input_names=[
+                "evoked", "bids_root", "subject", "original_filename",
+                "output_dir",
+            ],
             output_names=["output_paths"],
             function=save_analysis_node,
         ),
@@ -1396,6 +1403,13 @@ def create_analysis_workflow(name="ffrprep_analysis"):
                     ("bids_root", "bids_root"),
                     ("subject", "subject"),
                     ("original_filename", "original_filename"),
+                    # derivatives_root is the BIDS-App output_dir
+                    # (e.g. /data/derivatives_concat); save_analysis_outputs
+                    # uses it as the derivatives root and constructs the
+                    # per-subject path internally. The inputnode's
+                    # "output_dir" field carries the SUBJECT-level
+                    # analysis dir for legacy callers that consume it.
+                    ("derivatives_root", "output_dir"),
                 ],
             ),
             (evoked_node, outputnode, [("evoked", "evoked")]),
@@ -1407,7 +1421,11 @@ def create_analysis_workflow(name="ffrprep_analysis"):
     return workflow
 
 
-def setup_derivatives_directories(bids_root, subject, create_preprocessing=True, create_analysis=True):
+def setup_derivatives_directories(
+    bids_root, subject,
+    create_preprocessing=True, create_analysis=True,
+    output_dir=None,
+):
     """
     Set up BIDS derivatives directories for ffrprep outputs.
 
@@ -1421,6 +1439,13 @@ def setup_derivatives_directories(bids_root, subject, create_preprocessing=True,
         Whether to create preprocessing derivatives directory.
     create_analysis : bool
         Whether to create analysis derivatives directory.
+    output_dir : str or pathlib.Path, optional
+        Explicit destination root for the ffrprep-preprocessing and
+        ffrprep-analysis subtrees. When omitted, falls back to the
+        BIDS-conventional ``bids_root / "derivatives"``. The CLI
+        passes its second positional argument here so users can
+        redirect outputs to a separate path (e.g. to keep different
+        runs from clobbering each other's reports / logs).
 
     Returns
     -------
@@ -1430,8 +1455,11 @@ def setup_derivatives_directories(bids_root, subject, create_preprocessing=True,
     from pathlib import Path
 
     bids_root = Path(bids_root)
-    derivatives_root = bids_root / "derivatives"
-    derivatives_root.mkdir(exist_ok=True)
+    if output_dir is not None:
+        derivatives_root = Path(output_dir)
+    else:
+        derivatives_root = bids_root / "derivatives"
+    derivatives_root.mkdir(parents=True, exist_ok=True)
 
     # Always resolve canonical paths so callers can locate inputs/outputs
     # of the *other* stage (e.g. analysis-only mode reads existing
@@ -1498,7 +1526,7 @@ def check_preprocessing_exists(bids_root, subject):
     return len(found_files) > 0, found_files
 
 
-def save_preprocessing_outputs(epochs, bids_root, subject, task, session=None, run=None):
+def save_preprocessing_outputs(epochs, bids_root, subject, task, session=None, run=None, output_dir=None):
     """
     Save preprocessing outputs to BIDS derivatives structure.
 
@@ -1537,9 +1565,13 @@ def save_preprocessing_outputs(epochs, bids_root, subject, task, session=None, r
             "types in the source dataset."
         )
 
-    # Set up derivatives directory
+    # Set up derivatives directory. output_dir, when provided by the
+    # caller, redirects the derivatives root away from the BIDS-default
+    # bids_root/derivatives so users can keep different runs from
+    # clobbering each other.
     derivatives_info = setup_derivatives_directories(
-        bids_root, subject, create_preprocessing=True, create_analysis=False
+        bids_root, subject, create_preprocessing=True, create_analysis=False,
+        output_dir=output_dir,
     )
 
     # Build BIDS-compliant filename with task (required)
@@ -1586,16 +1618,19 @@ def save_preprocessing_outputs(epochs, bids_root, subject, task, session=None, r
         with open(dataset_desc_path, "w") as f:
             _json.dump(dataset_desc, f, indent=2)
 
-    # Capture rejection metadata from the original Epochs object before
-    # reconstruction. drop_log carries one entry per original candidate
-    # epoch — empty tuple when accepted, non-empty when dropped (with
-    # the rejection reasons). Both drop_log and the .reject thresholds
-    # are lost when EpochsArray is constructed below, so we extract
-    # everything we want to persist while it's still available.
+    # Capture rejection + baseline metadata from the original Epochs
+    # object before reconstruction. drop_log carries one entry per
+    # original candidate epoch — empty tuple when accepted, non-empty
+    # when dropped (with the rejection reasons). drop_log, the .reject
+    # thresholds, and the baseline window are all lost when EpochsArray
+    # is constructed below (the constructor doesn't take any of them),
+    # so we extract everything we want to persist while it's still
+    # available.
     n_total_epochs = len(epochs.drop_log)
     n_accepted = len(epochs)
     n_rejected_epochs = n_total_epochs - n_accepted
     reject_thresholds = getattr(epochs, "reject", None)
+    baseline_window = getattr(epochs, "baseline", None)
 
     # Reconstruct a fresh EpochsArray from the underlying data + info to
     # avoid edge cases where the upstream Epochs object carries internal
@@ -1645,6 +1680,10 @@ def save_preprocessing_outputs(epochs, bids_root, subject, task, session=None, r
         sidecar["RejectionThresholds"] = {
             k: float(v) for k, v in reject_thresholds.items()
         }
+    if baseline_window is not None:
+        sidecar["Baseline"] = [
+            float(baseline_window[0]), float(baseline_window[1]),
+        ]
     if session is not None:
         sidecar["Session"] = str(session)
     if run is not None:
@@ -1709,7 +1748,10 @@ def load_preprocessing_outputs(bids_root, subject, original_filename=None):
     raise FileNotFoundError(f"No preprocessing outputs found for subject {subject} in " f"{preproc_dir}")
 
 
-def save_analysis_outputs(evoked, bids_root, subject, task, session=None, run=None, analysis_type="evoked"):
+def save_analysis_outputs(
+    evoked, bids_root, subject, task,
+    session=None, run=None, analysis_type="evoked", output_dir=None,
+):
     """
     Save analysis outputs to BIDS derivatives structure.
 
@@ -1736,9 +1778,12 @@ def save_analysis_outputs(evoked, bids_root, subject, task, session=None, run=No
         Paths to the saved files.
     """
 
-    # Set up derivatives directory
+    # Set up derivatives directory. output_dir, when provided, redirects
+    # the derivatives root away from the BIDS-default
+    # bids_root/derivatives.
     derivatives_info = setup_derivatives_directories(
-        bids_root, subject, create_preprocessing=False, create_analysis=True
+        bids_root, subject, create_preprocessing=False, create_analysis=True,
+        output_dir=output_dir,
     )
 
     output_paths = []
@@ -1834,7 +1879,10 @@ def save_analysis_outputs(evoked, bids_root, subject, task, session=None, run=No
     return output_paths
 
 
-def save_preprocessing_node(epochs, bids_root, subject, task=None, original_filename=None, session=None, run=None):
+def save_preprocessing_node(
+    epochs, bids_root, subject, task=None, original_filename=None,
+    session=None, run=None, output_dir=None,
+):
     """
     Nipype-compatible function to save preprocessing outputs.
 
@@ -1880,12 +1928,15 @@ def save_preprocessing_node(epochs, bids_root, subject, task=None, original_file
     from importlib import import_module
 
     mod = import_module("ffrprep.preproc")
-    output_path = mod.save_preprocessing_outputs(epochs, bids_root, subject, task, session, run)
+    output_path = mod.save_preprocessing_outputs(
+        epochs, bids_root, subject, task, session, run,
+        output_dir=output_dir,
+    )
 
     return str(output_path)
 
 
-def save_analysis_node(evoked, bids_root, subject, original_filename, analysis_type="evoked"):
+def save_analysis_node(evoked, bids_root, subject, original_filename, analysis_type="evoked", output_dir=None):
     """
     Nipype-compatible wrapper that saves analysis outputs.
 
@@ -1931,5 +1982,6 @@ def save_analysis_node(evoked, bids_root, subject, original_filename, analysis_t
     mod = import_module("ffrprep.preproc")
     output_paths = mod.save_analysis_outputs(
         evoked, bids_root, subject, task, session, run, analysis_type,
+        output_dir=output_dir,
     )
     return [str(p) for p in output_paths]

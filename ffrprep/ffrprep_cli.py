@@ -305,7 +305,7 @@ def _make_analysis_payload(args_snap, deriv_snap, subject, preproc_file):
         "preproc_file": str(preproc_file),
         "work_dir": str(work_dir),
         "bids_root": args_snap["bids_dir"],
-        "by_event_type": bool(args_snap.get("by_event_type")),
+        "by_event_type": bool(args_snap.get("split_by_trial_type", True)),
         "analysis_subject_dir": str(deriv_snap["analysis_subject_dir"]),
         "derivatives_root": str(deriv_snap.get("derivatives_root", "")),
     }
@@ -1139,7 +1139,47 @@ def get_parser():
     # Analysis parameters
     analysis_group = parser.add_argument_group("Analysis options")
     analysis_group.add_argument(
-        "--by_event_type", action="store_true", help=("Create separate evoked responses for each event type.")
+        "--split-by-trial-type",
+        dest="split_by_trial_type",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "Emit per-trial-type epoched and evoked outputs. "
+            "Pass --no-split-by-trial-type to fall back to a single "
+            "combined output per (subject, task, run)."
+        ),
+    )
+    # Deprecated alias for --split-by-trial-type. Kept for one release
+    # so existing user scripts don't break; new scripts should use
+    # --split-by-trial-type / --no-split-by-trial-type.
+    analysis_group.add_argument(
+        "--by_event_type",
+        dest="split_by_trial_type",
+        action="store_true",
+        help=argparse.SUPPRESS,
+    )
+    analysis_group.add_argument(
+        "--trial-types",
+        dest="trial_types",
+        nargs="+",
+        default=None,
+        help=(
+            "Restrict per-trial-type outputs to this subset of trial "
+            "types (matched against the events.tsv ``trial_type`` "
+            "column). If omitted, all trial types are emitted."
+        ),
+    )
+    analysis_group.add_argument(
+        "--difference-pairs",
+        dest="difference_pairs",
+        nargs="+",
+        default=None,
+        help=(
+            "Difference evokeds to compute, given as ``A:B`` tokens "
+            "(e.g. Pos:Neg). For exactly two trial types the diff is "
+            "auto-computed; this flag is required to opt in to diffs "
+            "when there are three or more trial types."
+        ),
     )
 
     # General options
@@ -1222,6 +1262,46 @@ def parse_picks(picks_str):
         return picks_str
     # comma-separated
     return [p.strip() for p in str(picks_str).split(",") if p.strip()]
+
+
+def parse_difference_pairs(values):
+    """Parse ``--difference-pairs`` tokens into a list of ``(A, B)`` tuples.
+
+    Accepts a list of ``"A:B"`` strings (one pair per token). Returns
+    ``None`` when ``values`` is None or an empty list. Raises
+    :class:`argparse.ArgumentTypeError` for malformed tokens (no ``:``,
+    empty side, or ``A == B``).
+    """
+    if values is None:
+        return None
+    if isinstance(values, str):
+        values = [values]
+    if len(values) == 0:
+        return None
+
+    pairs = []
+    for raw in values:
+        token = str(raw).strip()
+        if ":" not in token:
+            raise argparse.ArgumentTypeError(
+                f"--difference-pairs token {raw!r} is missing ':'; "
+                "expected A:B (e.g. Pos:Neg)."
+            )
+        a, b = token.split(":", 1)
+        a = a.strip()
+        b = b.strip()
+        if not a or not b:
+            raise argparse.ArgumentTypeError(
+                f"--difference-pairs token {raw!r} has an empty side; "
+                "both A and B must be non-empty."
+            )
+        if a == b:
+            raise argparse.ArgumentTypeError(
+                f"--difference-pairs token {raw!r} pairs a trial type "
+                "with itself; A and B must differ."
+            )
+        pairs.append((a, b))
+    return pairs
 
 
 def parse_event_id(event_id_str):
