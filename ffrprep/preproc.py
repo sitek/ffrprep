@@ -936,6 +936,78 @@ def epoch_data(
     return epoched_data, (tmin, tmax)
 
 
+def make_combined_evoked(epochs):
+    """Average across every event in ``epochs``, ignoring event_id groups.
+
+    Sets ``.comment = "combined"`` so downstream reports can label this
+    section distinctly from the per-condition and difference outputs
+    that share the same (subject, task, run) group.
+
+    Parameters
+    ----------
+    epochs : mne.Epochs
+        Source epochs. May contain multiple event types.
+
+    Returns
+    -------
+    evoked : mne.Evoked
+        Single Evoked across all events.
+    """
+    evoked = epochs.average()
+    evoked.comment = "combined"
+    return evoked
+
+
+def make_difference_evokeds(evoked_dict, pairs=None):
+    """Compute ``A - B`` Evokeds for one or more trial-type pairs.
+
+    Parameters
+    ----------
+    evoked_dict : dict[str, mne.Evoked]
+        Per-trial-type Evoked outputs, typically the dict returned by
+        ``make_evoked(epochs, by_event_type=True)``.
+    pairs : list[tuple[str, str]] | None
+        Pairs to subtract. When None, the single ``(A, B)`` pair is
+        auto-built from insertion order if and only if the dict has
+        exactly two entries; otherwise an empty dict is returned and
+        the caller is expected to opt in explicitly via ``pairs``.
+
+    Returns
+    -------
+    diffs : dict[tuple[str, str], mne.Evoked]
+        Tuple-keyed dict. Each Evoked has
+        ``.comment = "diff_{A}Vs{B}"`` so reports can label by pair.
+
+    Raises
+    ------
+    KeyError
+        If any requested pair references a trial type missing from
+        ``evoked_dict``.
+    """
+    import mne as _mne
+
+    if pairs is None:
+        if len(evoked_dict) != 2:
+            return {}
+        keys = list(evoked_dict.keys())
+        pairs = [(keys[0], keys[1])]
+
+    diffs = {}
+    for a, b in pairs:
+        if a not in evoked_dict or b not in evoked_dict:
+            raise KeyError(
+                f"Difference pair ({a!r}, {b!r}) references a trial "
+                f"type missing from evoked_dict (have: "
+                f"{sorted(evoked_dict.keys())})."
+            )
+        diff = _mne.combine_evoked(
+            [evoked_dict[a], evoked_dict[b]], weights=[1, -1],
+        )
+        diff.comment = f"diff_{a}Vs{b}"
+        diffs[(a, b)] = diff
+    return diffs
+
+
 def make_evoked(epochs, by_event_type: bool = True):
     """
     Create evoked responses by averaging epochs.
@@ -1551,117 +1623,80 @@ def check_preprocessing_exists(bids_root, subject):
     return len(found_files) > 0, found_files
 
 
-def save_preprocessing_outputs(epochs, bids_root, subject, task, session=None, run=None, output_dir=None):
+def _build_preproc_filename(subject, session, task, run, condition=None):
+    """Build the BIDS basename for a saved preprocessing epochs file.
+
+    ``condition`` (when given) is appended to the ``desc-preproc``
+    segment as e.g. ``desc-preprocPos`` so per-trial-type outputs
+    sit next to each other in the derivatives directory.
     """
-    Save preprocessing outputs to BIDS derivatives structure.
-
-    Parameters
-    ----------
-    epochs : mne.Epochs
-        Epoched data to save.
-    bids_root : str or pathlib.Path
-        Path to the BIDS dataset root directory.
-    subject : str
-        Subject label (without 'sub-' prefix).
-    task : str
-        Task label (without 'task-' prefix). Required for BIDS compliance.
-    session : str, optional
-        Session label (without 'ses-' prefix).
-    run : str or int, optional
-        Run label (without 'run-' prefix).
-
-    Returns
-    -------
-    output_path : pathlib.Path
-        Path to the saved epochs file.
-    """
-    # Pre-condition: an empty Epochs object can't be saved (MNE's
-    # EpochsArray constructor surfaces a cryptic
-    # ``max() iterable argument is empty`` for this case). Most common
-    # cause is amplitude-based rejection rejecting every candidate epoch
-    # because a trigger channel (e.g. Erg1) is typed as 'eeg'.
-    if len(epochs) == 0:
-        raise ValueError(
-            "Cannot save preprocessing outputs: the epochs object is empty. "
-            "All candidate epochs were rejected. Common causes: trigger "
-            "channels (e.g. Erg1) are typed as 'eeg' rather than 'stim' "
-            "and exceed --reject-eeg every epoch. Fixes: pass "
-            "--no-auto-reject, raise --reject-eeg, or correct the channel "
-            "types in the source dataset."
-        )
-
-    # Set up derivatives directory. output_dir, when provided by the
-    # caller, redirects the derivatives root away from the BIDS-default
-    # bids_root/derivatives so users can keep different runs from
-    # clobbering each other.
-    derivatives_info = setup_derivatives_directories(
-        bids_root, subject, create_preprocessing=True, create_analysis=False,
-        output_dir=output_dir,
-    )
-
-    # Build BIDS-compliant filename with task (required)
-    # and session/run (optional)
-    filename_parts = [f"sub-{subject}"]
-
-    # Session is optional
+    parts = [f"sub-{subject}"]
     if session:
-        filename_parts.append(f"ses-{session}")
-
-    # Task is required for BIDS compliance
-    filename_parts.append(f"task-{task}")
-
-    # Run is optional. Skip the run token for concatenated runs (run is
-    # a list/tuple) — the merged output has no single run identifier.
+        parts.append(f"ses-{session}")
+    parts.append(f"task-{task}")
+    # Run token is dropped for concatenated runs (the merged output has
+    # no single run identifier).
     if run and not isinstance(run, (list, tuple)):
-        filename_parts.append(f"run-{run}")
+        parts.append(f"run-{run}")
+    desc = "desc-preproc"
+    if condition is not None:
+        desc += str(condition).capitalize()
+    parts.append(f"{desc}_epo.fif")
+    return "_".join(parts)
 
-    # Add descriptor and extension
-    # Use MNE-conventional epoch filename ending to avoid warnings
-    filename_parts.append("desc-preproc_epo.fif")
-    filename = "_".join(filename_parts)
 
-    output_path = derivatives_info["preprocessing_subject_dir"] / filename
-
-    # Write dataset_description.json once at the preprocessing root if it
-    # doesn't yet exist. This must happen before the save/return below,
-    # otherwise the writes never run.
+def _write_preproc_dataset_description(preprocessing_dir):
+    """Write ``dataset_description.json`` at the preprocessing root once."""
     import json as _json
 
-    preprocessing_dir = derivatives_info["preprocessing_dir"]
     dataset_desc_path = preprocessing_dir / "dataset_description.json"
-    if not dataset_desc_path.exists():
-        dataset_desc = {
-            "Name": "ffrprep preprocessing outputs",
-            "BIDSVersion": "1.6.0",
-            "GeneratedBy": [
-                {
-                    "Name": "ffrprep",
-                    "Description": "Frequency-following response preprocessing pipeline",
-                }
-            ],
-        }
-        with open(dataset_desc_path, "w") as f:
-            _json.dump(dataset_desc, f, indent=2)
+    if dataset_desc_path.exists():
+        return
+    dataset_desc = {
+        "Name": "ffrprep preprocessing outputs",
+        "BIDSVersion": "1.6.0",
+        "GeneratedBy": [
+            {
+                "Name": "ffrprep",
+                "Description": "Frequency-following response preprocessing pipeline",
+            }
+        ],
+    }
+    with open(dataset_desc_path, "w") as f:
+        _json.dump(dataset_desc, f, indent=2)
+
+
+def _save_one_preproc_epochs(
+    epochs, output_path, subject, task, session, run, condition=None,
+):
+    """Persist a single Epochs object + matching JSON sidecar.
+
+    Reused by :func:`save_preprocessing_outputs` for both the scalar
+    and the per-condition (dict input) code paths. ``condition``, when
+    given, is recorded in the sidecar's ``Condition`` field.
+    """
+    import json as _json
+
+    if len(epochs) == 0:
+        raise ValueError(
+            "Cannot save preprocessing outputs: the epochs object is "
+            "empty. All candidate epochs were rejected. Common causes: "
+            "trigger channels (e.g. Erg1) are typed as 'eeg' rather "
+            "than 'stim' and exceed --reject-eeg every epoch. Fixes: "
+            "pass --no-auto-reject, raise --reject-eeg, or correct the "
+            "channel types in the source dataset."
+        )
 
     # Capture rejection + baseline metadata from the original Epochs
-    # object before reconstruction. drop_log carries one entry per
-    # original candidate epoch — empty tuple when accepted, non-empty
-    # when dropped (with the rejection reasons). drop_log, the .reject
-    # thresholds, and the baseline window are all lost when EpochsArray
-    # is constructed below (the constructor doesn't take any of them),
-    # so we extract everything we want to persist while it's still
-    # available.
+    # object before reconstruction. drop_log, .reject thresholds, and
+    # the baseline window are all lost when EpochsArray is constructed
+    # below (the constructor doesn't take any of them).
     n_total_epochs = len(epochs.drop_log)
     n_accepted = len(epochs)
     n_rejected_epochs = n_total_epochs - n_accepted
     reject_thresholds = getattr(epochs, "reject", None)
     baseline_window = getattr(epochs, "baseline", None)
 
-    # Reconstruct a fresh EpochsArray from the underlying data + info to
-    # avoid edge cases where the upstream Epochs object carries internal
-    # state that doesn't round-trip through .save(). On mne>=1.9 the
-    # resulting EpochsArray's ``times`` is already a read-only property,
-    # so the historical writable-times workaround is unnecessary.
     import mne as _mne
 
     data = epochs.get_data()
@@ -1671,9 +1706,8 @@ def save_preprocessing_outputs(epochs, bids_root, subject, task, session=None, r
     new_epochs = _mne.EpochsArray(data, info, tmin=tmin)
     new_epochs.save(output_path, overwrite=True)
 
-    # BIDS-derivatives JSON sidecar describing the saved epochs file.
-    # Sits next to the .fif and shares its basename (BIDS convention).
-    sidecar_path = output_path.with_suffix(".json")
+    filename = output_path.name
+    raw_basename = filename.split("_desc-")[0] + "_eeg.bdf"
     sidecar = {
         "Description": "FFR preprocessed epochs (referenced, filtered, baseline-corrected).",
         "GeneratedBy": [
@@ -1682,8 +1716,8 @@ def save_preprocessing_outputs(epochs, bids_root, subject, task, session=None, r
                 "Description": "Frequency-following response preprocessing pipeline",
             }
         ],
-        "Sources": [f"bids:raw:sub-{subject}/eeg/{filename.replace('_desc-preproc_epo.fif', '_eeg.bdf')}"],
-        "RawSources": [f"sub-{subject}/eeg/{filename.replace('_desc-preproc_epo.fif', '_eeg.bdf')}"],
+        "Sources": [f"bids:raw:sub-{subject}/eeg/{raw_basename}"],
+        "RawSources": [f"sub-{subject}/eeg/{raw_basename}"],
         "TaskName": task,
         "SamplingFrequency": float(info["sfreq"]),
         "EpochCount": int(len(new_epochs)),
@@ -1716,10 +1750,68 @@ def save_preprocessing_outputs(epochs, bids_root, subject, task, session=None, r
             sidecar["ConcatenatedRuns"] = [str(r) for r in run]
         else:
             sidecar["Run"] = str(run)
+    if condition is not None:
+        sidecar["Condition"] = str(condition)
 
-    with open(sidecar_path, "w") as f:
+    with open(output_path.with_suffix(".json"), "w") as f:
         _json.dump(sidecar, f, indent=2)
 
+
+def save_preprocessing_outputs(epochs, bids_root, subject, task, session=None, run=None, output_dir=None):
+    """
+    Save preprocessing outputs to BIDS derivatives structure.
+
+    Parameters
+    ----------
+    epochs : mne.Epochs or dict[str, mne.Epochs]
+        Epoched data to save. When a dict is passed (one key per
+        trial type), one BIDS file is written per condition with
+        the ``_desc-preproc{Condition}_epo.fif`` filename pattern,
+        and the per-file sidecar carries a ``Condition`` field.
+    bids_root : str or pathlib.Path
+        Path to the BIDS dataset root directory.
+    subject : str
+        Subject label (without 'sub-' prefix).
+    task : str
+        Task label (without 'task-' prefix). Required for BIDS compliance.
+    session : str, optional
+        Session label (without 'ses-' prefix).
+    run : str or int, optional
+        Run label (without 'run-' prefix).
+
+    Returns
+    -------
+    output_path : pathlib.Path or list[pathlib.Path]
+        Single Path for scalar Epochs input; list of Paths (one per
+        condition) for dict input.
+    """
+    derivatives_info = setup_derivatives_directories(
+        bids_root, subject, create_preprocessing=True, create_analysis=False,
+        output_dir=output_dir,
+    )
+    subject_dir = derivatives_info["preprocessing_subject_dir"]
+    _write_preproc_dataset_description(derivatives_info["preprocessing_dir"])
+
+    if isinstance(epochs, dict):
+        out_paths = []
+        for condition, epochs_obj in epochs.items():
+            filename = _build_preproc_filename(
+                subject, session, task, run, condition=condition,
+            )
+            output_path = subject_dir / filename
+            _save_one_preproc_epochs(
+                epochs_obj, output_path,
+                subject, task, session, run,
+                condition=condition,
+            )
+            out_paths.append(output_path)
+        return out_paths
+
+    filename = _build_preproc_filename(subject, session, task, run)
+    output_path = subject_dir / filename
+    _save_one_preproc_epochs(
+        epochs, output_path, subject, task, session, run,
+    )
     return output_path
 
 
@@ -1958,6 +2050,8 @@ def save_preprocessing_node(
         output_dir=output_dir,
     )
 
+    if isinstance(output_path, list):
+        return [str(p) for p in output_path]
     return str(output_path)
 
 
