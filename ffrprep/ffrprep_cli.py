@@ -284,27 +284,71 @@ def _make_concat_payload(args_snap, deriv_snap, subject, task_label, runs,
     }
 
 
-def _make_analysis_payload(args_snap, deriv_snap, subject, preproc_file):
-    """Assemble the input dict for one per-evoked analysis worker."""
-    preproc_file = Path(preproc_file)
+def _collect_analysis_groups(eeg_dir):
+    """Group preprocessing-output files by (subject, task, session, run).
+
+    Globs ``*_desc-preproc*_epo.fif`` so both the bare combined output
+    and the per-trial-type split outputs are picked up. The grouping
+    key is the BIDS basename up to (but not including) the
+    ``_desc-preproc`` segment, so all per-condition slices for the
+    same (task, run) tuple end up in the same group.
+
+    Parameters
+    ----------
+    eeg_dir : pathlib.Path
+        Per-subject ``eeg/`` directory under the preprocessing
+        derivatives root.
+
+    Returns
+    -------
+    groups : list[dict]
+        One entry per (subject, task, session, run) tuple. Each entry
+        carries ``identifier`` (the shared BIDS basename) and
+        ``preproc_files`` (a sorted list of Paths). Empty list when no
+        preprocessing outputs are present.
+    """
+    eeg_dir = Path(eeg_dir)
+    files = sorted(eeg_dir.glob("*_desc-preproc*_epo.fif"))
+    groups_map = {}
+    for fpath in files:
+        identifier, _, _ = fpath.name.partition("_desc-preproc")
+        if identifier not in groups_map:
+            groups_map[identifier] = {
+                "identifier": identifier,
+                "preproc_files": [],
+            }
+        groups_map[identifier]["preproc_files"].append(fpath)
+    return list(groups_map.values())
+
+
+def _make_analysis_payload(args_snap, deriv_snap, subject, group):
+    """Assemble the input dict for one per-(task, run) analysis worker.
+
+    ``group`` is a dict from :func:`_collect_analysis_groups`, carrying
+    the shared identifier and a list of one or more per-condition
+    preprocessing-output files for the (task, run) tuple.
+    """
+    identifier = group["identifier"]
+    preproc_files = [str(p) for p in group["preproc_files"]]
     if args_snap.get("work_dir"):
         work_dir = (
             Path(args_snap["work_dir"])
             / f"sub-{subject}"
             / "analysis"
-            / preproc_file.stem
+            / identifier
         )
     else:
         work_dir = (
             Path(deriv_snap["analysis_dir"])
             / "work"
             / f"sub-{subject}"
-            / preproc_file.stem
+            / identifier
         )
     return {
-        "identifier": f"analysis_{preproc_file.stem}",
+        "identifier": f"analysis_{identifier}",
         "subject": subject,
-        "preproc_file": str(preproc_file),
+        "preproc_files": preproc_files,
+        "original_filename": identifier,
         "work_dir": str(work_dir),
         "bids_root": args_snap["bids_dir"],
         "by_event_type": bool(args_snap.get("split_by_trial_type", True)),
@@ -836,10 +880,14 @@ def _concat_iteration(payload):
 
 
 def _analysis_iteration(payload):
-    """Worker entry point — analyze one preprocessed epochs file.
+    """Worker entry point — analyze one (subject, task, run) group.
 
-    Loads epochs from disk inside the worker (epochs objects are not
-    pickle-friendly across the executor boundary; the file path is).
+    Reads every per-condition preprocessing file in the group, stacks
+    them via ``mne.concatenate_epochs`` to recover the union view
+    (event_id is preserved across the concat), restores
+    ``epochs.baseline`` from the first file's sidecar, and drives the
+    analysis workflow once. Epochs objects are not pickle-friendly
+    across the executor boundary; file paths are.
     """
     import mne
 
@@ -847,15 +895,30 @@ def _analysis_iteration(payload):
     work_dir = Path(payload["work_dir"])
     work_dir.mkdir(parents=True, exist_ok=True)
     log_path = _setup_worker_log(work_dir, payload["identifier"])
-    preproc_file = Path(payload["preproc_file"])
-    epochs = mne.read_epochs(str(preproc_file), preload=True, verbose=False)
-    # Restore epochs.baseline from the preprocessing sidecar's
-    # Baseline field. EpochsArray (used in save_preprocessing_outputs)
+
+    preproc_files = [Path(p) for p in payload["preproc_files"]]
+    if len(preproc_files) == 1:
+        epochs = mne.read_epochs(
+            str(preproc_files[0]), preload=True, verbose=False,
+        )
+    else:
+        per_condition = [
+            mne.read_epochs(str(p), preload=True, verbose=False)
+            for p in preproc_files
+        ]
+        epochs = mne.concatenate_epochs(per_condition)
+
+    # Restore epochs.baseline from the first file's sidecar. All
+    # per-condition files in a group share the same baseline window
+    # (preproc applies it once before splitting), so reading just one
+    # is sufficient. EpochsArray (used in save_preprocessing_outputs)
     # doesn't carry baseline metadata, so without this restore the
     # downstream evoked.baseline would be None and the analysis
     # sidecar would silently drop its Baseline field, breaking the
     # report's RMS SNR row.
-    epochs = _restore_epochs_baseline(epochs, preproc_file.with_suffix(".json"))
+    epochs = _restore_epochs_baseline(
+        epochs, preproc_files[0].with_suffix(".json"),
+    )
 
     analysis_wf = create_analysis_workflow()
     analysis_wf.base_dir = payload["work_dir"]
@@ -864,7 +927,7 @@ def _analysis_iteration(payload):
     analysis_wf.inputs.inputnode.difference_pairs = payload.get("difference_pairs")
     analysis_wf.inputs.inputnode.bids_root = payload["bids_root"]
     analysis_wf.inputs.inputnode.subject = payload["subject"]
-    analysis_wf.inputs.inputnode.original_filename = preproc_file.stem
+    analysis_wf.inputs.inputnode.original_filename = payload["original_filename"]
     analysis_wf.inputs.inputnode.output_dir = payload["analysis_subject_dir"]
     # derivatives_root is the BIDS-App output_dir (e.g.
     # /data/derivatives_concat). save_analysis_outputs uses it as the
@@ -872,10 +935,15 @@ def _analysis_iteration(payload):
     analysis_wf.inputs.inputnode.derivatives_root = payload["derivatives_root"]
     analysis_wf.run(plugin="Linear")
 
-    _propagate_run_provenance(
-        preproc_file=preproc_file,
-        analysis_dir=Path(payload["analysis_subject_dir"]),
-    )
+    # Propagate provenance from each per-condition source file's sidecar
+    # into the corresponding analysis-output sidecars. The first file
+    # carries the canonical (task, session, run) tokens used by the
+    # rest of the group.
+    for preproc_file in preproc_files:
+        _propagate_run_provenance(
+            preproc_file=preproc_file,
+            analysis_dir=Path(payload["analysis_subject_dir"]),
+        )
     return IterationResult(
         identifier=payload["identifier"],
         log_path=str(log_path),
@@ -1572,22 +1640,28 @@ def run_ffrprep():
             print("Running analysis workflow...")
             print("=" * 60)
 
-            # Locate the preprocessing outputs (epoched .fif files) we need
-            # to feed to the analysis workflow.
+            # Group preprocessing outputs by (task, session, run). With
+            # split-by-trial-type=True a single (task, run) tuple yields
+            # multiple per-condition files that are stacked back together
+            # inside the worker before driving the analysis workflow once.
             preproc_subject_dir = Path(derivatives_info["preprocessing_subject_dir"])
-            preproc_files = sorted(preproc_subject_dir.glob("*_desc-preproc_epo.fif"))
+            groups = _collect_analysis_groups(preproc_subject_dir)
 
-            if not preproc_files:
+            if not groups:
                 print(f"ERROR: No preprocessing outputs found for subject {subject}.")
                 print(f"Expected location: {preproc_subject_dir}")
                 print("Please run preprocessing stage first or use 'both' stage.")
                 continue
-            print(f"Found {len(preproc_files)} preprocessing output(s) to analyze.")
+            n_files = sum(len(g["preproc_files"]) for g in groups)
+            print(
+                f"Found {n_files} preprocessing output(s) in "
+                f"{len(groups)} (task, run) group(s) to analyze."
+            )
 
-            # One worker per preprocessed file — fully independent.
+            # One worker per (task, run) group — fully independent.
             payloads = [
-                _make_analysis_payload(args_snap, deriv_snap, subject, pf)
-                for pf in preproc_files
+                _make_analysis_payload(args_snap, deriv_snap, subject, g)
+                for g in groups
             ]
             _dispatch(_analysis_iteration, payloads,
                       n_procs=args.n_procs, kind_label="analysis")

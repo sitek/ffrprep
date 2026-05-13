@@ -172,7 +172,7 @@ def test_make_concat_payload_task_level_workdir(tmp_path):
 def test_make_analysis_payload_keys(tmp_path):
     args_snap = {
         "bids_dir": str(tmp_path / "bids"),
-        "by_event_type": False,
+        "split_by_trial_type": False,
         "work_dir": None,
     }
     deriv_snap = _snapshot_deriv({
@@ -182,11 +182,17 @@ def test_make_analysis_payload_keys(tmp_path):
         "analysis_dir": tmp_path / "deriv" / "ffrprep-analysis",
         "analysis_subject_dir": tmp_path / "deriv" / "ffrprep-analysis" / "sub-01",
     })
-    preproc_file = tmp_path / "sub-01_task-active_run-1_desc-preproc_epo.fif"
-    payload = _make_analysis_payload(args_snap, deriv_snap, "01", preproc_file)
-    assert payload["preproc_file"] == str(preproc_file)
-    assert "analysis_sub-01_task-active_run-1_desc-preproc_epo" in payload["identifier"]
-    assert "sub-01_task-active_run-1_desc-preproc_epo" in payload["work_dir"]
+    pos = tmp_path / "sub-01_task-active_run-1_desc-preprocPos_epo.fif"
+    neg = tmp_path / "sub-01_task-active_run-1_desc-preprocNeg_epo.fif"
+    group = {
+        "identifier": "sub-01_task-active_run-1",
+        "preproc_files": [pos, neg],
+    }
+    payload = _make_analysis_payload(args_snap, deriv_snap, "01", group)
+    assert payload["preproc_files"] == [str(pos), str(neg)]
+    assert payload["original_filename"] == "sub-01_task-active_run-1"
+    assert "analysis_sub-01_task-active_run-1" in payload["identifier"]
+    assert "sub-01_task-active_run-1" in payload["work_dir"]
 
 
 # ----- _setup_worker_log
