@@ -505,6 +505,91 @@ def test_epoch_data(tmp_path):
     print("✓ All epoch_data tests passed!")
 
 
+def _make_raw_with_string_trial_types(tmp_path):
+    """Synthetic Raw + events.tsv whose trial_type column is string-valued.
+
+    Three trial types ("Pos", "Neg", "Other") with two onsets each
+    (six events total). Used by the trial-types subset tests below to
+    exercise the new ``trial_types=`` parameter on :func:`epoch_data`.
+    Returns ``(raw, events_path)``.
+    """
+    import numpy as np
+    import pandas as pd
+    from mne import create_info
+    from mne.io import RawArray
+
+    sfreq = 1000.0
+    n_times = 12000
+    rng = np.random.default_rng(0)
+    data = rng.standard_normal((4, n_times)) * 1e-6
+    info = create_info(
+        ch_names=[f"EEG{i:03d}" for i in range(4)],
+        sfreq=sfreq,
+        ch_types=["eeg"] * 4,
+    )
+    raw = RawArray(data, info)
+
+    onsets = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
+    trial_types = ["Pos", "Neg", "Other", "Pos", "Neg", "Other"]
+    events_path = tmp_path / "sub-01_task-active_events.tsv"
+    pd.DataFrame({
+        "onset": onsets,
+        "duration": [0.1] * len(onsets),
+        "trial_type": trial_types,
+    }).to_csv(events_path, sep="\t", index=False)
+    return raw, events_path
+
+
+def test_epoch_data_trial_types_none_keeps_all_types(tmp_path):
+    """Default ``trial_types=None`` keeps every trial type from events.tsv."""
+    raw, events_path = _make_raw_with_string_trial_types(tmp_path)
+    epochs, _ = epoch_data(
+        raw, baseline=[-0.05, 0.0],
+        events_file=str(events_path),
+        tmin=-0.05, tmax=0.1, verbose=False,
+    )
+    assert set(epochs.event_id.keys()) == {"Pos", "Neg", "Other"}
+
+
+def test_epoch_data_trial_types_filters_to_subset(tmp_path):
+    """A subset list narrows event_id to exactly that subset."""
+    raw, events_path = _make_raw_with_string_trial_types(tmp_path)
+    epochs, _ = epoch_data(
+        raw, baseline=[-0.05, 0.0],
+        events_file=str(events_path),
+        tmin=-0.05, tmax=0.1, verbose=False,
+        trial_types=["Pos", "Neg"],
+    )
+    assert set(epochs.event_id.keys()) == {"Pos", "Neg"}
+    # Each retained type contributed two onsets -> four epochs total.
+    assert len(epochs) == 4
+
+
+def test_epoch_data_trial_types_single_value(tmp_path):
+    """A single-element list yields a single-condition Epochs object."""
+    raw, events_path = _make_raw_with_string_trial_types(tmp_path)
+    epochs, _ = epoch_data(
+        raw, baseline=[-0.05, 0.0],
+        events_file=str(events_path),
+        tmin=-0.05, tmax=0.1, verbose=False,
+        trial_types=["Pos"],
+    )
+    assert set(epochs.event_id.keys()) == {"Pos"}
+    assert len(epochs) == 2
+
+
+def test_epoch_data_trial_types_unknown_raises(tmp_path):
+    """An unknown trial-type name raises ValueError (no silent empty Epochs)."""
+    raw, events_path = _make_raw_with_string_trial_types(tmp_path)
+    with pytest.raises(ValueError, match="trial_types"):
+        epoch_data(
+            raw, baseline=[-0.05, 0.0],
+            events_file=str(events_path),
+            tmin=-0.05, tmax=0.1, verbose=False,
+            trial_types=["Nonexistent"],
+        )
+
+
 def test_create_preprocessing_workflow(tmp_path):
     """Test the create_preprocessing_workflow function."""
     # Test that the workflow can be created without errors
@@ -960,6 +1045,300 @@ def test_save_preprocessing_outputs_persists_rejection_metadata(tmp_path):
         "sidecar must record the reject thresholds that were applied"
 
 
+def test_save_preprocessing_outputs_persists_baseline(tmp_path):
+    """The preproc sidecar must record the baseline window from the input Epochs.
+
+    save_preprocessing_outputs reconstructs the input as
+    ``mne.EpochsArray`` before writing the .fif (to avoid round-trip
+    edge cases), and the EpochsArray constructor doesn't carry a
+    baseline argument, so the on-disk Epochs has ``baseline=None``
+    when reloaded. Without persisting the window in the BIDS sidecar,
+    downstream consumers (the analysis worker) can't restore
+    ``epochs.baseline`` post-load, and the chain leading to the
+    analysis report's RMS SNR stays broken.
+    """
+    import numpy as np
+    from mne import Epochs, create_info
+    from mne.io import RawArray
+
+    sfreq = 1000.0
+    n_channels = 2
+    n_times = int(sfreq * 5)
+    rng = np.random.default_rng(4)
+    data = rng.normal(0, 1e-6, size=(n_channels, n_times))
+    info = create_info(["Cz", "F3"], sfreq=sfreq, ch_types=["eeg"] * 2)
+    raw = RawArray(data, info, verbose=False)
+
+    n_events = 3
+    event_samples = np.linspace(500, n_times - 500, n_events, dtype=int)
+    events = np.column_stack([
+        event_samples,
+        np.zeros(n_events, dtype=int),
+        np.ones(n_events, dtype=int),
+    ])
+
+    baseline = (-0.04, 0.0)
+    epochs = Epochs(
+        raw, events, tmin=-0.04, tmax=0.4, baseline=baseline,
+        preload=True, verbose=False,
+    )
+    assert epochs.baseline == baseline, (
+        "fixture: Epochs constructor should carry baseline metadata"
+    )
+
+    bids_root = tmp_path / "bids"
+    bids_root.mkdir()
+
+    out_path = save_preprocessing_outputs(
+        epochs, bids_root, subject="01", task="active", run=1,
+    )
+
+    sidecar_path = out_path.with_suffix(".json")
+    with open(sidecar_path) as f:
+        sidecar = json.load(f)
+
+    assert "Baseline" in sidecar, (
+        "preprocessing sidecar must record the baseline window from "
+        "epochs.baseline; otherwise the analysis worker has nothing "
+        "to restore from after load"
+    )
+    assert tuple(sidecar["Baseline"]) == baseline
+
+
+def _two_condition_epochs_dict(tmp_path):
+    """Build a ``{condition: Epochs}`` dict for two trial types.
+
+    Returns ``({"Pos": epochs_pos, "Neg": epochs_neg}, bids_root)``.
+    Two trial types ("Pos", "Neg") with three events each. Used by the
+    per-condition save tests below.
+    """
+    import numpy as np
+    from mne import Epochs, create_info
+    from mne.io import RawArray
+
+    sfreq = 1000.0
+    n_channels = 2
+    n_times = int(sfreq * 8)
+    rng = np.random.default_rng(7)
+    data = rng.normal(0, 1e-6, size=(n_channels, n_times))
+    info = create_info(["Cz", "F3"], sfreq=sfreq, ch_types=["eeg"] * 2)
+    raw = RawArray(data, info, verbose=False)
+
+    onsets = [1000, 2000, 3000, 4000, 5000, 6000]
+    codes = [1, 2, 1, 2, 1, 2]
+    events = np.column_stack([
+        np.array(onsets, dtype=int),
+        np.zeros(len(onsets), dtype=int),
+        np.array(codes, dtype=int),
+    ])
+    event_id = {"Pos": 1, "Neg": 2}
+    epochs = Epochs(
+        raw, events, event_id=event_id,
+        tmin=-0.04, tmax=0.4, baseline=(-0.04, 0.0),
+        preload=True, verbose=False,
+    )
+    bids_root = tmp_path / "bids"
+    bids_root.mkdir()
+    return {"Pos": epochs["Pos"], "Neg": epochs["Neg"]}, bids_root
+
+
+def test_save_preprocessing_outputs_dict_returns_list_of_paths(tmp_path):
+    """Dict input → list of Paths, one per condition."""
+    epochs_dict, bids_root = _two_condition_epochs_dict(tmp_path)
+    out_paths = save_preprocessing_outputs(
+        epochs_dict, bids_root, subject="01", task="active", run=1,
+    )
+    assert isinstance(out_paths, list), (
+        "dict input must yield a list of paths (one per condition)"
+    )
+    assert len(out_paths) == 2
+
+
+def test_save_preprocessing_outputs_dict_writes_per_condition_files(tmp_path):
+    """Each per-condition file uses the ``_desc-preproc{Cond}_epo.fif`` pattern."""
+    epochs_dict, bids_root = _two_condition_epochs_dict(tmp_path)
+    out_paths = save_preprocessing_outputs(
+        epochs_dict, bids_root, subject="01", task="active", run=1,
+    )
+    names = sorted(p.name for p in out_paths)
+    assert names == [
+        "sub-01_task-active_run-1_desc-preprocNeg_epo.fif",
+        "sub-01_task-active_run-1_desc-preprocPos_epo.fif",
+    ]
+    for p in out_paths:
+        assert p.exists(), f"per-condition .fif must exist: {p}"
+
+
+def test_save_preprocessing_outputs_per_condition_sidecar_has_condition(tmp_path):
+    """Each per-condition sidecar carries a ``Condition: <name>`` field."""
+    epochs_dict, bids_root = _two_condition_epochs_dict(tmp_path)
+    out_paths = save_preprocessing_outputs(
+        epochs_dict, bids_root, subject="01", task="active", run=1,
+    )
+    seen = {}
+    for p in out_paths:
+        with open(p.with_suffix(".json")) as f:
+            sidecar = json.load(f)
+        assert "Condition" in sidecar, (
+            f"per-condition sidecar must record the trial type: {p.name}"
+        )
+        seen[sidecar["Condition"]] = p.name
+    assert set(seen.keys()) == {"Pos", "Neg"}
+
+
+def test_save_preprocessing_outputs_scalar_input_unchanged(tmp_path):
+    """Scalar Epochs input keeps today's behavior: single Path return."""
+    from pathlib import Path
+
+    epochs_dict, bids_root = _two_condition_epochs_dict(tmp_path)
+    # Stack the two condition slices back into a single Epochs to feed
+    # the scalar code path, exercising the unchanged contract.
+    import mne
+
+    combined = mne.concatenate_epochs(
+        [epochs_dict["Pos"], epochs_dict["Neg"]],
+    )
+    out_path = save_preprocessing_outputs(
+        combined, bids_root, subject="01", task="active", run=2,
+    )
+    assert isinstance(out_path, Path), (
+        "scalar Epochs input must keep returning a single Path"
+    )
+    assert out_path.name == "sub-01_task-active_run-2_desc-preproc_epo.fif"
+
+
+def _two_evoked_dict_for_save_analysis(tmp_path):
+    """Build ``({Pos, Neg} evoked dict, bids_root)`` for the analysis tests."""
+    import numpy as np
+    from mne import Epochs, create_info
+    from mne.io import RawArray
+
+    sfreq = 1000.0
+    rng = np.random.default_rng(13)
+    data = rng.normal(0, 1e-6, size=(2, int(sfreq * 8)))
+    info = create_info(["Cz", "F3"], sfreq=sfreq, ch_types=["eeg"] * 2)
+    raw = RawArray(data, info, verbose=False)
+    onsets = [1000, 2000, 3000, 4000, 5000, 6000]
+    codes = [1, 2, 1, 2, 1, 2]
+    events = np.column_stack([
+        np.array(onsets, dtype=int),
+        np.zeros(len(onsets), dtype=int),
+        np.array(codes, dtype=int),
+    ])
+    epochs = Epochs(
+        raw, events, event_id={"Pos": 1, "Neg": 2},
+        tmin=-0.04, tmax=0.4, baseline=(-0.04, 0.0),
+        preload=True, verbose=False,
+    )
+    bids_root = tmp_path / "bids"
+    bids_root.mkdir()
+    return {
+        "Pos": epochs["Pos"].average(),
+        "Neg": epochs["Neg"].average(),
+    }, bids_root
+
+
+def test_save_analysis_outputs_structured_per_type_files(tmp_path):
+    """``{"by_type": {...}}`` writes one ``_desc-evoked{Cond}.fif`` per type."""
+    evokeds, bids_root = _two_evoked_dict_for_save_analysis(tmp_path)
+    out_paths = save_analysis_outputs(
+        {"by_type": evokeds}, bids_root,
+        subject="01", task="active", run=1,
+    )
+    names = sorted(p.name for p in out_paths)
+    assert names == [
+        "sub-01_task-active_run-1_desc-evokedNeg.fif",
+        "sub-01_task-active_run-1_desc-evokedPos.fif",
+    ]
+
+
+def test_save_analysis_outputs_structured_combined_file(tmp_path):
+    """``{"combined": Evoked}`` writes one bare ``_desc-evoked.fif`` file."""
+    evokeds, bids_root = _two_evoked_dict_for_save_analysis(tmp_path)
+    combined = evokeds["Pos"]  # any single Evoked stands in here
+    out_paths = save_analysis_outputs(
+        {"combined": combined}, bids_root,
+        subject="01", task="active", run=1,
+    )
+    assert len(out_paths) == 1
+    assert out_paths[0].name == "sub-01_task-active_run-1_desc-evoked.fif"
+
+
+def test_save_analysis_outputs_structured_diff_file(tmp_path):
+    """``{"diff": {(A, B): Evoked}}`` writes ``_desc-evokedDiff{A}Vs{B}.fif``."""
+    evokeds, bids_root = _two_evoked_dict_for_save_analysis(tmp_path)
+    out_paths = save_analysis_outputs(
+        {"diff": {("Pos", "Neg"): evokeds["Pos"]}}, bids_root,
+        subject="01", task="active", run=1,
+    )
+    assert len(out_paths) == 1
+    assert out_paths[0].name == (
+        "sub-01_task-active_run-1_desc-evokedDiffPosVsNeg.fif"
+    )
+
+
+def test_save_analysis_outputs_structured_full_payload(tmp_path):
+    """All three sub-keys → 2 per-type + 1 combined + 1 diff = 4 files."""
+    evokeds, bids_root = _two_evoked_dict_for_save_analysis(tmp_path)
+    out_paths = save_analysis_outputs(
+        {
+            "by_type": evokeds,
+            "combined": evokeds["Pos"],
+            "diff": {("Pos", "Neg"): evokeds["Pos"]},
+        },
+        bids_root, subject="01", task="active", run=1,
+    )
+    assert len(out_paths) == 4
+
+
+def test_save_analysis_outputs_per_type_sidecar_has_condition(tmp_path):
+    """Per-type sidecar carries ``Condition: <name>``."""
+    evokeds, bids_root = _two_evoked_dict_for_save_analysis(tmp_path)
+    out_paths = save_analysis_outputs(
+        {"by_type": evokeds}, bids_root,
+        subject="01", task="active", run=1,
+    )
+    for p in out_paths:
+        with open(p.with_suffix(".json")) as f:
+            sidecar = json.load(f)
+        assert "Condition" in sidecar
+
+
+def test_save_analysis_outputs_combined_sidecar_no_condition(tmp_path):
+    """Combined sidecar omits ``Condition`` (it's an across-types average)."""
+    evokeds, bids_root = _two_evoked_dict_for_save_analysis(tmp_path)
+    out_paths = save_analysis_outputs(
+        {"combined": evokeds["Pos"]}, bids_root,
+        subject="01", task="active", run=1,
+    )
+    with open(out_paths[0].with_suffix(".json")) as f:
+        sidecar = json.load(f)
+    assert "Condition" not in sidecar
+
+
+def test_save_analysis_outputs_diff_sidecar_has_difference_of(tmp_path):
+    """Diff sidecar carries ``DifferenceOf: [A, B]``."""
+    evokeds, bids_root = _two_evoked_dict_for_save_analysis(tmp_path)
+    out_paths = save_analysis_outputs(
+        {"diff": {("Pos", "Neg"): evokeds["Pos"]}}, bids_root,
+        subject="01", task="active", run=1,
+    )
+    with open(out_paths[0].with_suffix(".json")) as f:
+        sidecar = json.load(f)
+    assert sidecar.get("DifferenceOf") == ["Pos", "Neg"]
+
+
+def test_save_analysis_outputs_scalar_input_unchanged(tmp_path):
+    """Scalar Evoked input keeps today's contract: bare ``_desc-evoked.fif``."""
+    evokeds, bids_root = _two_evoked_dict_for_save_analysis(tmp_path)
+    out_paths = save_analysis_outputs(
+        evokeds["Pos"], bids_root,
+        subject="01", task="active", run=1,
+    )
+    assert len(out_paths) == 1
+    assert out_paths[0].name == "sub-01_task-active_run-1_desc-evoked.fif"
+
+
 def test_save_analysis_outputs_persists_baseline(tmp_path):
     """The analysis sidecar must record the baseline window.
 
@@ -1181,6 +1560,278 @@ def test_make_evoked(tmp_path):
             verbose=False,
             preload=True,
         )
+
+
+def _two_condition_epochs_for_evoked_helpers():
+    """Build a two-condition Epochs object for the combined/diff tests."""
+    import numpy as np
+    from mne import Epochs, create_info
+    from mne.io import RawArray
+
+    sfreq = 1000.0
+    n_channels = 2
+    n_times = int(sfreq * 8)
+    rng = np.random.default_rng(11)
+    data = rng.normal(0, 1e-6, size=(n_channels, n_times))
+    info = create_info(["Cz", "F3"], sfreq=sfreq, ch_types=["eeg"] * 2)
+    raw = RawArray(data, info, verbose=False)
+
+    onsets = [1000, 2000, 3000, 4000, 5000, 6000]
+    codes = [1, 2, 1, 2, 1, 2]
+    events = np.column_stack([
+        np.array(onsets, dtype=int),
+        np.zeros(len(onsets), dtype=int),
+        np.array(codes, dtype=int),
+    ])
+    epochs = Epochs(
+        raw, events, event_id={"Pos": 1, "Neg": 2},
+        tmin=-0.04, tmax=0.4, baseline=(-0.04, 0.0),
+        preload=True, verbose=False,
+    )
+    return epochs
+
+
+def test_make_combined_evoked_returns_single_evoked_with_comment():
+    """make_combined_evoked returns one Evoked tagged ``combined``."""
+    import mne
+
+    from ffrprep.preproc import make_combined_evoked
+
+    epochs = _two_condition_epochs_for_evoked_helpers()
+    combined = make_combined_evoked(epochs)
+    assert isinstance(combined, mne.Evoked)
+    assert combined.comment == "combined"
+
+
+def test_make_combined_evoked_averages_across_all_events():
+    """Combined evoked equals an unconditional ``epochs.average()``."""
+    import numpy as np
+
+    from ffrprep.preproc import make_combined_evoked
+
+    epochs = _two_condition_epochs_for_evoked_helpers()
+    combined = make_combined_evoked(epochs)
+    expected = epochs.average()
+    np.testing.assert_array_equal(combined.data, expected.data)
+    assert combined.nave == expected.nave
+
+
+def test_make_difference_evokeds_two_types_auto_pair():
+    """Two-type dict with ``pairs=None`` auto-builds the single A-B pair."""
+    from ffrprep.preproc import make_difference_evokeds, make_evoked
+
+    epochs = _two_condition_epochs_for_evoked_helpers()
+    evoked_dict = make_evoked(epochs, by_event_type=True)
+    diffs = make_difference_evokeds(evoked_dict, pairs=None)
+    assert set(diffs.keys()) == {("Pos", "Neg")}
+
+
+def test_make_difference_evokeds_three_types_no_pairs_returns_empty():
+    """Three-type dict + ``pairs=None`` → empty dict (must opt in explicitly)."""
+    from ffrprep.preproc import make_difference_evokeds
+
+    fake_evokeds = {"A": object(), "B": object(), "C": object()}
+    diffs = make_difference_evokeds(fake_evokeds, pairs=None)
+    assert diffs == {}
+
+
+def test_make_difference_evokeds_explicit_pairs():
+    """Explicit pairs are honored and emitted as tuple-keyed entries."""
+    from ffrprep.preproc import make_difference_evokeds, make_evoked
+
+    epochs = _two_condition_epochs_for_evoked_helpers()
+    evoked_dict = make_evoked(epochs, by_event_type=True)
+    diffs = make_difference_evokeds(
+        evoked_dict, pairs=[("Pos", "Neg"), ("Neg", "Pos")],
+    )
+    assert set(diffs.keys()) == {("Pos", "Neg"), ("Neg", "Pos")}
+
+
+def test_make_difference_evokeds_data_matches_subtraction():
+    """Diff data equals ``A.data - B.data`` to numerical precision."""
+    import numpy as np
+
+    from ffrprep.preproc import make_difference_evokeds, make_evoked
+
+    epochs = _two_condition_epochs_for_evoked_helpers()
+    evoked_dict = make_evoked(epochs, by_event_type=True)
+    diffs = make_difference_evokeds(evoked_dict, pairs=[("Pos", "Neg")])
+    diff = diffs[("Pos", "Neg")]
+    expected = evoked_dict["Pos"].data - evoked_dict["Neg"].data
+    np.testing.assert_allclose(diff.data, expected, rtol=1e-10, atol=1e-15)
+
+
+def test_make_difference_evokeds_comment_encodes_pair():
+    """Each diff Evoked's ``.comment`` carries the pair so reports can label."""
+    from ffrprep.preproc import make_difference_evokeds, make_evoked
+
+    epochs = _two_condition_epochs_for_evoked_helpers()
+    evoked_dict = make_evoked(epochs, by_event_type=True)
+    diffs = make_difference_evokeds(evoked_dict, pairs=[("Pos", "Neg")])
+    assert diffs[("Pos", "Neg")].comment == "diff_PosVsNeg"
+
+
+def test_make_difference_evokeds_unknown_key_raises():
+    """A pair referencing a missing trial type raises KeyError-style error."""
+    from ffrprep.preproc import make_difference_evokeds, make_evoked
+
+    epochs = _two_condition_epochs_for_evoked_helpers()
+    evoked_dict = make_evoked(epochs, by_event_type=True)
+    with pytest.raises((KeyError, ValueError)):
+        make_difference_evokeds(evoked_dict, pairs=[("Pos", "Missing")])
+
+
+def test_save_preprocessing_outputs_honors_output_dir(tmp_path):
+    """save_preprocessing_outputs must write under the explicit output_dir.
+
+    Regression test for the deeper layer of the silent-fail bug:
+    even after setup_derivatives_directories was taught to honor
+    output_dir, save_preprocessing_outputs internally re-derived its
+    save location via setup_derivatives_directories WITHOUT the
+    output_dir kwarg, so the workflow's save node always wrote to
+    bids_root/derivatives regardless of what the CLI requested.
+    """
+    import numpy as np
+    from mne import Epochs, create_info
+    from mne.io import RawArray
+
+    sfreq = 1000.0
+    n_channels = 2
+    n_times = int(sfreq * 5)
+    rng = np.random.default_rng(2)
+    data = rng.normal(0, 1e-6, size=(n_channels, n_times))
+    info = create_info(["Cz", "F3"], sfreq=sfreq, ch_types=["eeg"] * 2)
+    raw = RawArray(data, info, verbose=False)
+
+    n_events = 3
+    event_samples = np.linspace(500, n_times - 500, n_events, dtype=int)
+    events = np.column_stack([
+        event_samples,
+        np.zeros(n_events, dtype=int),
+        np.ones(n_events, dtype=int),
+    ])
+
+    epochs = Epochs(
+        raw, events, tmin=-0.04, tmax=0.4, baseline=None,
+        preload=True, verbose=False,
+    )
+
+    bids_root = tmp_path / "bids"
+    bids_root.mkdir()
+    custom_out = tmp_path / "custom_outputs"
+
+    out_path = save_preprocessing_outputs(
+        epochs, bids_root, subject="01", task="active", run=1,
+        output_dir=custom_out,
+    )
+
+    expected = (
+        custom_out / "ffrprep-preprocessing" / "sub-01" / "eeg"
+        / "sub-01_task-active_run-1_desc-preproc_epo.fif"
+    )
+    assert out_path == expected, f"Expected {expected}, got {out_path}"
+    assert out_path.exists(), "epoched .fif must exist at the explicit output_dir"
+    assert out_path.with_suffix(".json").exists(), "sidecar must exist alongside"
+    assert not (bids_root / "derivatives").exists(), (
+        "When output_dir is supplied, the legacy bids_root/derivatives "
+        "tree must not be created"
+    )
+
+
+def test_save_analysis_outputs_honors_output_dir(tmp_path):
+    """save_analysis_outputs must write under the explicit output_dir.
+
+    Same deeper bug as the preprocessing-side: setup_derivatives_directories
+    was called internally without forwarding the user's output_dir,
+    silently dropping the explicit destination.
+    """
+    import numpy as np
+    from mne import Epochs, create_info
+    from mne.io import RawArray
+
+    sfreq = 1000.0
+    n_channels = 2
+    n_times = int(sfreq * 5)
+    rng = np.random.default_rng(3)
+    data = rng.normal(0, 1e-6, size=(n_channels, n_times))
+    info = create_info(["Cz", "F3"], sfreq=sfreq, ch_types=["eeg"] * 2)
+    raw = RawArray(data, info, verbose=False)
+
+    n_events = 3
+    event_samples = np.linspace(500, n_times - 500, n_events, dtype=int)
+    events = np.column_stack([
+        event_samples,
+        np.zeros(n_events, dtype=int),
+        np.ones(n_events, dtype=int),
+    ])
+
+    epochs = Epochs(
+        raw, events, tmin=-0.04, tmax=0.4, baseline=(-0.04, 0.0),
+        preload=True, verbose=False,
+    )
+    evoked = epochs.average()
+
+    bids_root = tmp_path / "bids"
+    bids_root.mkdir()
+    custom_out = tmp_path / "custom_outputs"
+
+    out_paths = save_analysis_outputs(
+        evoked, bids_root, subject="01", task="active", run=1,
+        output_dir=custom_out,
+    )
+
+    expected = (
+        custom_out / "ffrprep-analysis" / "sub-01"
+        / "sub-01_task-active_run-1_desc-evoked.fif"
+    )
+    assert out_paths[0] == expected, f"Expected {expected}, got {out_paths[0]}"
+    assert out_paths[0].exists(), "evoked .fif must exist at the explicit output_dir"
+    assert out_paths[0].with_suffix(".json").exists(), "sidecar must exist alongside"
+    assert not (bids_root / "derivatives").exists(), (
+        "When output_dir is supplied, the legacy bids_root/derivatives "
+        "tree must not be created"
+    )
+
+
+def test_setup_derivatives_directories_honors_output_dir(tmp_path):
+    """When ``output_dir`` is given, the derivatives root must point there.
+
+    Regression test for a silent failure: prior to the fix
+    ``setup_derivatives_directories`` hardcoded ``bids_root /
+    "derivatives"`` and ignored any user-supplied output directory,
+    so the BIDS-App's second positional argument (``output_dir``)
+    was effectively cosmetic. Outputs always landed at
+    ``bids_root/derivatives/`` regardless of where the user asked
+    them to go, silently colliding with prior runs.
+    """
+    bids_root = tmp_path / "test_bids"
+    bids_root.mkdir()
+    custom_out = tmp_path / "custom_outputs"
+
+    result = setup_derivatives_directories(
+        bids_root=bids_root,
+        subject="03",
+        output_dir=custom_out,
+    )
+
+    assert result["derivatives_root"] == custom_out, (
+        "derivatives_root must equal the explicit output_dir, not "
+        "bids_root/derivatives"
+    )
+    assert result["preprocessing_dir"] == custom_out / "ffrprep-preprocessing"
+    assert (
+        result["preprocessing_subject_dir"]
+        == custom_out / "ffrprep-preprocessing" / "sub-03" / "eeg"
+    )
+    assert (
+        result["analysis_subject_dir"] == custom_out / "ffrprep-analysis" / "sub-03"
+    )
+
+    # Sanity: the legacy bids_root/derivatives location was NOT used.
+    assert not (bids_root / "derivatives").exists(), (
+        "When output_dir is supplied, the legacy bids_root/derivatives "
+        "tree must not be created"
+    )
 
 
 def test_setup_derivatives_directories(tmp_path):

@@ -769,3 +769,181 @@ def test_parse_difference_pairs_rejects_empty_side():
         parse_difference_pairs(["Pos:"])
     with pytest.raises(argparse.ArgumentTypeError):
         parse_difference_pairs([":Neg"])
+
+
+# ---------------------------------------------------------------------------
+# _collect_analysis_groups: group preproc outputs by (task, session, run)
+# ---------------------------------------------------------------------------
+
+def _touch_preproc(eeg_dir, name):
+    """Create an empty preprocessing-output stub for grouping tests."""
+    eeg_dir.mkdir(parents=True, exist_ok=True)
+    fpath = eeg_dir / name
+    fpath.touch()
+    return fpath
+
+
+def test_collect_analysis_groups_per_condition_files_one_group(tmp_path):
+    """Per-condition files for the same (task, run) form a single group."""
+    from ffrprep.ffrprep_cli import _collect_analysis_groups
+
+    eeg_dir = tmp_path / "sub-01" / "eeg"
+    pos = _touch_preproc(eeg_dir, "sub-01_task-active_run-1_desc-preprocPos_epo.fif")
+    neg = _touch_preproc(eeg_dir, "sub-01_task-active_run-1_desc-preprocNeg_epo.fif")
+
+    groups = _collect_analysis_groups(eeg_dir)
+    assert len(groups) == 1
+    assert sorted(p.name for p in groups[0]["preproc_files"]) == sorted(
+        [pos.name, neg.name]
+    )
+
+
+def test_collect_analysis_groups_separate_runs_separate_groups(tmp_path):
+    """Different (task, run) tuples form distinct groups."""
+    from ffrprep.ffrprep_cli import _collect_analysis_groups
+
+    eeg_dir = tmp_path / "sub-01" / "eeg"
+    _touch_preproc(eeg_dir, "sub-01_task-active_run-1_desc-preprocPos_epo.fif")
+    _touch_preproc(eeg_dir, "sub-01_task-active_run-1_desc-preprocNeg_epo.fif")
+    _touch_preproc(eeg_dir, "sub-01_task-active_run-2_desc-preprocPos_epo.fif")
+    _touch_preproc(eeg_dir, "sub-01_task-active_run-2_desc-preprocNeg_epo.fif")
+    _touch_preproc(eeg_dir, "sub-01_task-passive_run-1_desc-preprocPos_epo.fif")
+
+    groups = _collect_analysis_groups(eeg_dir)
+    assert len(groups) == 3
+    sizes = sorted(len(g["preproc_files"]) for g in groups)
+    assert sizes == [1, 2, 2]
+
+
+def test_collect_analysis_groups_combined_only_file(tmp_path):
+    """A bare ``_desc-preproc_epo.fif`` is its own (single-file) group."""
+    from ffrprep.ffrprep_cli import _collect_analysis_groups
+
+    eeg_dir = tmp_path / "sub-01" / "eeg"
+    bare = _touch_preproc(eeg_dir, "sub-01_task-active_run-1_desc-preproc_epo.fif")
+
+    groups = _collect_analysis_groups(eeg_dir)
+    assert len(groups) == 1
+    assert [p.name for p in groups[0]["preproc_files"]] == [bare.name]
+
+
+def test_collect_analysis_groups_concat_runs_no_run_token(tmp_path):
+    """Concat-runs files (no ``_run-`` token) are grouped by (task) alone."""
+    from ffrprep.ffrprep_cli import _collect_analysis_groups
+
+    eeg_dir = tmp_path / "sub-01" / "eeg"
+    _touch_preproc(eeg_dir, "sub-01_task-active_desc-preprocPos_epo.fif")
+    _touch_preproc(eeg_dir, "sub-01_task-active_desc-preprocNeg_epo.fif")
+
+    groups = _collect_analysis_groups(eeg_dir)
+    assert len(groups) == 1
+    assert len(groups[0]["preproc_files"]) == 2
+
+
+def test_collect_analysis_groups_group_carries_identifier(tmp_path):
+    """Each group exposes an ``identifier`` matching the BIDS basename."""
+    from ffrprep.ffrprep_cli import _collect_analysis_groups
+
+    eeg_dir = tmp_path / "sub-01" / "eeg"
+    _touch_preproc(eeg_dir, "sub-01_task-active_run-1_desc-preprocPos_epo.fif")
+
+    groups = _collect_analysis_groups(eeg_dir)
+    assert "identifier" in groups[0]
+    assert "task-active" in groups[0]["identifier"]
+    assert "run-1" in groups[0]["identifier"]
+
+
+def test_collect_analysis_groups_empty_dir_returns_empty_list(tmp_path):
+    """No matching files → empty list (not an error)."""
+    from ffrprep.ffrprep_cli import _collect_analysis_groups
+
+    eeg_dir = tmp_path / "sub-01" / "eeg"
+    eeg_dir.mkdir(parents=True)
+    assert _collect_analysis_groups(eeg_dir) == []
+
+
+# ---------------------------------------------------------------------------
+# _collect_evoked_groups: group analysis outputs by (task, session, run)
+# ---------------------------------------------------------------------------
+
+def _touch_evoked(analysis_dir, name):
+    """Create an empty analysis-output stub for grouping tests."""
+    analysis_dir.mkdir(parents=True, exist_ok=True)
+    fpath = analysis_dir / name
+    fpath.touch()
+    return fpath
+
+
+def test_collect_evoked_groups_full_payload_one_group(tmp_path):
+    """Per-type + combined + diff for same (task, run) form one group."""
+    from ffrprep.ffrprep_cli import _collect_evoked_groups
+
+    a_dir = tmp_path / "sub-01"
+    _touch_evoked(a_dir, "sub-01_task-active_run-1_desc-evokedPos.fif")
+    _touch_evoked(a_dir, "sub-01_task-active_run-1_desc-evokedNeg.fif")
+    _touch_evoked(a_dir, "sub-01_task-active_run-1_desc-evoked.fif")
+    _touch_evoked(a_dir, "sub-01_task-active_run-1_desc-evokedDiffPosVsNeg.fif")
+
+    groups = _collect_evoked_groups(a_dir)
+    assert len(groups) == 1
+    assert len(groups[0]["evoked_files"]) == 4
+
+
+def test_collect_evoked_groups_separate_runs_separate_groups(tmp_path):
+    """Different (task, run) tuples form distinct groups."""
+    from ffrprep.ffrprep_cli import _collect_evoked_groups
+
+    a_dir = tmp_path / "sub-01"
+    _touch_evoked(a_dir, "sub-01_task-active_run-1_desc-evokedPos.fif")
+    _touch_evoked(a_dir, "sub-01_task-active_run-1_desc-evokedNeg.fif")
+    _touch_evoked(a_dir, "sub-01_task-active_run-2_desc-evokedPos.fif")
+    _touch_evoked(a_dir, "sub-01_task-passive_run-1_desc-evoked.fif")
+
+    groups = _collect_evoked_groups(a_dir)
+    assert len(groups) == 3
+
+
+def test_collect_evoked_groups_combined_only(tmp_path):
+    """A bare ``_desc-evoked.fif`` is its own (single-file) group."""
+    from ffrprep.ffrprep_cli import _collect_evoked_groups
+
+    a_dir = tmp_path / "sub-01"
+    bare = _touch_evoked(a_dir, "sub-01_task-active_run-1_desc-evoked.fif")
+
+    groups = _collect_evoked_groups(a_dir)
+    assert len(groups) == 1
+    assert [p.name for p in groups[0]["evoked_files"]] == [bare.name]
+
+
+def test_collect_evoked_groups_carries_task_run(tmp_path):
+    """Each group exposes ``task`` and ``run`` fields parsed from the basename."""
+    from ffrprep.ffrprep_cli import _collect_evoked_groups
+
+    a_dir = tmp_path / "sub-01"
+    _touch_evoked(a_dir, "sub-01_task-active_run-1_desc-evokedPos.fif")
+
+    groups = _collect_evoked_groups(a_dir)
+    assert groups[0]["task"] == "active"
+    assert groups[0]["run"] == "1"
+
+
+def test_collect_evoked_groups_concat_runs_no_run_token(tmp_path):
+    """Concat-runs (no ``_run-`` token) → ``run`` is None on the group."""
+    from ffrprep.ffrprep_cli import _collect_evoked_groups
+
+    a_dir = tmp_path / "sub-01"
+    _touch_evoked(a_dir, "sub-01_task-active_desc-evoked.fif")
+
+    groups = _collect_evoked_groups(a_dir)
+    assert len(groups) == 1
+    assert groups[0]["task"] == "active"
+    assert groups[0]["run"] is None
+
+
+def test_collect_evoked_groups_empty_dir_returns_empty_list(tmp_path):
+    """No matching files → empty list (not an error)."""
+    from ffrprep.ffrprep_cli import _collect_evoked_groups
+
+    a_dir = tmp_path / "sub-01"
+    a_dir.mkdir(parents=True)
+    assert _collect_evoked_groups(a_dir) == []
