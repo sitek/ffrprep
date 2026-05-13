@@ -321,6 +321,59 @@ def _collect_analysis_groups(eeg_dir):
     return list(groups_map.values())
 
 
+def _condition_from_preproc_filename(name):
+    """Extract the trial-type token from a per-condition preproc filename.
+
+    ``sub-01_task-active_run-1_desc-preprocPos_epo.fif`` → ``"Pos"``.
+    ``sub-01_task-active_run-1_desc-preproc_epo.fif`` → ``""`` (combined,
+    no per-type suffix).
+    """
+    _, _, after = name.partition("_desc-preproc")
+    # ``after`` is something like ``"Pos_epo.fif"`` or ``"_epo.fif"``.
+    after = after.split("_epo.fif", 1)[0]
+    return after  # empty string for the combined / un-split case
+
+
+def _collect_evoked_groups(analysis_dir):
+    """Group analysis-output files by (subject, task, session, run).
+
+    Globs ``*_desc-evoked*.fif`` so per-trial-type, combined, and
+    difference outputs are all picked up. Files are grouped by the
+    BIDS basename up to ``_desc-evoked``, so the per-type, combined,
+    and diff slices for one (task, run) tuple end up in the same
+    group. Each group also exposes the parsed ``task`` and ``run``
+    tokens for downstream report-section labelling.
+
+    Parameters
+    ----------
+    analysis_dir : pathlib.Path
+        Per-subject directory under the analysis-derivatives root.
+
+    Returns
+    -------
+    groups : list[dict]
+        One entry per (subject, task, session, run) tuple. Keys:
+        ``identifier``, ``task``, ``run``, ``evoked_files`` (sorted
+        list of Paths). Empty list when no matching files exist.
+    """
+    analysis_dir = Path(analysis_dir)
+    files = sorted(analysis_dir.glob("*_desc-evoked*.fif"))
+    groups_map = {}
+    for fpath in files:
+        identifier, _, _ = fpath.name.partition("_desc-evoked")
+        if identifier not in groups_map:
+            m_task = re.search(r"task-([^_]+)", identifier)
+            m_run = re.search(r"run-([^_]+)", identifier)
+            groups_map[identifier] = {
+                "identifier": identifier,
+                "task": m_task.group(1) if m_task else None,
+                "run": m_run.group(1) if m_run else None,
+                "evoked_files": [],
+            }
+        groups_map[identifier]["evoked_files"].append(fpath)
+    return list(groups_map.values())
+
+
 def _make_analysis_payload(args_snap, deriv_snap, subject, group):
     """Assemble the input dict for one per-(task, run) analysis worker.
 
@@ -594,13 +647,13 @@ def _build_overview(args, subject, source_files, stage_label):
 def _build_preproc_report(args, derivatives_info, subject):
     """Render the single-file HTML preprocessing report.
 
-    Runs in the parent after all per-iteration workers have drained.
-    For each saved ``_desc-preproc_epo.fif`` the corresponding raw
-    .bdf/.edf is loaded from the BIDS dataset to produce a Raw section,
-    paired with an Epoched section computed from the .fif. Sections
-    are wrapped one (task, run) group per output via
-    :func:`reports.make_group` and rendered via
-    :func:`reports.build_subject_report`.
+    Discovers preprocessing outputs via :func:`_collect_analysis_groups`,
+    which groups per-trial-type and combined files by
+    (task, session, run). For each group: one Raw section (from the
+    original BIDS .bdf/.edf for the task+run, concatenating across
+    runs when the source is concat-runs) plus one Epoched section
+    per saved file (so split-by-trial-type runs surface a separate
+    Epoched section per trial type).
     """
     import json
 
@@ -614,43 +667,38 @@ def _build_preproc_report(args, derivatives_info, subject):
     preproc_dir = Path(derivatives_info["preprocessing_subject_dir"])
     eeg_dir = bids_root / f"sub-{subject}" / "eeg"
 
-    epoched_files = sorted(preproc_dir.glob("*_desc-preproc_epo.fif"))
-    if not epoched_files:
+    groups_meta = _collect_analysis_groups(preproc_dir)
+    if not groups_meta:
         print(f"No preprocessing outputs found for sub-{subject}; "
               "skipping report.")
         return
 
     groups = []
-    for epo_fpath in epoched_files:
-        m_task = re.search(r"task-([^_]+)", epo_fpath.name)
-        m_run = re.search(r"run-([^_]+)", epo_fpath.name)
+    all_files = []
+    for grp in groups_meta:
+        identifier = grp["identifier"]
+        m_task = re.search(r"task-([^_]+)", identifier)
+        m_run = re.search(r"run-([^_]+)", identifier)
         task = m_task.group(1) if m_task else None
         run = m_run.group(1) if m_run else None
 
-        # Determine which run(s) the saved epochs came from. Per-run
-        # mode: filename has _run-X. Concat-runs mode: filename has no
-        # _run- token; the sidecar's ConcatenatedRuns field tells us
-        # which runs were merged together.
-        sidecar_path = epo_fpath.with_suffix(".json")
+        # Concat-runs metadata lives in any of the per-condition
+        # sidecars in the group (they all share the same source runs).
+        first_file = grp["preproc_files"][0]
+        first_sidecar = first_file.with_suffix(".json")
         sidecar_meta = (
-            json.loads(sidecar_path.read_text())
-            if sidecar_path.exists() else {}
+            json.loads(first_sidecar.read_text())
+            if first_sidecar.exists() else {}
         )
         runs_for_section = sidecar_meta.get("ConcatenatedRuns") or [run]
 
-        # Locate the original raw file(s) in the BIDS dataset. For
-        # concat-runs we load + concatenate the raws so the Raw QA
-        # plot reflects what the workflow actually processed.
-        # Intermediate _desc-loaded_raw.fif files are only written
-        # under --save-each-node and aren't reliable to depend on.
+        # Locate the original raw file(s). For concat-runs we load +
+        # concatenate so the Raw QA plot reflects what the workflow
+        # actually processed.
         raw_paths = _find_raw_paths_for_section(
             eeg_dir, subject, task, runs_for_section,
         )
 
-        # Events sidecar: for the Raw QA waveform's event-marker
-        # overlay, point at the first run's events.tsv (the snippet
-        # only spans the first ~10 s of the recording, where any
-        # cross-run concatenation hasn't kicked in yet).
         first_run = next(
             (r for r in runs_for_section if r is not None), None
         )
@@ -660,9 +708,6 @@ def _build_preproc_report(args, derivatives_info, subject):
             else eeg_dir / f"sub-{subject}_task-{task}_events.tsv"
         )
 
-        # Section identifier / title for the Raw section. Concat-runs
-        # gets "concat" plus an explanatory title; per-run keeps the
-        # run-token form.
         is_concat = len(runs_for_section) > 1
         section_run_token = "concat" if is_concat else (run or "single")
         raw_title = (
@@ -689,20 +734,40 @@ def _build_preproc_report(args, derivatives_info, subject):
                 events_fpath=str(events_fpath) if events_fpath.exists() else None,
             ))
 
-        print(f"  loading epoch for sub-{subject} task-{task} "
-              f"{section_run_token}")
-        epochs = mne.read_epochs(str(epo_fpath), preload=True, verbose=False)
-        extra = _rejection_summary(epo_fpath, events_fpath, len(epochs))
-        sections.append(reports.build_epoch_section(
-            epochs,
-            section_id=f"epoched-{task}-{section_run_token}",
-            title="Epoched",
-            extra_summary=extra,
-        ))
+        # One Epoched section per file in the group — for
+        # split-by-trial-type each per-condition file produces its
+        # own section labelled with the trial type.
+        for epo_fpath in grp["preproc_files"]:
+            all_files.append(epo_fpath)
+            condition = _condition_from_preproc_filename(epo_fpath.name)
+            section_suffix = (
+                f"-{condition.lower()}" if condition else ""
+            )
+            section_title = (
+                f"Epoched ({condition})" if condition else "Epoched"
+            )
+            print(
+                f"  loading epoch for sub-{subject} task-{task} "
+                f"{section_run_token} ({condition or 'combined'})"
+            )
+            epochs = mne.read_epochs(
+                str(epo_fpath), preload=True, verbose=False,
+            )
+            extra = _rejection_summary(
+                epo_fpath, events_fpath, len(epochs),
+            )
+            sections.append(reports.build_epoch_section(
+                epochs,
+                section_id=(
+                    f"epoched-{task}-{section_run_token}{section_suffix}"
+                ),
+                title=section_title,
+                extra_summary=extra,
+            ))
 
         groups.append(reports.make_group(task=task, run=run, sections=sections))
 
-    overview = _build_overview(args, subject, epoched_files, "preprocessing")
+    overview = _build_overview(args, subject, all_files, "preprocessing")
 
     out_path = reports.build_subject_report(
         bids_root=str(bids_root),
@@ -719,10 +784,12 @@ def _build_preproc_report(args, derivatives_info, subject):
 def _build_analysis_report(args, derivatives_info, subject):
     """Render the single-file HTML analysis report.
 
-    Iterates over the saved ``*_desc-evoked.fif`` outputs, builds one
-    Evoked section per condition (an evoked file may carry multiple
-    conditions when ``--by_event_type`` is set), wraps in (task, run)
-    groups via :func:`reports.make_group`, and renders via
+    Discovers analysis outputs via :func:`_collect_evoked_groups`,
+    which groups per-trial-type, combined, and difference files by
+    (task, session, run). Builds one section per file (one Evoked
+    per file, since save_analysis_outputs writes one .fif per
+    condition / combined / pair). Wraps each group via
+    :func:`reports.make_group` and renders via
     :func:`reports.build_analysis_report`.
     """
     import json
@@ -736,56 +803,58 @@ def _build_analysis_report(args, derivatives_info, subject):
     bids_root = Path(args.bids_dir)
     analysis_dir = Path(derivatives_info["analysis_subject_dir"])
 
-    evoked_files = sorted(analysis_dir.glob("*_desc-evoked.fif"))
-    if not evoked_files:
+    groups_meta = _collect_evoked_groups(analysis_dir)
+    if not groups_meta:
         print(f"No analysis outputs found for sub-{subject}; "
               "skipping report.")
         return
 
     groups = []
-    for evo_fpath in evoked_files:
-        m_task = re.search(r"task-([^_]+)", evo_fpath.name)
-        m_run = re.search(r"run-([^_]+)", evo_fpath.name)
-        task = m_task.group(1) if m_task else None
-        run = m_run.group(1) if m_run else None
-
-        print(f"  loading evoked for sub-{subject} task-{task} run-{run}")
-        evoked_list = mne.read_evokeds(str(evo_fpath), verbose=False)
-        # Restore evoked.baseline from the BIDS sidecar — MNE's
-        # Evoked.save() doesn't write the baseline window into the .fif,
-        # so without this restore RMS SNR (which gates on
-        # evoked.baseline is not None) would silently disappear from
-        # the report. apply_baseline is idempotent on already-baselined
-        # data: it sets the metadata attribute and re-applies the
-        # correction (which subtracts ~zero from data already centered).
-        evo_sidecar = evo_fpath.with_suffix(".json")
-        if evo_sidecar.exists():
-            evo_meta = json.loads(evo_sidecar.read_text())
-            baseline = evo_meta.get("Baseline")
-            if baseline is not None:
-                for ev in evoked_list:
-                    if ev.baseline is None:
-                        ev.apply_baseline(tuple(baseline))
-        # Translate numeric event ids in evoked.comment to trial_type
-        # names from the BIDS events.tsv so section titles read
-        # "Evoked (deviant)" instead of the opaque "Evoked (1)".
+    all_files = []
+    for grp in groups_meta:
+        task = grp["task"]
+        run = grp["run"]
+        sections = []
         events_fpath = (
             bids_root / f"sub-{subject}" / "eeg"
-            / f"sub-{subject}_task-{task}_run-{run}_events.tsv"
+            / (
+                f"sub-{subject}_task-{task}_run-{run}_events.tsv"
+                if run is not None
+                else f"sub-{subject}_task-{task}_events.tsv"
+            )
         )
-        sections = []
-        for idx, evoked in enumerate(evoked_list):
-            raw_cond = evoked.comment or f"condition-{idx}"
-            cond = _resolve_condition_labels(raw_cond, events_fpath)
-            sections.append(reports.build_evoked_section(
-                evoked,
-                section_id=f"evoked-{task}-{run}-{idx}",
-                title=f"Evoked ({cond})",
-                label="Evoked",
-            ))
+        for idx, evo_fpath in enumerate(grp["evoked_files"]):
+            all_files.append(evo_fpath)
+            print(
+                f"  loading evoked for sub-{subject} task-{task} "
+                f"run-{run} ({evo_fpath.name})"
+            )
+            evoked_list = mne.read_evokeds(str(evo_fpath), verbose=False)
+            # Restore evoked.baseline from the BIDS sidecar — MNE's
+            # Evoked.save() doesn't write the baseline window into
+            # the .fif, so without this restore RMS SNR (which gates
+            # on evoked.baseline is not None) would silently
+            # disappear from the report.
+            evo_sidecar = evo_fpath.with_suffix(".json")
+            if evo_sidecar.exists():
+                evo_meta = json.loads(evo_sidecar.read_text())
+                baseline = evo_meta.get("Baseline")
+                if baseline is not None:
+                    for ev in evoked_list:
+                        if ev.baseline is None:
+                            ev.apply_baseline(tuple(baseline))
+            for ev_idx, evoked in enumerate(evoked_list):
+                raw_cond = evoked.comment or f"condition-{ev_idx}"
+                cond = _resolve_condition_labels(raw_cond, events_fpath)
+                sections.append(reports.build_evoked_section(
+                    evoked,
+                    section_id=f"evoked-{task}-{run}-{idx}-{ev_idx}",
+                    title=f"Evoked ({cond})",
+                    label="Evoked",
+                ))
         groups.append(reports.make_group(task=task, run=run, sections=sections))
 
-    overview = _build_overview(args, subject, evoked_files, "analysis")
+    overview = _build_overview(args, subject, all_files, "analysis")
 
     out_path = reports.build_analysis_report(
         bids_root=str(bids_root),
