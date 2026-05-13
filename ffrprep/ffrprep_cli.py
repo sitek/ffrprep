@@ -225,6 +225,7 @@ def _make_preproc_payload(args_snap, deriv_snap, subject, task_label, run_label,
         "picks": parse_picks(args_snap.get("picks")),
         "on_missing": args_snap.get("on_missing", "warn"),
         "event_id": parse_event_id(args_snap.get("event_id")),
+        "trial_types": args_snap.get("trial_types"),
         "events_file": args_snap.get("events_file"),
         "derivatives_root": str(deriv_snap.get("derivatives_root", "")),
         "output_dir": str(deriv_snap["preprocessing_subject_dir"]),
@@ -275,6 +276,7 @@ def _make_concat_payload(args_snap, deriv_snap, subject, task_label, runs,
         "picks": parse_picks(args_snap.get("picks")),
         "on_missing": args_snap.get("on_missing", "warn"),
         "event_id": parse_event_id(args_snap.get("event_id")),
+        "trial_types": args_snap.get("trial_types"),
         "events_file": args_snap.get("events_file"),
         "derivatives_root": str(deriv_snap.get("derivatives_root", "")),
         "output_dir": str(deriv_snap["preprocessing_subject_dir"]),
@@ -338,6 +340,7 @@ def _build_preproc_workflow(payload):
     target.picks = payload["picks"]
     target.on_missing = payload["on_missing"]
     target.event_id = payload["event_id"]
+    target.trial_types = payload.get("trial_types")
     if payload.get("events_file") is not None:
         target.events_file = payload["events_file"]
     target.derivatives_root = payload["derivatives_root"]

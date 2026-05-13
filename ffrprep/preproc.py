@@ -683,6 +683,7 @@ def epoch_data(
     subject=None,
     task=None,
     run=None,
+    trial_types=None,
     verbose=True,
 ):
     """
@@ -896,6 +897,25 @@ def epoch_data(
     # the event_dict discovered/constructed above.
     chosen_event_id = event_id if event_id is not None else event_dict
 
+    # Narrow chosen_event_id to the user-requested subset of trial
+    # types. Validate up front so a typo surfaces as an actionable
+    # error rather than as silently empty epochs downstream.
+    if trial_types is not None:
+        if chosen_event_id is None:
+            raise ValueError(
+                "trial_types was supplied but no event_id mapping is "
+                "available; cannot subset trials by name."
+            )
+        requested = list(trial_types)
+        unknown = [t for t in requested if t not in chosen_event_id]
+        if unknown:
+            raise ValueError(
+                "trial_types contains entries not present in the "
+                f"discovered event_id mapping: {unknown}. Known: "
+                f"{sorted(chosen_event_id.keys())}."
+            )
+        chosen_event_id = {k: chosen_event_id[k] for k in requested}
+
     epoched_data = Epochs(
         eeg_data,
         events=events,
@@ -998,6 +1018,7 @@ def create_preprocessing_workflow(name="ffrprep_preproc", disk_backed=False):
                 "on_missing",
                 "event_id",
                 "events_file",
+                "trial_types",
                 "output_dir",
             ]
         ),
@@ -1105,6 +1126,7 @@ def create_preprocessing_workflow(name="ffrprep_preproc", disk_backed=False):
                     "subject",
                     "task",
                     "run",
+                    "trial_types",
                 ],
                 output_names=["epochs", "time_window"],
                 function=epoch_data,
@@ -1128,6 +1150,7 @@ def create_preprocessing_workflow(name="ffrprep_preproc", disk_backed=False):
                     "subject",
                     "task",
                     "run",
+                    "trial_types",
                 ],
                 output_names=["epochs", "time_window"],
                 function=epoch_data,
@@ -1225,6 +1248,7 @@ def create_preprocessing_workflow(name="ffrprep_preproc", disk_backed=False):
                         ("picks", "picks"),
                         ("on_missing", "on_missing"),
                         ("event_id", "event_id"),
+                        ("trial_types", "trial_types"),
                         ("derivatives_root", "derivatives_root"),
                         ("sub_label", "subject"),
                         ("task_label", "task"),
@@ -1294,6 +1318,7 @@ def create_preprocessing_workflow(name="ffrprep_preproc", disk_backed=False):
                         ("picks", "picks"),
                         ("on_missing", "on_missing"),
                         ("event_id", "event_id"),
+                        ("trial_types", "trial_types"),
                         ("derivatives_root", "derivatives_root"),
                         ("sub_label", "subject"),
                         ("task_label", "task"),
