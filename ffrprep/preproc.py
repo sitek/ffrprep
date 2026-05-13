@@ -1041,6 +1041,43 @@ def make_evoked(epochs, by_event_type: bool = True):
     return evoked
 
 
+def build_analysis_payload(epochs, by_event_type=True, difference_pairs=None):
+    """Compute the structured ``{by_type, combined, diff}`` analysis shape.
+
+    Always emits a ``combined`` Evoked. When ``by_event_type`` is True,
+    also emits per-trial-type Evokeds and (when applicable) one or more
+    difference Evokeds. Difference computation follows the rules of
+    :func:`make_difference_evokeds`: auto-paired only when there are
+    exactly two trial types and ``difference_pairs is None``; for >2
+    types the caller must opt in via ``difference_pairs``.
+
+    Parameters
+    ----------
+    epochs : mne.Epochs
+        Source epochs (typically loaded from a single per-condition
+        preprocessing output, or stacked across conditions).
+    by_event_type : bool, default True
+        Emit per-trial-type and difference outputs in addition to the
+        combined Evoked.
+    difference_pairs : list[tuple[str, str]] | None
+        Forwarded to :func:`make_difference_evokeds`.
+
+    Returns
+    -------
+    payload : dict
+        A subset of ``{"by_type", "combined", "diff"}`` populated based
+        on ``by_event_type`` and the pair-discovery rules above.
+    """
+    payload = {"combined": make_combined_evoked(epochs)}
+    if by_event_type:
+        by_type = make_evoked(epochs, by_event_type=True)
+        payload["by_type"] = by_type
+        diffs = make_difference_evokeds(by_type, pairs=difference_pairs)
+        if diffs:
+            payload["diff"] = diffs
+    return payload
+
+
 def create_preprocessing_workflow(name="ffrprep_preproc", disk_backed=False):
     """
     Create nipype workflow for FFR preprocessing.
@@ -1447,35 +1484,39 @@ def create_analysis_workflow(name="ffrprep_analysis"):
     -------
     workflow : nipype.Workflow
         Nipype workflow with an inputnode (fields: epochs, by_event_type,
-        bids_root, subject, original_filename) and an outputnode (fields:
-        evoked, analysis_report).
+        difference_pairs, bids_root, subject, output_dir, derivatives_root,
+        original_filename) and an outputnode (fields: evoked,
+        analysis_report). The inputnode's ``evoked`` output carries
+        the structured ``{by_type, combined, diff}`` payload built
+        by :func:`build_analysis_payload`.
     """
     from nipype import Workflow, Node, Function
     from nipype.interfaces import utility as niu
 
     workflow = Workflow(name=name)
 
-    # Input node
     inputnode = Node(
         niu.IdentityInterface(
             fields=[
-                "epochs", "by_event_type", "bids_root", "subject",
+                "epochs", "by_event_type", "difference_pairs",
+                "bids_root", "subject",
                 "output_dir", "derivatives_root", "original_filename",
             ]
         ),
         name="inputnode",
     )
 
-    # Output node
     outputnode = Node(niu.IdentityInterface(fields=["evoked", "analysis_report"]), name="outputnode")
 
-    # Make evoked node
-    evoked_node = Node(
-        Function(input_names=["epochs", "by_event_type"], output_names=["evoked"], function=make_evoked),
-        name="make_evoked",
+    build_payload_node = Node(
+        Function(
+            input_names=["epochs", "by_event_type", "difference_pairs"],
+            output_names=["evoked"],
+            function=build_analysis_payload,
+        ),
+        name="build_analysis_payload",
     )
 
-    # Save analysis outputs node
     save_analysis_node_func = Node(
         Function(
             input_names=[
@@ -1488,11 +1529,17 @@ def create_analysis_workflow(name="ffrprep_analysis"):
         name="save_analysis",
     )
 
-    # Connect workflow
     workflow.connect(
         [
-            (inputnode, evoked_node, [("epochs", "epochs"), ("by_event_type", "by_event_type")]),
-            (evoked_node, save_analysis_node_func, [("evoked", "evoked")]),
+            (
+                inputnode, build_payload_node,
+                [
+                    ("epochs", "epochs"),
+                    ("by_event_type", "by_event_type"),
+                    ("difference_pairs", "difference_pairs"),
+                ],
+            ),
+            (build_payload_node, save_analysis_node_func, [("evoked", "evoked")]),
             (
                 inputnode,
                 save_analysis_node_func,
@@ -1500,20 +1547,15 @@ def create_analysis_workflow(name="ffrprep_analysis"):
                     ("bids_root", "bids_root"),
                     ("subject", "subject"),
                     ("original_filename", "original_filename"),
-                    # derivatives_root is the BIDS-App output_dir
-                    # (e.g. /data/derivatives_concat); save_analysis_outputs
-                    # uses it as the derivatives root and constructs the
-                    # per-subject path internally. The inputnode's
-                    # "output_dir" field carries the SUBJECT-level
-                    # analysis dir for legacy callers that consume it.
+                    # derivatives_root is the BIDS-App output_dir; the
+                    # save node uses it as the derivatives root and
+                    # constructs the per-subject path internally.
                     ("derivatives_root", "output_dir"),
                 ],
             ),
-            (evoked_node, outputnode, [("evoked", "evoked")]),
+            (build_payload_node, outputnode, [("evoked", "evoked")]),
         ]
     )
-
-    # (Analysis reports are produced by the CLI using ffrprep.reports.)
 
     return workflow
 
@@ -1865,6 +1907,91 @@ def load_preprocessing_outputs(bids_root, subject, original_filename=None):
     raise FileNotFoundError(f"No preprocessing outputs found for subject {subject} in " f"{preproc_dir}")
 
 
+_STRUCTURED_PAYLOAD_KEYS = {"by_type", "combined", "diff"}
+
+
+def _normalize_evoked_payload(evoked):
+    """Coerce ``evoked`` into the structured ``{by_type, combined, diff}`` shape.
+
+    A scalar Evoked is treated as the ``combined`` output. A dict whose
+    keys are exactly the structured-payload keys is returned as-is.
+    Any other dict shape (legacy ``{condition_name: Evoked}``) is
+    rejected with a clear error so callers migrate.
+    """
+    if isinstance(evoked, dict):
+        keys = set(evoked.keys())
+        if keys.issubset(_STRUCTURED_PAYLOAD_KEYS):
+            return evoked
+        raise ValueError(
+            "save_analysis_outputs no longer accepts the legacy "
+            "{condition: Evoked} dict shape. Wrap per-condition "
+            'evokeds in {"by_type": <dict>} (and optionally add '
+            '"combined" / "diff" entries).'
+        )
+    return {"combined": evoked}
+
+
+def _make_analysis_filename_base(subject, task, session, run):
+    """Build the BIDS basename (no desc segment) for analysis outputs."""
+    parts = [f"sub-{subject}"]
+    if session:
+        parts.append(f"ses-{session}")
+    parts.append(f"task-{task}")
+    if run and not isinstance(run, (list, tuple)):
+        parts.append(f"run-{run}")
+    return "_".join(parts)
+
+
+def _write_evoked_sidecar(
+    evoked_obj, evoked_path, task, analysis_type,
+    session=None, run=None, condition=None, difference_of=None,
+):
+    """Write a BIDS-derivatives JSON sidecar for an evoked .fif file.
+
+    ``condition`` (per-type) and ``difference_of`` (a 2-tuple/list of
+    condition names) are mutually exclusive. The combined output omits
+    both.
+    """
+    import json
+
+    sidecar = {
+        "Description": "FFR evoked response (averaged epochs).",
+        "GeneratedBy": [
+            {
+                "Name": "ffrprep",
+                "Description": "Frequency-following response analysis pipeline",
+            }
+        ],
+        "TaskName": task,
+        "AnalysisType": analysis_type,
+        "SamplingFrequency": float(evoked_obj.info["sfreq"]),
+        "AverageCount": int(getattr(evoked_obj, "nave", 0)),
+        "Tmin": float(evoked_obj.tmin),
+        "Tmax": float(evoked_obj.tmax),
+        "Channels": list(evoked_obj.ch_names),
+    }
+    # Evoked.save() does NOT write evoked.baseline into the .fif, so
+    # without this field downstream consumers see baseline=None after a
+    # load round-trip and lose access to baseline-anchored metrics
+    # (e.g. RMS SNR).
+    baseline = getattr(evoked_obj, "baseline", None)
+    if baseline is not None:
+        sidecar["Baseline"] = [float(baseline[0]), float(baseline[1])]
+    if session is not None:
+        sidecar["Session"] = str(session)
+    if run is not None:
+        if isinstance(run, (list, tuple)):
+            sidecar["ConcatenatedRuns"] = [str(r) for r in run]
+        else:
+            sidecar["Run"] = str(run)
+    if condition is not None:
+        sidecar["Condition"] = str(condition)
+    if difference_of is not None:
+        sidecar["DifferenceOf"] = [str(difference_of[0]), str(difference_of[1])]
+    with open(evoked_path.with_suffix(".json"), "w") as f:
+        json.dump(sidecar, f, indent=2)
+
+
 def save_analysis_outputs(
     evoked, bids_root, subject, task,
     session=None, run=None, analysis_type="evoked", output_dir=None,
@@ -1874,8 +2001,13 @@ def save_analysis_outputs(
 
     Parameters
     ----------
-    evoked : mne.Evoked or dict of mne.Evoked
-        Evoked data to save.
+    evoked : mne.Evoked or dict
+        Either a single Evoked (treated as the combined output) or a
+        structured payload with keys drawn from
+        ``{"by_type", "combined", "diff"}`` (any subset).
+        ``by_type`` is ``dict[str, Evoked]`` keyed by trial-type name;
+        ``combined`` is a single ``mne.Evoked``; ``diff`` is
+        ``dict[tuple[str, str], Evoked]`` keyed by ``(A, B)``.
     bids_root : str or pathlib.Path
         Path to the BIDS dataset root directory.
     subject : str
@@ -1892,95 +2024,57 @@ def save_analysis_outputs(
     Returns
     -------
     output_paths : list of pathlib.Path
-        Paths to the saved files.
+        Paths to the saved files. Per-type entries use
+        ``_desc-{analysis_type}{Cond}.fif``; combined uses
+        ``_desc-{analysis_type}.fif``; diff uses
+        ``_desc-{analysis_type}Diff{A}Vs{B}.fif``.
     """
+    payload = _normalize_evoked_payload(evoked)
 
-    # Set up derivatives directory. output_dir, when provided, redirects
-    # the derivatives root away from the BIDS-default
-    # bids_root/derivatives.
     derivatives_info = setup_derivatives_directories(
         bids_root, subject, create_preprocessing=False, create_analysis=True,
         output_dir=output_dir,
     )
-
+    subject_dir = derivatives_info["analysis_subject_dir"]
+    filename_base = _make_analysis_filename_base(subject, task, session, run)
     output_paths = []
 
-    # Build base filename with task (required) and session/run (optional)
-    filename_base_parts = [f"sub-{subject}"]
+    by_type = payload.get("by_type") or {}
+    for condition, evoked_obj in by_type.items():
+        cond = str(condition).capitalize()
+        path = subject_dir / f"{filename_base}_desc-{analysis_type}{cond}.fif"
+        evoked_obj.save(path)
+        _write_evoked_sidecar(
+            evoked_obj, path, task, analysis_type,
+            session=session, run=run, condition=condition,
+        )
+        output_paths.append(path)
 
-    # Session is optional
-    if session:
-        filename_base_parts.append(f"ses-{session}")
+    combined = payload.get("combined")
+    if combined is not None:
+        path = subject_dir / f"{filename_base}_desc-{analysis_type}.fif"
+        combined.save(path)
+        _write_evoked_sidecar(
+            combined, path, task, analysis_type,
+            session=session, run=run,
+        )
+        output_paths.append(path)
 
-    # Task is required for BIDS compliance
-    filename_base_parts.append(f"task-{task}")
+    diff = payload.get("diff") or {}
+    for (a, b), evoked_obj in diff.items():
+        a_cap, b_cap = str(a).capitalize(), str(b).capitalize()
+        path = subject_dir / (
+            f"{filename_base}_desc-{analysis_type}Diff{a_cap}Vs{b_cap}.fif"
+        )
+        evoked_obj.save(path)
+        _write_evoked_sidecar(
+            evoked_obj, path, task, analysis_type,
+            session=session, run=run, difference_of=(a, b),
+        )
+        output_paths.append(path)
 
-    # Run is optional. Skip the run token for concatenated runs (run is
-    # a list/tuple) — the merged output has no single run identifier.
-    if run and not isinstance(run, (list, tuple)):
-        filename_base_parts.append(f"run-{run}")
+    import json as _json
 
-    filename_base = "_".join(filename_base_parts)
-
-    import json
-
-    def _write_evoked_sidecar(evoked_obj, evoked_path, condition=None):
-        """Write a BIDS-derivatives JSON sidecar for an evoked .fif file."""
-        sidecar_path = evoked_path.with_suffix(".json")
-        sidecar = {
-            "Description": "FFR evoked response (averaged epochs).",
-            "GeneratedBy": [
-                {
-                    "Name": "ffrprep",
-                    "Description": "Frequency-following response analysis pipeline",
-                }
-            ],
-            "TaskName": task,
-            "AnalysisType": analysis_type,
-            "SamplingFrequency": float(evoked_obj.info["sfreq"]),
-            "AverageCount": int(getattr(evoked_obj, "nave", 0)),
-            "Tmin": float(evoked_obj.tmin),
-            "Tmax": float(evoked_obj.tmax),
-            "Channels": list(evoked_obj.ch_names),
-        }
-        # Persist the baseline window — MNE's Evoked.save() does NOT write
-        # evoked.baseline into the .fif, so without this field downstream
-        # consumers see baseline=None after a load round-trip and lose
-        # access to baseline-anchored metrics like RMS SNR.
-        baseline = getattr(evoked_obj, "baseline", None)
-        if baseline is not None:
-            sidecar["Baseline"] = [float(baseline[0]), float(baseline[1])]
-        if session is not None:
-            sidecar["Session"] = str(session)
-        if run is not None:
-            if isinstance(run, (list, tuple)):
-                sidecar["ConcatenatedRuns"] = [str(r) for r in run]
-            else:
-                sidecar["Run"] = str(run)
-        if condition is not None:
-            sidecar["Condition"] = str(condition)
-        with open(sidecar_path, "w") as f:
-            json.dump(sidecar, f, indent=2)
-
-    if isinstance(evoked, dict):
-        # Multiple conditions - save each separately
-        for condition, evoked_data in evoked.items():
-            # Format condition name with proper capitalization
-            condition_formatted = str(condition).capitalize()
-            filename = f"{filename_base}_desc-{analysis_type}{condition_formatted}.fif"
-            output_path = derivatives_info["analysis_subject_dir"] / filename
-            evoked_data.save(output_path)
-            _write_evoked_sidecar(evoked_data, output_path, condition=condition)
-            output_paths.append(output_path)
-    else:
-        # Single evoked response
-        filename = f"{filename_base}_desc-{analysis_type}.fif"
-        output_path = derivatives_info["analysis_subject_dir"] / filename
-        evoked.save(output_path)
-        _write_evoked_sidecar(evoked, output_path)
-        output_paths.append(output_path)
-
-    # Create dataset_description.json if it doesn't exist
     dataset_desc_path = derivatives_info["analysis_dir"] / "dataset_description.json"
     if not dataset_desc_path.exists():
         dataset_desc = {
@@ -1991,7 +2085,7 @@ def save_analysis_outputs(
             ],
         }
         with open(dataset_desc_path, "w") as f:
-            json.dump(dataset_desc, f, indent=2)
+            _json.dump(dataset_desc, f, indent=2)
 
     return output_paths
 

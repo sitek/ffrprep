@@ -308,6 +308,9 @@ def _make_analysis_payload(args_snap, deriv_snap, subject, preproc_file):
         "work_dir": str(work_dir),
         "bids_root": args_snap["bids_dir"],
         "by_event_type": bool(args_snap.get("split_by_trial_type", True)),
+        "difference_pairs": parse_difference_pairs(
+            args_snap.get("difference_pairs"),
+        ),
         "analysis_subject_dir": str(deriv_snap["analysis_subject_dir"]),
         "derivatives_root": str(deriv_snap.get("derivatives_root", "")),
     }
@@ -858,6 +861,7 @@ def _analysis_iteration(payload):
     analysis_wf.base_dir = payload["work_dir"]
     analysis_wf.inputs.inputnode.epochs = epochs
     analysis_wf.inputs.inputnode.by_event_type = payload["by_event_type"]
+    analysis_wf.inputs.inputnode.difference_pairs = payload.get("difference_pairs")
     analysis_wf.inputs.inputnode.bids_root = payload["bids_root"]
     analysis_wf.inputs.inputnode.subject = payload["subject"]
     analysis_wf.inputs.inputnode.original_filename = preproc_file.stem
