@@ -762,7 +762,11 @@ def test_preprocessing_workflow_execution(tmp_path):
         Path(data_path) / "derivatives" / "ffrprep-preprocessing" / "sub-03" / "eeg"
     )
     assert derivatives_dir.exists()
-    output_files = list(derivatives_dir.glob("*desc-preproc_epo.fif"))
+    # Glob matches both the bare _desc-preproc_epo.fif (split=False) and
+    # the per-trial-type _desc-preproc{Cond}_epo.fif (split=True default)
+    # naming, so this smoke test stays robust to the split-by-trial-type
+    # default.
+    output_files = list(derivatives_dir.glob("*desc-preproc*_epo.fif"))
     assert len(output_files) > 0
 
 
@@ -1205,6 +1209,130 @@ def test_save_preprocessing_outputs_scalar_input_unchanged(tmp_path):
         "scalar Epochs input must keep returning a single Path"
     )
     assert out_path.name == "sub-01_task-active_run-2_desc-preproc_epo.fif"
+
+
+def _two_condition_epochs_combined(tmp_path):
+    """Build a single multi-event Epochs object + bids_root for split tests.
+
+    Mirrors :func:`_two_condition_epochs_dict` but returns the combined
+    Epochs (event_id={"Pos": 1, "Neg": 2}) instead of pre-split slices,
+    so the splitting logic itself is exercised by the test.
+    """
+    import numpy as np
+    from mne import Epochs, create_info
+    from mne.io import RawArray
+
+    sfreq = 1000.0
+    n_channels = 2
+    n_times = int(sfreq * 8)
+    rng = np.random.default_rng(17)
+    data = rng.normal(0, 1e-6, size=(n_channels, n_times))
+    info = create_info(["Cz", "F3"], sfreq=sfreq, ch_types=["eeg"] * 2)
+    raw = RawArray(data, info, verbose=False)
+
+    onsets = [1000, 2000, 3000, 4000, 5000, 6000]
+    codes = [1, 2, 1, 2, 1, 2]
+    events = np.column_stack([
+        np.array(onsets, dtype=int),
+        np.zeros(len(onsets), dtype=int),
+        np.array(codes, dtype=int),
+    ])
+    epochs = Epochs(
+        raw, events, event_id={"Pos": 1, "Neg": 2},
+        tmin=-0.04, tmax=0.4, baseline=(-0.04, 0.0),
+        preload=True, verbose=False,
+    )
+    bids_root = tmp_path / "bids"
+    bids_root.mkdir()
+    return epochs, bids_root
+
+
+def test_save_preprocessing_node_split_writes_per_condition_files(tmp_path):
+    """``split_by_trial_type=True`` splits the Epochs and writes per-cond files."""
+    from pathlib import Path
+
+    from ffrprep.preproc import save_preprocessing_node
+
+    epochs, bids_root = _two_condition_epochs_combined(tmp_path)
+    output_paths = save_preprocessing_node(
+        epochs, str(bids_root), "01", task="active", run=1,
+        split_by_trial_type=True,
+    )
+    assert isinstance(output_paths, list)
+    names = sorted(Path(p).name for p in output_paths)
+    assert names == [
+        "sub-01_task-active_run-1_desc-preprocNeg_epo.fif",
+        "sub-01_task-active_run-1_desc-preprocPos_epo.fif",
+    ]
+    for p in output_paths:
+        assert Path(p).exists()
+
+
+def test_save_preprocessing_node_no_split_writes_bare_file(tmp_path):
+    """``split_by_trial_type=False`` writes one bare ``_desc-preproc_epo.fif``."""
+    from pathlib import Path
+
+    from ffrprep.preproc import save_preprocessing_node
+
+    epochs, bids_root = _two_condition_epochs_combined(tmp_path)
+    output_path = save_preprocessing_node(
+        epochs, str(bids_root), "01", task="active", run=1,
+        split_by_trial_type=False,
+    )
+    assert isinstance(output_path, str)
+    assert Path(output_path).name == "sub-01_task-active_run-1_desc-preproc_epo.fif"
+
+
+def test_save_preprocessing_node_split_default_true(tmp_path):
+    """Default ``split_by_trial_type=True`` matches the CLI default."""
+    from ffrprep.preproc import save_preprocessing_node
+
+    epochs, bids_root = _two_condition_epochs_combined(tmp_path)
+    output_paths = save_preprocessing_node(
+        epochs, str(bids_root), "01", task="active", run=1,
+    )
+    assert isinstance(output_paths, list), (
+        "default save_preprocessing_node must split (matches CLI default)"
+    )
+    assert len(output_paths) == 2
+
+
+def test_save_preprocessing_node_split_single_condition(tmp_path):
+    """A single-event Epochs still emits a per-condition file under split=True."""
+    from pathlib import Path
+
+    import numpy as np
+    from mne import Epochs, create_info
+    from mne.io import RawArray
+
+    from ffrprep.preproc import save_preprocessing_node
+
+    sfreq = 1000.0
+    rng = np.random.default_rng(19)
+    data = rng.normal(0, 1e-6, size=(2, int(sfreq * 5)))
+    info = create_info(["Cz", "F3"], sfreq=sfreq, ch_types=["eeg"] * 2)
+    raw = RawArray(data, info, verbose=False)
+    events = np.column_stack([
+        np.array([1000, 2000, 3000], dtype=int),
+        np.zeros(3, dtype=int),
+        np.ones(3, dtype=int),
+    ])
+    epochs = Epochs(
+        raw, events, event_id={"Pos": 1},
+        tmin=-0.04, tmax=0.4, baseline=(-0.04, 0.0),
+        preload=True, verbose=False,
+    )
+    bids_root = tmp_path / "bids"
+    bids_root.mkdir()
+    output_paths = save_preprocessing_node(
+        epochs, str(bids_root), "01", task="active", run=1,
+        split_by_trial_type=True,
+    )
+    assert isinstance(output_paths, list)
+    assert len(output_paths) == 1
+    assert Path(output_paths[0]).name == (
+        "sub-01_task-active_run-1_desc-preprocPos_epo.fif"
+    )
 
 
 def _two_evoked_dict_for_save_analysis(tmp_path):

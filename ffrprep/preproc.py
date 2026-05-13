@@ -1128,6 +1128,7 @@ def create_preprocessing_workflow(name="ffrprep_preproc", disk_backed=False):
                 "event_id",
                 "events_file",
                 "trial_types",
+                "split_by_trial_type",
                 "output_dir",
             ]
         ),
@@ -1281,6 +1282,7 @@ def create_preprocessing_workflow(name="ffrprep_preproc", disk_backed=False):
                 "session",
                 "run",
                 "output_dir",
+                "split_by_trial_type",
             ],
             output_names=["output_path"],
             function=save_preprocessing_node,
@@ -1383,6 +1385,7 @@ def create_preprocessing_workflow(name="ffrprep_preproc", disk_backed=False):
                         # the SUBJECT-level eeg dir for intermediate
                         # disk-backed saves; that's a different value.
                         ("derivatives_root", "output_dir"),
+                        ("split_by_trial_type", "split_by_trial_type"),
                     ],
                 ),
                 (load_node, save_node, [("original_filename", "original_filename")]),
@@ -1453,6 +1456,7 @@ def create_preprocessing_workflow(name="ffrprep_preproc", disk_backed=False):
                         # the SUBJECT-level eeg dir for intermediate
                         # disk-backed saves; that's a different value.
                         ("derivatives_root", "output_dir"),
+                        ("split_by_trial_type", "split_by_trial_type"),
                     ],
                 ),
                 (
@@ -2092,7 +2096,7 @@ def save_analysis_outputs(
 
 def save_preprocessing_node(
     epochs, bids_root, subject, task=None, original_filename=None,
-    session=None, run=None, output_dir=None,
+    session=None, run=None, output_dir=None, split_by_trial_type=True,
 ):
     """
     Nipype-compatible function to save preprocessing outputs.
@@ -2111,11 +2115,17 @@ def save_preprocessing_node(
         Session label (without 'ses-' prefix).
     run : str or int, optional
         Run label (without 'run-' prefix).
+    split_by_trial_type : bool, default True
+        When True (default) split ``epochs`` by ``event_id`` and write
+        one ``_desc-preproc{Cond}_epo.fif`` per trial type; the return
+        becomes a list of paths. When False, fall back to a single
+        ``_desc-preproc_epo.fif`` file.
 
     Returns
     -------
-    output_path : str
-        Path to the saved epochs file.
+    output_path : str or list[str]
+        Single path under ``split_by_trial_type=False``; list of paths
+        (one per trial type) under ``split_by_trial_type=True``.
     """
     # If task is not provided, try to infer it from the original filename
     if task is None and original_filename:
@@ -2139,8 +2149,19 @@ def save_preprocessing_node(
     from importlib import import_module
 
     mod = import_module("ffrprep.preproc")
+    # When split_by_trial_type=True, fan the multi-event Epochs out
+    # into a {condition: epochs[condition]} dict so save_preprocessing_outputs
+    # writes one BIDS-derivative file per trial type. event_id ordering
+    # determines the on-disk file order.
+    if split_by_trial_type and getattr(epochs, "event_id", None):
+        epochs_arg = {
+            cond: epochs[cond] for cond in epochs.event_id
+        }
+    else:
+        epochs_arg = epochs
+
     output_path = mod.save_preprocessing_outputs(
-        epochs, bids_root, subject, task, session, run,
+        epochs_arg, bids_root, subject, task, session, run,
         output_dir=output_dir,
     )
 
