@@ -205,14 +205,17 @@ def test_build_epoch_section_includes_response_consistency_row(synthetic_epochs)
 def synthetic_two_polarity_epochs():
     """Two Epochs objects, one per polarity, with matched sampling.
 
-    Sized to satisfy ``compute_phase_consistency``'s window length
-    arithmetic (chunksize=40ms at 1 kHz = 40 samples; need enough
-    post-onset samples for at least one window to fit).
+    Uses sfreq=8000 to match the FFR sampling rate range the
+    PR-35 ``compute_phase_consistency`` was designed for: its
+    default ``freqcap=2000`` allocates a ``(freqcap+1, …)``
+    array indexed by ``[:freqcap+1, :]`` against an
+    ``np.fft.fft(..., n=int(sfreq))`` output, so sfreq must be
+    >= freqcap+1 to fill that slice.
     """
     n_channels = 1
     n_epochs = 5
-    sfreq = 1000.0
-    n_times = 200  # 200 samples; chunksize defaults to 40ms = 40 samples
+    sfreq = 8000.0
+    n_times = 8000  # 1 second of post-onset data
     rng_a = np.random.default_rng(101)
     rng_b = np.random.default_rng(102)
     data_a = rng_a.normal(0, 1e-6, size=(n_epochs, n_channels, n_times))
@@ -264,6 +267,69 @@ def test_build_phase_consistency_section_honors_alpha(
         alpha=0.05,
     )
     assert section["summary"]["Significance threshold (alpha)"] == "0.05"
+
+
+def test_build_evoked_section_accepts_extra_summary():
+    """Caller-supplied extra_summary entries are folded into the summary table.
+
+    Mirrors the same affordance build_epoch_section has so the CLI can
+    pass through computed scalars (e.g. corr_stim_to_resp's peak r and
+    lag) without having to monkey-patch the return dict.
+    """
+    n_channels = 1
+    sfreq = 1000.0
+    n_times = 100
+    rng = np.random.default_rng(53)
+    data = rng.normal(0, 1e-6, size=(n_channels, n_times))
+    info = mne.create_info(
+        ch_names=["Cz"], sfreq=sfreq, ch_types=["eeg"],
+    )
+    evoked = mne.EvokedArray(data, info, tmin=-0.04, verbose=False)
+    evoked.baseline = (-0.04, 0.0)  # so RMS SNR row is present too
+
+    from ffrprep.reports import build_evoked_section
+
+    section = build_evoked_section(
+        evoked,
+        section_id="evoked-active-1-0-0",
+        title="Evoked (positive)",
+        label="Evoked",
+        extra_summary={
+            "Stim correlation (peak r)": "0.347",
+            "Stim correlation (lag, ms)": "5.0",
+        },
+    )
+    summary = section["summary"]
+    assert summary.get("Stim correlation (peak r)") == "0.347"
+    assert summary.get("Stim correlation (lag, ms)") == "5.0"
+
+
+def test_build_evoked_section_extra_summary_overrides_defaults():
+    """extra_summary keys can override values populated by the builder.
+
+    Useful for cases where the caller has more accurate metadata than
+    what's discoverable from the Evoked object alone (e.g. a corrected
+    average count read from a sidecar).
+    """
+    n_channels = 1
+    sfreq = 1000.0
+    n_times = 100
+    rng = np.random.default_rng(57)
+    data = rng.normal(0, 1e-6, size=(n_channels, n_times))
+    info = mne.create_info(
+        ch_names=["Cz"], sfreq=sfreq, ch_types=["eeg"],
+    )
+    evoked = mne.EvokedArray(data, info, tmin=-0.04, verbose=False)
+
+    from ffrprep.reports import build_evoked_section
+
+    section = build_evoked_section(
+        evoked,
+        section_id="evoked-active-1-0-0",
+        title="Evoked",
+        extra_summary={"Channels": "OVERRIDDEN"},
+    )
+    assert section["summary"]["Channels"] == "OVERRIDDEN"
 
 
 def test_build_epoch_section_skips_response_consistency_for_few_epochs():
