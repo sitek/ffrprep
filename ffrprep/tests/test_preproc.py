@@ -1211,6 +1211,34 @@ def test_save_preprocessing_outputs_scalar_input_unchanged(tmp_path):
     assert out_path.name == "sub-01_task-active_run-2_desc-preproc_epo.fif"
 
 
+def test_save_preprocessing_outputs_preserves_event_id_roundtrip(tmp_path):
+    """save_preprocessing_outputs round-trips epochs.event_id through disk.
+
+    Without preserving events / event_id through the EpochsArray
+    reconstruction, downstream consumers that read multiple
+    per-condition files and call ``epochs[cond]`` lose all trial-type
+    metadata — the saved file's event_id collapses to the MNE default
+    ``{"1": 1}``.
+    """
+    import mne
+
+    epochs_dict, bids_root = _two_condition_epochs_dict(tmp_path)
+    out_paths = save_preprocessing_outputs(
+        epochs_dict, bids_root, subject="01", task="active", run=1,
+    )
+    for p in out_paths:
+        loaded = mne.read_epochs(str(p), preload=True, verbose=False)
+        # Each per-condition file should carry exactly the trial-type
+        # name it was sliced for; not the MNE-default {"1": 1}.
+        assert "1" not in loaded.event_id, (
+            f"{p.name}: event_id collapsed to MNE default — "
+            f"trial-type metadata was stripped during save"
+        )
+        assert set(loaded.event_id.keys()).issubset({"Pos", "Neg"}), (
+            f"{p.name}: unexpected event_id keys {loaded.event_id}"
+        )
+
+
 def _two_condition_epochs_combined(tmp_path):
     """Build a single multi-event Epochs object + bids_root for split tests.
 

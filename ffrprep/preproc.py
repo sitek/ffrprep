@@ -1068,11 +1068,17 @@ def build_analysis_payload(epochs, by_event_type=True, difference_pairs=None):
         A subset of ``{"by_type", "combined", "diff"}`` populated based
         on ``by_event_type`` and the pair-discovery rules above.
     """
-    payload = {"combined": make_combined_evoked(epochs)}
+    # Re-import the helpers via the module so this function works inside
+    # a Nipype Function-node subprocess (where the source is serialized
+    # and re-executed without the original module's namespace).
+    from importlib import import_module
+
+    mod = import_module("ffrprep.preproc")
+    payload = {"combined": mod.make_combined_evoked(epochs)}
     if by_event_type:
-        by_type = make_evoked(epochs, by_event_type=True)
+        by_type = mod.make_evoked(epochs, by_event_type=True)
         payload["by_type"] = by_type
-        diffs = make_difference_evokeds(by_type, pairs=difference_pairs)
+        diffs = mod.make_difference_evokeds(by_type, pairs=difference_pairs)
         if diffs:
             payload["diff"] = diffs
     return payload
@@ -1748,8 +1754,18 @@ def _save_one_preproc_epochs(
     data = epochs.get_data()
     info = epochs.info.copy()
     tmin = getattr(epochs, "tmin", None)
+    # Carry the events array + event_id mapping through the
+    # EpochsArray reconstruction. Without these, EpochsArray assigns
+    # dummy events with event_id={"1": 1}, stripping trial-type
+    # metadata — which used to be invisible (single-Evoked downstream)
+    # but the per-condition split flow now reads epochs back and relies
+    # on event_id to recover the trial types.
+    events = getattr(epochs, "events", None)
+    event_id = getattr(epochs, "event_id", None)
 
-    new_epochs = _mne.EpochsArray(data, info, tmin=tmin)
+    new_epochs = _mne.EpochsArray(
+        data, info, events=events, tmin=tmin, event_id=event_id,
+    )
     new_epochs.save(output_path, overwrite=True)
 
     filename = output_path.name
