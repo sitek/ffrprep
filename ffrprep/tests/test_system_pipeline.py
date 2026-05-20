@@ -63,8 +63,15 @@ def _run_ffrprep(bids_root, output_dir, work_dir, *extra_args):
     return subprocess.run(cmd, capture_output=True, text=True, check=True)
 
 
-def _derivatives_root(workspace):
-    return Path(workspace) / "derivatives" / "ffrprep-preprocessing"
+def _derivatives_root(output_dir):
+    """Return the preprocessing derivatives root under the explicit output dir.
+
+    The CLI now honors the BIDS-App ``output_dir`` positional and writes
+    derivatives there directly (no implicit ``<bids_root>/derivatives``
+    fallback), so each test must pass the same ``out_dir`` it gave to
+    ``_run_ffrprep``.
+    """
+    return Path(output_dir) / "ffrprep-preprocessing"
 
 
 # ---------------------------------------------------------------------------
@@ -80,7 +87,7 @@ def test_single_subject_single_run(bids_workspace, tmp_path):
         "--task", "active",
         "--run", "1",
     )
-    sub_deriv = _derivatives_root(bids_workspace) / "sub-03"
+    sub_deriv = _derivatives_root(out_dir) / "sub-03"
     assert sub_deriv.is_dir()
     assert any(sub_deriv.rglob("*.fif"))
 
@@ -98,7 +105,7 @@ def test_single_subject_multiple_runs(bids_workspace, tmp_path):
         "--task", "active",
         "--run", "1", "2",
     )
-    sub_deriv = _derivatives_root(bids_workspace) / "sub-03"
+    sub_deriv = _derivatives_root(out_dir) / "sub-03"
     fifs = sorted(sub_deriv.rglob("sub-03_task-active_run-*.fif"))
     assert len(fifs) >= 2
 
@@ -116,7 +123,7 @@ def test_single_subject_multiple_tasks(bids_workspace, tmp_path):
         "--task", "active", "passive",
         "--run", "1",
     )
-    sub_deriv = _derivatives_root(bids_workspace) / "sub-03"
+    sub_deriv = _derivatives_root(out_dir) / "sub-03"
     active_fifs = list(sub_deriv.rglob("sub-03_task-active_run-*.fif"))
     passive_fifs = list(sub_deriv.rglob("sub-03_task-passive_run-*.fif"))
     assert active_fifs, "missing derivatives for task-active"
@@ -136,7 +143,7 @@ def test_multiple_subjects_single_run(bids_workspace, tmp_path):
         "--task", "active",
         "--run", "1",
     )
-    base = _derivatives_root(bids_workspace)
+    base = _derivatives_root(out_dir)
     assert (base / "sub-03").is_dir()
     assert (base / "sub-21").is_dir()
 
@@ -159,7 +166,7 @@ def test_concat_runs_single_subject(bids_workspace, tmp_path):
         "--task", "active",
         "--concat-runs",
     )
-    sub_deriv = _derivatives_root(bids_workspace) / "sub-03"
+    sub_deriv = _derivatives_root(out_dir) / "sub-03"
     fifs = sorted(sub_deriv.rglob("sub-03_task-active*.fif"))
     assert fifs, "concat-runs produced no derivatives"
     # No per-run output should appear when runs are concatenated
@@ -185,7 +192,7 @@ def test_save_each_node_writes_intermediates(bids_workspace, tmp_path):
     # the work dir or under derivatives. We assert the count is materially
     # larger than the single output produced without --save-each-node.
     intermediate = list(work_dir.rglob("*.fif"))
-    intermediate += list(_derivatives_root(bids_workspace).rglob("*.fif"))
+    intermediate += list(_derivatives_root(out_dir).rglob("*.fif"))
     assert len(intermediate) >= 3, (
         f"--save-each-node should leave at least three intermediate .fif "
         f"files on disk; found {len(intermediate)}: {intermediate}"
