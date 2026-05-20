@@ -59,9 +59,11 @@ def _propagate_run_provenance(preproc_file, analysis_dir):
     if not fields:
         return
 
-    # The analysis sidecar(s) for this preproc file share its base stem
-    # minus the desc-preproc_epo suffix.
-    base_stem = preproc_file.stem.replace("_desc-preproc_epo", "")
+    # The analysis sidecar(s) for this preproc file share its base
+    # stem — everything before the ``_desc-preproc`` segment. Using
+    # partition() handles both the bare ``_desc-preproc_epo`` and
+    # per-trial-type ``_desc-preproc{Cond}_epo`` filenames.
+    base_stem, _, _ = preproc_file.stem.partition("_desc-preproc")
     for analysis_sidecar in analysis_dir.glob(f"{base_stem}_desc-*.json"):
         with open(analysis_sidecar) as f:
             data = json.load(f)
@@ -874,7 +876,7 @@ def _build_analysis_report(args, derivatives_info, subject):
 
 
 def _check_preproc_output_or_raise(payload):
-    """Confirm the expected `_desc-preproc_epo.fif` landed on disk.
+    """Confirm at least one preprocessing output landed on disk.
 
     nipype caches by input hash and reports "Cached, collecting
     precomputed outputs" without checking that the recorded output
@@ -882,13 +884,17 @@ def _check_preproc_output_or_raise(payload):
     cache wasn't, the workflow silently "succeeds" without writing
     anything. Catch that here with an actionable error.
 
+    The glob matches both the bare ``_desc-preproc_epo.fif`` (under
+    ``--no-split-by-trial-type``) and per-trial-type
+    ``_desc-preproc{Cond}_epo.fif`` (default) variants.
+
     Returns the matched output file paths.
     """
     expected_dir = Path(payload["output_dir"])
     subject = payload["subject"]
     task_label = payload["task_label"]
     candidates = sorted(expected_dir.glob(
-        f"sub-{subject}_*task-{task_label}_*desc-preproc_epo.fif"
+        f"sub-{subject}_*task-{task_label}_*desc-preproc*_epo.fif"
     ))
     if payload["kind"] == "per_run":
         run_label = payload["run_label"]
@@ -900,7 +906,7 @@ def _check_preproc_output_or_raise(payload):
         marker = "concat"
     if not candidates:
         raise FileNotFoundError(
-            f"Preprocessing reported success but no _desc-preproc_epo.fif "
+            f"Preprocessing reported success but no _desc-preproc*_epo.fif "
             f"appeared in {expected_dir} for sub-{subject}, task-{task_label}, "
             f"{marker}. Most likely cause: stale nipype cache pointing at a "
             f"previously-deleted output. Wipe the work directory "
