@@ -178,6 +178,123 @@ def test_build_epoch_section_returns_summary_and_figures(synthetic_epochs):
         assert f["data_uri"].startswith("data:image/png;base64,")
 
 
+def test_build_epoch_section_includes_response_consistency_row(synthetic_epochs):
+    """With >= 10 epochs, summary surfaces a mean trial-to-trial r row."""
+    section = build_epoch_section(
+        synthetic_epochs,
+        section_id="epoched-active-1",
+        title="Epoched - task-active run-1",
+    )
+    summary = section["summary"]
+    consistency_key = "Mean trial-to-trial r"
+    assert consistency_key in summary, (
+        f"summary must include {consistency_key!r} when there are >= 10 "
+        f"epochs; got keys {list(summary.keys())}"
+    )
+    # Pearson r is in [-1, 1]; the formatted string should parse to a
+    # float in that range (allow some tolerance for the trailing format
+    # like a leading sign or scientific notation).
+    raw = summary[consistency_key]
+    value = float(raw)
+    assert -1.0 <= value <= 1.0, (
+        f"trial-to-trial r value out of range: {raw}"
+    )
+
+
+@pytest.fixture
+def synthetic_two_polarity_epochs():
+    """Two Epochs objects, one per polarity, with matched sampling.
+
+    Sized to satisfy ``compute_phase_consistency``'s window length
+    arithmetic (chunksize=40ms at 1 kHz = 40 samples; need enough
+    post-onset samples for at least one window to fit).
+    """
+    n_channels = 1
+    n_epochs = 5
+    sfreq = 1000.0
+    n_times = 200  # 200 samples; chunksize defaults to 40ms = 40 samples
+    rng_a = np.random.default_rng(101)
+    rng_b = np.random.default_rng(102)
+    data_a = rng_a.normal(0, 1e-6, size=(n_epochs, n_channels, n_times))
+    data_b = rng_b.normal(0, 1e-6, size=(n_epochs, n_channels, n_times))
+    info = mne.create_info(
+        ch_names=["Cz"], sfreq=sfreq, ch_types=["eeg"],
+    )
+    epochs_a = mne.EpochsArray(data_a, info, tmin=-0.04, verbose=False)
+    epochs_b = mne.EpochsArray(data_b, info, tmin=-0.04, verbose=False)
+    return epochs_a, epochs_b
+
+
+def test_build_phase_consistency_section_returns_summary_and_figure(
+    synthetic_two_polarity_epochs,
+):
+    """build_phase_consistency_section pairs the PR-35 plot with a summary."""
+    from ffrprep.reports import build_phase_consistency_section
+
+    epochs_a, epochs_b = synthetic_two_polarity_epochs
+    section = build_phase_consistency_section(
+        epochs_a, epochs_b,
+        section_id="phase-active-1",
+        title="Phase Consistency - task-active run-1",
+    )
+    assert section["id"] == "phase-active-1"
+    assert "Phase Consistency" in section["title"]
+    # Summary surfaces the sweep count + significance threshold so
+    # report readers can interpret the masked plot.
+    summary = section["summary"]
+    assert "Number of sweeps used" in summary
+    assert "Significance threshold (alpha)" in summary
+    # Exactly one masked-plot figure is embedded as a data URI.
+    figures = section["figures"]
+    assert len(figures) == 1
+    assert figures[0]["data_uri"].startswith("data:image/png;base64,")
+
+
+def test_build_phase_consistency_section_honors_alpha(
+    synthetic_two_polarity_epochs,
+):
+    """An explicit ``alpha`` overrides the default significance level."""
+    from ffrprep.reports import build_phase_consistency_section
+
+    epochs_a, epochs_b = synthetic_two_polarity_epochs
+    section = build_phase_consistency_section(
+        epochs_a, epochs_b,
+        section_id="phase-active-1",
+        title="Phase Consistency",
+        alpha=0.05,
+    )
+    assert section["summary"]["Significance threshold (alpha)"] == "0.05"
+
+
+def test_build_epoch_section_skips_response_consistency_for_few_epochs():
+    """With < 10 epochs, response_consistency is omitted to avoid noise.
+
+    Pairwise Pearson r is unstable at low N; gating on epoch count
+    keeps the report row honest.
+    """
+    n_channels = 4
+    n_epochs = 5
+    sfreq = 1000.0
+    n_times = 100
+    rng = np.random.default_rng(91)
+    data = rng.normal(0, 1e-6, size=(n_epochs, n_channels, n_times))
+    info = mne.create_info(
+        ch_names=["Cz", "F3", "F4", "Pz"],
+        sfreq=sfreq,
+        ch_types=["eeg"] * n_channels,
+    )
+    epochs = mne.EpochsArray(data, info, tmin=-0.04, verbose=False)
+
+    section = build_epoch_section(
+        epochs,
+        section_id="epoched-active-1",
+        title="Epoched - task-active run-1",
+    )
+    assert "Mean trial-to-trial r" not in section["summary"], (
+        "response_consistency must be omitted when len(epochs) < 10"
+    )
+
+
 def test_build_subject_report_renders_summary_and_figures(tmp_path):
     """Sections with summary + figures render a table and embedded plots."""
     out_dir = tmp_path / "derivatives" / "ffrprep-preprocessing" / "sub-01" / "eeg"
