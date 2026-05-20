@@ -257,3 +257,201 @@ def test_default_parameters(test_dataset_path):
         base_path = path3.parent.parent
         if base_path.name == "ffrprep_raw_data":
             shutil.rmtree(base_path)
+
+
+# ---------------------------------------------------------------------------
+# download_stimuli + --with-stimuli wiring (mocked, no OSF traffic)
+# ---------------------------------------------------------------------------
+
+
+class _NullZip:
+    """Minimal stand-in for zipfile.ZipFile in with_stimuli tests."""
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def extractall(self, *args, **kwargs):
+        pass
+
+
+def test_download_stimuli_writes_to_root_stimuli_dir(tmp_path, monkeypatch):
+    """download_stimuli puts every OSF-fetched file under <dataset>/stimuli/.
+
+    Injects a known ``stim_urls`` mapping so the test stays decoupled
+    from whatever real OSF IDs the module ships with; verifies that
+    every entry is routed to ``_download_single_file`` with the
+    BIDS-spec ``<dataset>/ffrprep_raw_data/stimuli`` destination.
+    """
+    from ffrprep.datasets import download_stimuli
+
+    captured = []
+
+    def fake_download_single_file(osf_url, dest_path, save_name=None):
+        captured.append({
+            "osf_url": osf_url,
+            "dest_path": Path(dest_path),
+            "save_name": save_name,
+        })
+        target = Path(dest_path) / (save_name or "downloaded.bin")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.touch()
+        return target
+
+    monkeypatch.setattr(
+        "ffrprep.datasets._download_single_file",
+        fake_download_single_file,
+    )
+    # Inject a known non-placeholder mapping so the loop fires once
+    # regardless of what the production ``STIM_URLS`` constant
+    # currently contains. (Real OSF IDs land later via a follow-up
+    # commit.)
+    monkeypatch.setattr(
+        "ffrprep.datasets.STIM_URLS",
+        {"fixture_stim.wav": "fakeosfid"},
+    )
+
+    stim_path = download_stimuli(dataset_path=tmp_path)
+
+    assert stim_path is not None, "download_stimuli should return a path"
+    assert isinstance(stim_path, Path), "Returned path should be Path"
+    assert stim_path == tmp_path / "ffrprep_raw_data" / "stimuli", (
+        "Stimuli must land at <dataset>/ffrprep_raw_data/stimuli per BIDS"
+    )
+    assert stim_path.exists(), "stimuli directory must be created"
+    assert captured, "At least one stimulus file should be downloaded"
+    for entry in captured:
+        assert entry["dest_path"] == stim_path, (
+            f"Every download routed to {stim_path}; got {entry['dest_path']}"
+        )
+
+
+def test_download_stimuli_default_dataset_path_is_cwd(monkeypatch, tmp_path):
+    """When ``dataset_path=None``, files land under cwd/ffrprep_raw_data/stimuli."""
+    from ffrprep.datasets import download_stimuli
+
+    monkeypatch.chdir(tmp_path)
+
+    def fake_download_single_file(osf_url, dest_path, save_name=None):
+        target = Path(dest_path) / (save_name or "stub.bin")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.touch()
+        return target
+
+    monkeypatch.setattr(
+        "ffrprep.datasets._download_single_file",
+        fake_download_single_file,
+    )
+
+    stim_path = download_stimuli()
+    # When dataset_path=None the helper builds a path off os.curdir
+    # (matching the existing download_raw_data convention), so the
+    # return may be relative; compare resolved forms.
+    expected = tmp_path / "ffrprep_raw_data" / "stimuli"
+    assert stim_path.resolve() == expected.resolve()
+    assert stim_path.exists()
+
+
+def test_download_example_data_default_with_stimuli_false(monkeypatch, tmp_path):
+    """``download_example_data`` does NOT download stimuli by default."""
+    from ffrprep.datasets import download_example_data
+
+    stim_called = {"n": 0}
+
+    def fake_download_raw_data(subjects=1, dataset_path=None, with_stimuli=False):
+        return Path(dataset_path or tmp_path) / "ffrprep_raw_data"
+
+    def fake_download_stimuli(dataset_path=None):
+        stim_called["n"] += 1
+        return Path("ignored")
+
+    monkeypatch.setattr(
+        "ffrprep.datasets.download_raw_data",
+        fake_download_raw_data,
+    )
+    monkeypatch.setattr(
+        "ffrprep.datasets.download_stimuli",
+        fake_download_stimuli,
+    )
+
+    download_example_data(dataset_path=tmp_path)
+    assert stim_called["n"] == 0, (
+        "download_example_data must NOT fetch stimuli by default"
+    )
+
+
+def test_download_example_data_with_stimuli_true_calls_download_stimuli(
+    monkeypatch, tmp_path,
+):
+    """``with_stimuli=True`` triggers exactly one ``download_stimuli`` call."""
+    from ffrprep.datasets import download_example_data
+
+    stim_calls = []
+
+    def fake_download_raw_data(subjects=1, dataset_path=None, with_stimuli=False):
+        return Path(dataset_path or tmp_path) / "ffrprep_raw_data"
+
+    def fake_download_stimuli(dataset_path=None):
+        stim_calls.append(dataset_path)
+        return Path("stub")
+
+    monkeypatch.setattr(
+        "ffrprep.datasets.download_raw_data",
+        fake_download_raw_data,
+    )
+    monkeypatch.setattr(
+        "ffrprep.datasets.download_stimuli",
+        fake_download_stimuli,
+    )
+
+    download_example_data(dataset_path=tmp_path, with_stimuli=True)
+    assert len(stim_calls) == 1, (
+        "with_stimuli=True must call download_stimuli exactly once"
+    )
+    assert stim_calls[0] == tmp_path, (
+        "download_stimuli should receive the same dataset_path"
+    )
+
+
+def test_download_raw_data_with_stimuli_true_calls_download_stimuli(
+    monkeypatch, tmp_path,
+):
+    """``download_raw_data(..., with_stimuli=True)`` also triggers stimuli."""
+    from ffrprep.datasets import download_raw_data
+
+    stim_calls = []
+
+    def fake_download_single_file(osf_url, dest_path, save_name=None):
+        target = Path(dest_path) / (save_name or "stub.bin")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.touch()
+        return target
+
+    def fake_download_stimuli(dataset_path=None):
+        stim_calls.append(dataset_path)
+        return Path("stub")
+
+    monkeypatch.setattr(
+        "ffrprep.datasets._download_single_file",
+        fake_download_single_file,
+    )
+    monkeypatch.setattr(
+        "ffrprep.datasets.download_stimuli",
+        fake_download_stimuli,
+    )
+    # Skip the unzip step — fake_download_single_file just touches a
+    # plain file rather than a real zip, so patch ZipFile to a no-op.
+    monkeypatch.setattr(
+        "ffrprep.datasets.zipfile.ZipFile",
+        lambda *a, **kw: _NullZip(),
+    )
+    # Suppress the post-unzip remove of the (non-existent) zip.
+    monkeypatch.setattr("ffrprep.datasets.os.remove", lambda *a, **kw: None)
+
+    download_raw_data(
+        subjects=["21"], dataset_path=tmp_path, with_stimuli=True,
+    )
+    assert len(stim_calls) == 1
+    assert stim_calls[0] == tmp_path

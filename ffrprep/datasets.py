@@ -56,7 +56,7 @@ def _download_single_file(osf_url, output_path, save_name=None):
     return file_path
 
 
-def download_example_data(dataset_path=None):
+def download_example_data(dataset_path=None, with_stimuli=False):
     """
     Download example EEG data (1 subject) for testing and tutorials.
 
@@ -65,6 +65,10 @@ def download_example_data(dataset_path=None):
     dataset_path : string
         Path where the files will be saved. If None, the files will be saved
         in the current working directory. Default = None.
+    with_stimuli : bool
+        When True, additionally download the BIDS ``/stimuli/`` directory
+        used by stimulus-aware analyses (e.g. corr_stim_to_resp). When
+        False (default), only the EEG data is fetched.
 
     Returns
     -------
@@ -82,10 +86,13 @@ def download_example_data(dataset_path=None):
     >>> download_example_data(dataset_path='/home/user/Desktop')
     """
     # Download 1 subject as example data
-    return download_raw_data(subjects=1, dataset_path=dataset_path)
+    path = download_raw_data(subjects=1, dataset_path=dataset_path)
+    if with_stimuli:
+        download_stimuli(dataset_path=dataset_path)
+    return path
 
 
-def download_raw_data(subjects=1, dataset_path=None):
+def download_raw_data(subjects=1, dataset_path=None, with_stimuli=False):
     """
     Download raw EEG data for specified subjects from OSF.
 
@@ -98,6 +105,10 @@ def download_raw_data(subjects=1, dataset_path=None):
     dataset_path : string
         Path where the files will be saved. If None, the files will be saved
         in the current working directory. Default = None.
+    with_stimuli : bool
+        When True, additionally download the BIDS ``/stimuli/`` directory
+        used by stimulus-aware analyses (e.g. corr_stim_to_resp). When
+        False (default), only the EEG data is fetched.
 
     Returns
     -------
@@ -211,7 +222,56 @@ def download_raw_data(subjects=1, dataset_path=None):
     if macosx_path.exists():
         shutil.rmtree(macosx_path, ignore_errors=True)
 
+    if with_stimuli:
+        download_stimuli(dataset_path=dataset_path)
+
     return path
+
+
+# Module-level mapping of stimulus filename -> OSF download ID.
+# Empty until real OSF IDs land. The constant is lifted to module
+# scope so tests can monkeypatch it without a special seam.
+STIM_URLS = {
+    # "<filename>.wav": "<osf_id>",
+    # Populate once OSF stimulus IDs are available from the dataset
+    # maintainer.
+}
+
+
+def download_stimuli(dataset_path=None):
+    """
+    Download FFR stimulus files into a BIDS-compliant ``stimuli/`` directory.
+
+    Stimulus files are referenced by the ``stim_file`` column of each
+    BIDS ``events.tsv`` and consumed by stimulus-aware analyses (e.g.
+    :func:`ffrprep.analysis.corr_stim_to_resp`). They are shared across
+    subjects, so they land at ``<dataset>/ffrprep_raw_data/stimuli/``
+    per the BIDS specification.
+
+    Parameters
+    ----------
+    dataset_path : string, optional
+        Path where the files will be saved. If None, the files will be
+        saved in the current working directory.
+
+    Returns
+    -------
+    stim_dir : Path
+        Path to the ``stimuli/`` directory under the dataset root.
+    """
+    if dataset_path is None:
+        base = Path(os.curdir) / "ffrprep_raw_data"
+    else:
+        base = Path(dataset_path) / "ffrprep_raw_data"
+    stim_dir = base / "stimuli"
+    stim_dir.mkdir(parents=True, exist_ok=True)
+
+    base_url = "https://osf.io/download/"
+    for filename, osf_id in STIM_URLS.items():
+        osf_url = f"{base_url}{osf_id}"
+        _download_single_file(osf_url, stim_dir, save_name=filename)
+
+    return stim_dir
 
 
 def download_epoch_data(subjects=1, dataset_path=None):

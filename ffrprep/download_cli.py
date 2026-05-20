@@ -48,6 +48,25 @@ def _add_subjects_argument(parser):
     )
 
 
+def _add_with_stimuli_argument(parser):
+    """Attach the shared ``--with-stimuli`` opt-in flag to `parser`.
+
+    BooleanOptionalAction so users get both ``--with-stimuli`` and the
+    explicit ``--no-with-stimuli`` inverse; default is False so a
+    plain ``ffrprep-download example`` keeps today's behavior.
+    """
+    parser.add_argument(
+        "--with-stimuli",
+        dest="with_stimuli",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help=(
+            "Additionally download the BIDS /stimuli/ directory needed "
+            "by stimulus-aware analyses (e.g. corr_stim_to_resp)."
+        ),
+    )
+
+
 def get_parser():
     """Create the argument parser for ffrprep-download."""
     __version__ = _pkg_version("ffrprep")
@@ -71,6 +90,7 @@ def get_parser():
         help="Download the single-subject example dataset.",
     )
     _add_out_argument(example_parser)
+    _add_with_stimuli_argument(example_parser)
 
     raw_parser = subparsers.add_parser(
         "raw",
@@ -91,7 +111,10 @@ def get_parser():
 
 def _dispatch_example(args):
     """Run the ``ffrprep-download example`` subcommand."""
-    return download_example_data(dataset_path=args.out)
+    return download_example_data(
+        dataset_path=args.out,
+        with_stimuli=args.with_stimuli,
+    )
 
 
 def _dispatch_raw(args):

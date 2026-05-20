@@ -99,8 +99,9 @@ def test_parse_subjects_multiple_values_returns_list():
 def test_run_download_example_invokes_download_example_data(monkeypatch):
     captured = {}
 
-    def fake_download_example_data(dataset_path=None):
+    def fake_download_example_data(dataset_path=None, with_stimuli=False):
         captured["dataset_path"] = dataset_path
+        captured["with_stimuli"] = with_stimuli
         return Path("/fake/example")
 
     monkeypatch.setattr(
@@ -110,12 +111,13 @@ def test_run_download_example_invokes_download_example_data(monkeypatch):
 
     run_download(["example", "--out", "/tmp/example"])
     assert captured["dataset_path"] == Path("/tmp/example")
+    assert captured["with_stimuli"] is False
 
 
 def test_run_download_example_default_out_is_none(monkeypatch):
     captured = {}
 
-    def fake_download_example_data(dataset_path=None):
+    def fake_download_example_data(dataset_path=None, with_stimuli=False):
         captured["dataset_path"] = dataset_path
 
     monkeypatch.setattr(
@@ -208,3 +210,62 @@ def test_run_download_epoch_defaults(monkeypatch):
     run_download(["epoch"])
     assert captured["subjects"] == 1
     assert captured["dataset_path"] is None
+
+
+# ---------------------------------------------------------------------------
+# --with-stimuli flag wiring on the `example` subparser
+# ---------------------------------------------------------------------------
+
+def test_example_subparser_default_with_stimuli_false():
+    """``ffrprep-download example`` defaults ``with_stimuli`` to False."""
+    parser = get_parser()
+    args = parser.parse_args(["example"])
+    assert args.with_stimuli is False
+
+
+def test_example_subparser_accepts_with_stimuli_flag():
+    """``--with-stimuli`` flips the flag to True."""
+    parser = get_parser()
+    args = parser.parse_args(["example", "--with-stimuli"])
+    assert args.with_stimuli is True
+
+
+def test_example_subparser_accepts_no_with_stimuli_flag():
+    """``--no-with-stimuli`` (BooleanOptionalAction inverse) keeps it False."""
+    parser = get_parser()
+    args = parser.parse_args(["example", "--no-with-stimuli"])
+    assert args.with_stimuli is False
+
+
+def test_run_download_example_forwards_with_stimuli(monkeypatch):
+    """``with_stimuli=True`` is forwarded to ``download_example_data``."""
+    captured = {}
+
+    def fake_download_example_data(dataset_path=None, with_stimuli=False):
+        captured["dataset_path"] = dataset_path
+        captured["with_stimuli"] = with_stimuli
+
+    monkeypatch.setattr(
+        "ffrprep.download_cli.download_example_data",
+        fake_download_example_data,
+    )
+
+    run_download(["example", "--with-stimuli", "--out", "/tmp/ex"])
+    assert captured["dataset_path"] == Path("/tmp/ex")
+    assert captured["with_stimuli"] is True
+
+
+def test_run_download_example_default_with_stimuli_passthrough(monkeypatch):
+    """Without ``--with-stimuli``, the kwarg passes through as False."""
+    captured = {}
+
+    def fake_download_example_data(dataset_path=None, with_stimuli=False):
+        captured["with_stimuli"] = with_stimuli
+
+    monkeypatch.setattr(
+        "ffrprep.download_cli.download_example_data",
+        fake_download_example_data,
+    )
+
+    run_download(["example"])
+    assert captured["with_stimuli"] is False
