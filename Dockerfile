@@ -43,7 +43,7 @@ ENV PYTHONDONTWRITEBYTECODE="1"
 COPY [".", \
       "/home/ffrprep"]
 WORKDIR /home/ffrprep
-RUN uv sync --frozen
+RUN uv sync --frozen --no-dev
 RUN chmod +x /home/ffrprep/ffrprep-entrypoint.sh
 RUN chmod -R a+rX /opt/uv-python /home/ffrprep/.venv
 RUN chmod -R a+rwX /home/ffrprep
@@ -158,7 +158,7 @@ RUN printf '{ \
     { \
       "name": "run", \
       "kwds": { \
-        "command": "uv sync --frozen " \
+        "command": "uv sync --frozen --no-dev" \
       } \
     }, \
     { \
