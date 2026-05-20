@@ -82,11 +82,17 @@ def build_epoch_section(epochs, *, section_id, title, extra_summary=None):
     Wraps :func:`epoch_qa` to produce overview / rejection / average /
     drift figures, encodes them as inline data URIs, and pairs them
     with a summary table (n_epochs, channels, sfreq, time window).
+    For Epochs with ``>= 10`` trials the summary also surfaces the
+    mean pairwise trial-to-trial Pearson correlation
+    (:func:`ffrprep.analysis.response_consistency`); below 10 trials
+    the metric is unstable so the row is omitted.
 
     `extra_summary` is appended to the summary table after the standard
     metadata. Use it to surface info that isn't on the Epochs object
     itself — e.g. pre-rejection counts read from a BIDS sidecar.
     """
+    from .analysis import response_consistency
+
     sfreq = float(epochs.info["sfreq"])
     n_channels = len(epochs.ch_names)
     n_epochs = len(epochs)
@@ -97,6 +103,9 @@ def build_epoch_section(epochs, *, section_id, title, extra_summary=None):
         "Sampling rate": f"{sfreq:g} Hz",
         "Time window": f"{epochs.tmin * 1000:.0f} to {epochs.tmax * 1000:.0f} ms",
     }
+    if n_epochs >= 10:
+        mean_r, _ = response_consistency(epochs)
+        summary["Mean trial-to-trial r"] = f"{mean_r:.3f}"
     if extra_summary:
         summary.update(extra_summary)
 
