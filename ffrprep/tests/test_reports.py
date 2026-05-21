@@ -278,7 +278,7 @@ def test_build_evoked_section_accepts_extra_summary():
     """
     n_channels = 1
     sfreq = 1000.0
-    n_times = 100
+    n_times = 500   # >= 250 so compute_power's TFR wavelets fit
     rng = np.random.default_rng(53)
     data = rng.normal(0, 1e-6, size=(n_channels, n_times))
     info = mne.create_info(
@@ -313,7 +313,7 @@ def test_build_evoked_section_extra_summary_overrides_defaults():
     """
     n_channels = 1
     sfreq = 1000.0
-    n_times = 100
+    n_times = 500   # >= 250 so compute_power's TFR wavelets fit
     rng = np.random.default_rng(57)
     data = rng.normal(0, 1e-6, size=(n_channels, n_times))
     info = mne.create_info(
