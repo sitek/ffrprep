@@ -455,3 +455,171 @@ def test_download_raw_data_with_stimuli_true_calls_download_stimuli(
     )
     assert len(stim_calls) == 1
     assert stim_calls[0] == tmp_path
+
+
+# ---------------------------------------------------------------------------
+# STIM_URLS + events.tsv augmentation (example-dataset specific)
+# ---------------------------------------------------------------------------
+
+def test_stim_urls_contains_pol1_and_pol2():
+    """The production STIM_URLS dict carries both example-dataset polarities.
+
+    Regression-lock so a future edit doesn't silently empty the dict
+    again, leaving ``--with-stimuli`` with nothing to download.
+    """
+    from ffrprep.datasets import STIM_URLS
+
+    assert "Da_Stimulus_44100Hz_pol1.wav" in STIM_URLS
+    assert "Da_Stimulus_44100Hz_pol2.wav" in STIM_URLS
+    for filename, osf_id in STIM_URLS.items():
+        assert isinstance(osf_id, str) and len(osf_id) > 0, (
+            f"STIM_URLS[{filename!r}] must hold a non-empty OSF id"
+        )
+
+
+def _write_events_tsv(path, rows, columns=("onset", "duration", "trial_type", "value")):
+    """Helper: write a minimal BIDS events.tsv at `path`.
+
+    ``rows`` is a list of dicts keyed by column name.
+    """
+    import pandas as pd
+    df = pd.DataFrame(rows, columns=list(columns))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    df.to_csv(path, sep="\t", index=False)
+
+
+def test_augment_events_with_stim_file_adds_column(tmp_path):
+    """Walks every events.tsv under bids_root and adds a stim_file column."""
+    from ffrprep.datasets import _augment_events_with_stim_file
+
+    bids_root = tmp_path / "ds"
+    events_path = bids_root / "sub-03" / "eeg" / "sub-03_task-active_run-1_events.tsv"
+    _write_events_tsv(events_path, [
+        {"onset": 1.0, "duration": 0.17, "trial_type": "positive", "value": 1},
+        {"onset": 2.0, "duration": 0.17, "trial_type": "negative", "value": 2},
+    ])
+
+    _augment_events_with_stim_file(bids_root, mapping={
+        "positive": "stimuli/da_positive.wav",
+        "negative": "stimuli/da_negative.wav",
+    })
+
+    import pandas as pd
+    df = pd.read_csv(events_path, sep="\t")
+    assert "stim_file" in df.columns
+    assert df.loc[df["trial_type"] == "positive", "stim_file"].iloc[0] == (
+        "stimuli/da_positive.wav"
+    )
+    assert df.loc[df["trial_type"] == "negative", "stim_file"].iloc[0] == (
+        "stimuli/da_negative.wav"
+    )
+
+
+def test_augment_events_with_stim_file_skips_when_column_present(tmp_path):
+    """An existing stim_file column is preserved — the helper is idempotent."""
+    from ffrprep.datasets import _augment_events_with_stim_file
+
+    bids_root = tmp_path / "ds"
+    events_path = bids_root / "sub-03" / "eeg" / "sub-03_task-active_run-1_events.tsv"
+    _write_events_tsv(events_path, [
+        {"onset": 1.0, "duration": 0.17, "trial_type": "positive", "value": 1,
+         "stim_file": "stimuli/custom.wav"},
+    ], columns=("onset", "duration", "trial_type", "value", "stim_file"))
+
+    _augment_events_with_stim_file(bids_root, mapping={
+        "positive": "stimuli/da_positive.wav",
+    })
+
+    import pandas as pd
+    df = pd.read_csv(events_path, sep="\t")
+    assert df["stim_file"].iloc[0] == "stimuli/custom.wav", (
+        "existing stim_file values must not be overwritten"
+    )
+
+
+def test_augment_events_with_stim_file_leaves_unknown_trial_types_as_na(tmp_path):
+    """Trial types not in the mapping table get an n/a stim_file entry."""
+    from ffrprep.datasets import _augment_events_with_stim_file
+
+    bids_root = tmp_path / "ds"
+    events_path = bids_root / "sub-03" / "eeg" / "sub-03_task-active_run-1_events.tsv"
+    _write_events_tsv(events_path, [
+        {"onset": 1.0, "duration": 0.17, "trial_type": "positive", "value": 1},
+        {"onset": 2.0, "duration": 0.17, "trial_type": "other", "value": 3},
+    ])
+
+    _augment_events_with_stim_file(bids_root, mapping={
+        "positive": "stimuli/da_positive.wav",
+    })
+
+    import pandas as pd
+    df = pd.read_csv(events_path, sep="\t")
+    assert df.loc[df["trial_type"] == "positive", "stim_file"].iloc[0] == (
+        "stimuli/da_positive.wav"
+    )
+    # Unknown trial_types must surface as the BIDS sentinel "n/a"
+    # (pandas reads it back as NaN, which we then normalise).
+    val = df.loc[df["trial_type"] == "other", "stim_file"].iloc[0]
+    assert val == "n/a" or (isinstance(val, float) and pd.isna(val)), (
+        f"unknown trial_type stim_file should be n/a / NaN; got {val!r}"
+    )
+
+
+def test_augment_events_with_stim_file_walks_multiple_subjects(tmp_path):
+    """Walks every sub-*/eeg/*_events.tsv, not just one fixture file."""
+    from ffrprep.datasets import _augment_events_with_stim_file
+
+    bids_root = tmp_path / "ds"
+    paths = [
+        bids_root / "sub-03" / "eeg" / "sub-03_task-active_run-1_events.tsv",
+        bids_root / "sub-03" / "eeg" / "sub-03_task-passive_run-1_events.tsv",
+        bids_root / "sub-21" / "eeg" / "sub-21_task-active_run-1_events.tsv",
+    ]
+    for p in paths:
+        _write_events_tsv(p, [
+            {"onset": 1.0, "duration": 0.17, "trial_type": "positive", "value": 1},
+        ])
+
+    _augment_events_with_stim_file(bids_root, mapping={
+        "positive": "stimuli/da_positive.wav",
+    })
+
+    import pandas as pd
+    for p in paths:
+        df = pd.read_csv(p, sep="\t")
+        assert "stim_file" in df.columns, f"{p} missing stim_file column"
+
+
+def test_download_stimuli_invokes_augment_events(tmp_path, monkeypatch):
+    """``download_stimuli`` augments events.tsv after writing the wav files."""
+    from ffrprep.datasets import download_stimuli
+
+    # Build a fake bids tree the helper can walk
+    bids_root = tmp_path / "ffrprep_raw_data"
+    events_path = bids_root / "sub-03" / "eeg" / "sub-03_task-active_run-1_events.tsv"
+    _write_events_tsv(events_path, [
+        {"onset": 1.0, "duration": 0.17, "trial_type": "positive", "value": 1},
+    ])
+
+    def fake_download_single_file(osf_url, dest_path, save_name=None):
+        target = Path(dest_path) / (save_name or "stub.bin")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.touch()
+        return target
+
+    monkeypatch.setattr(
+        "ffrprep.datasets._download_single_file",
+        fake_download_single_file,
+    )
+    monkeypatch.setattr(
+        "ffrprep.datasets.STIM_URLS",
+        {"Da_Stimulus_44100Hz_pol1.wav": "fake1"},
+    )
+
+    download_stimuli(dataset_path=tmp_path)
+
+    import pandas as pd
+    df = pd.read_csv(events_path, sep="\t")
+    assert "stim_file" in df.columns, (
+        "download_stimuli must augment events.tsv as part of its workflow"
+    )

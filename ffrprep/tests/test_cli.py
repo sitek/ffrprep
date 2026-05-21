@@ -947,3 +947,76 @@ def test_collect_evoked_groups_empty_dir_returns_empty_list(tmp_path):
     a_dir = tmp_path / "sub-01"
     a_dir.mkdir(parents=True)
     assert _collect_evoked_groups(a_dir) == []
+
+
+# ---------------------------------------------------------------------------
+# _load_stim_waveform: format-flexible stimulus loader
+# ---------------------------------------------------------------------------
+
+def _write_wav(path, data, sample_rate):
+    """Helper: write a numpy array to a .wav file at `path`."""
+    from scipy.io import wavfile
+
+    import numpy as np
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    # int16 keeps the file small and matches the stim format on OSF
+    wavfile.write(str(path), int(sample_rate), data.astype(np.int16))
+
+
+def test_load_stim_waveform_reads_wav(tmp_path):
+    """A .wav file is loaded as (sample_rate, 1-D mono float array)."""
+    import numpy as np
+
+    from ffrprep.ffrprep_cli import _load_stim_waveform
+
+    sample_rate = 44100
+    data = (np.random.default_rng(0).integers(-1000, 1000, size=512))
+    wav_path = tmp_path / "stim.wav"
+    _write_wav(wav_path, data, sample_rate)
+
+    result = _load_stim_waveform(wav_path)
+    assert result is not None
+    sr, waveform = result
+    assert int(sr) == sample_rate
+    assert waveform.ndim == 1
+    assert len(waveform) == 512
+
+
+def test_load_stim_waveform_collapses_stereo(tmp_path):
+    """A multi-channel .wav file is collapsed to mono by averaging channels."""
+    import numpy as np
+    from scipy.io import wavfile
+
+    from ffrprep.ffrprep_cli import _load_stim_waveform
+
+    sample_rate = 44100
+    n_samples = 128
+    rng = np.random.default_rng(1)
+    data = rng.integers(-500, 500, size=(n_samples, 2)).astype(np.int16)
+    wav_path = tmp_path / "stereo.wav"
+    wav_path.parent.mkdir(parents=True, exist_ok=True)
+    wavfile.write(str(wav_path), sample_rate, data)
+
+    result = _load_stim_waveform(wav_path)
+    assert result is not None
+    _, waveform = result
+    assert waveform.ndim == 1, "stereo input must be mono-collapsed"
+    assert len(waveform) == n_samples
+
+
+def test_load_stim_waveform_unknown_suffix_returns_none(tmp_path):
+    """Unsupported file extensions return None (silent no-op for the caller)."""
+    from ffrprep.ffrprep_cli import _load_stim_waveform
+
+    stim_path = tmp_path / "stim.bin"
+    stim_path.write_bytes(b"\x00" * 1024)
+
+    assert _load_stim_waveform(stim_path) is None
+
+
+def test_load_stim_waveform_missing_file_returns_none(tmp_path):
+    """A non-existent path returns None rather than raising."""
+    from ffrprep.ffrprep_cli import _load_stim_waveform
+
+    assert _load_stim_waveform(tmp_path / "does_not_exist.wav") is None
