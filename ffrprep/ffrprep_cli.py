@@ -790,6 +790,120 @@ def _build_preproc_report(args, derivatives_info, subject):
     print(f"{'=' * 60}")
 
 
+def _phase_consistency_section_for_group(grp, preproc_subject_dir):
+    """Build a phase-consistency report section for an evoked group.
+
+    Looks up the per-condition preprocessing files matching the
+    evoked group's ``identifier`` (e.g. ``sub-03_task-active_run-1``).
+    When exactly two per-condition files exist, loads both into
+    ``mne.Epochs`` and delegates to
+    :func:`reports.build_phase_consistency_section`. Returns ``None``
+    when the per-condition count is anything other than 2 (no
+    polarity split, single condition, or more than two trial types —
+    none of which fit the canonical FFR phase-consistency setup).
+    """
+    import mne
+
+    identifier = grp["identifier"]
+    preproc_files = sorted(
+        Path(preproc_subject_dir).glob(
+            f"{identifier}_desc-preproc*_epo.fif"
+        )
+    )
+    # Keep only true per-condition files (those with a non-empty
+    # trial-type token between "desc-preproc" and "_epo.fif"). The
+    # bare combined file ``..._desc-preproc_epo.fif`` resolves to an
+    # empty condition and is excluded.
+    per_cond = [
+        p for p in preproc_files
+        if _condition_from_preproc_filename(p.name)
+    ]
+    if len(per_cond) != 2:
+        return None
+
+    print(
+        f"  loading phase consistency for sub-{grp.get('task', '?')} "
+        f"{identifier} ({per_cond[0].stem}, {per_cond[1].stem})"
+    )
+    epochs_a = mne.read_epochs(
+        str(per_cond[0]), preload=True, verbose=False,
+    )
+    epochs_b = mne.read_epochs(
+        str(per_cond[1]), preload=True, verbose=False,
+    )
+    return reports.build_phase_consistency_section(
+        epochs_a, epochs_b,
+        section_id=f"phase-consistency-{identifier}",
+        title="Phase Consistency",
+    )
+
+
+def _stim_correlation_summary(evoked, events_fpath, bids_root, trial_type):
+    """Compute stimulus-to-response correlation for an Evoked + trial_type.
+
+    Looks up the BIDS ``stim_file`` column in ``events_fpath`` for the
+    first row matching ``trial_type``, resolves the referenced
+    stimulus file relative to ``bids_root``, loads it (currently only
+    .wav via ``scipy.io.wavfile.read``), resamples it to the Evoked's
+    sampling rate, and runs
+    :func:`ffrprep.analysis.corr_stim_to_resp` against the Evoked's
+    first channel.
+
+    Returns a dict of summary entries (``"Stim correlation (peak r)"``
+    and ``"Stim correlation (lag, ms)"``) suitable to pass through as
+    ``extra_summary`` to :func:`reports.build_evoked_section`. Returns
+    an empty dict when any of the preconditions is missing (no
+    events.tsv, no ``stim_file`` column, no row matching
+    ``trial_type``, file absent, or load failure) — silently, so the
+    analysis report still renders cleanly when stimuli are unavailable.
+    """
+    if events_fpath is None or not Path(events_fpath).exists():
+        return {}
+    import pandas as pd
+
+    events = pd.read_csv(events_fpath, sep="\t")
+    if "stim_file" not in events.columns or "trial_type" not in events.columns:
+        return {}
+    rows = events[events["trial_type"].astype(str) == str(trial_type)]
+    if rows.empty:
+        return {}
+    rel_path = str(rows.iloc[0]["stim_file"]).strip()
+    if not rel_path or rel_path.lower() == "nan":
+        return {}
+    stim_path = Path(bids_root) / rel_path
+    if not stim_path.exists():
+        return {}
+
+    from scipy.io import wavfile
+    from scipy.signal import resample_poly
+
+    from ffrprep.analysis import corr_stim_to_resp
+
+    stim_sfreq, stim = wavfile.read(str(stim_path))
+    stim = stim.astype(float)
+    if stim.ndim > 1:
+        # Stereo / multichannel WAV — collapse to mono.
+        stim = stim.mean(axis=1)
+
+    evoked_sfreq = float(evoked.info["sfreq"])
+    if int(stim_sfreq) != int(evoked_sfreq):
+        # Resample stim to match evoked sfreq before correlation.
+        # resample_poly takes integer up/down factors; use gcd to
+        # avoid huge rationals.
+        from math import gcd
+
+        target = int(evoked_sfreq)
+        source = int(stim_sfreq)
+        g = gcd(target, source)
+        stim = resample_poly(stim, target // g, source // g)
+
+    peak_corr, peak_lag = corr_stim_to_resp(stim, evoked.data[0], evoked_sfreq)
+    return {
+        "Stim correlation (peak r)": f"{peak_corr:.3f}",
+        "Stim correlation (lag, ms)": f"{peak_lag:.2f}",
+    }
+
+
 def _build_analysis_report(args, derivatives_info, subject):
     """Render the single-file HTML analysis report.
 
@@ -811,6 +925,7 @@ def _build_analysis_report(args, derivatives_info, subject):
 
     bids_root = Path(args.bids_dir)
     analysis_dir = Path(derivatives_info["analysis_subject_dir"])
+    preproc_subject_dir = Path(derivatives_info["preprocessing_subject_dir"])
 
     groups_meta = _collect_evoked_groups(analysis_dir)
     if not groups_meta:
@@ -855,12 +970,35 @@ def _build_analysis_report(args, derivatives_info, subject):
             for ev_idx, evoked in enumerate(evoked_list):
                 raw_cond = evoked.comment or f"condition-{ev_idx}"
                 cond = _resolve_condition_labels(raw_cond, events_fpath)
+                # Stim correlation: only meaningful when the Evoked is
+                # tied to a single trial type (per-condition output).
+                # The combined evoked ("combined") and difference
+                # evokeds ("diff_AvsB") don't have a single matching
+                # stim_file in events.tsv; skip them.
+                extra = {}
+                if raw_cond and not raw_cond.startswith("diff_") \
+                        and raw_cond != "combined":
+                    extra = _stim_correlation_summary(
+                        evoked, events_fpath, bids_root, raw_cond,
+                    )
                 sections.append(reports.build_evoked_section(
                     evoked,
                     section_id=f"evoked-{task}-{run}-{idx}-{ev_idx}",
                     title=f"Evoked ({cond})",
                     label="Evoked",
+                    extra_summary=extra or None,
                 ))
+
+        # Phase consistency: requires both polarities as separate
+        # Epochs. When exactly two per-condition preproc files exist
+        # for this (task, run), load them and append a masked
+        # phase-consistency section.
+        phase_section = _phase_consistency_section_for_group(
+            grp, preproc_subject_dir,
+        )
+        if phase_section is not None:
+            sections.append(phase_section)
+
         groups.append(reports.make_group(task=task, run=run, sections=sections))
 
     overview = _build_overview(args, subject, all_files, "analysis")

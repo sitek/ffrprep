@@ -276,7 +276,9 @@ def evoked_qa(evoked, save_dir=None, prefix="ffr_evoked"):
     return figs
 
 
-def build_evoked_section(evoked, *, section_id, title, label=None):
+def build_evoked_section(
+    evoked, *, section_id, title, label=None, extra_summary=None,
+):
     """Build a section descriptor from an Evoked object.
 
     Summary table includes the standard metadata plus two FFR-specific
@@ -284,6 +286,11 @@ def build_evoked_section(evoked, *, section_id, title, label=None):
     average band power across 90-110 Hz over the same window (defaults
     matching :func:`ffrprep.analysis.rms_snr` and
     :func:`ffrprep.analysis.compute_power`).
+
+    ``extra_summary`` is folded into the summary table last, so caller-
+    supplied keys override any same-named defaults (e.g. for
+    surfacing ``corr_stim_to_resp`` scalars computed at the CLI layer
+    where the BIDS events.tsv + stimulus files are accessible).
     """
     from .analysis import compute_power, rms_snr
 
@@ -312,6 +319,9 @@ def build_evoked_section(evoked, *, section_id, title, label=None):
     band_power = compute_power(evoked_pick, f_low=90, f_high=110, t_low=0.1, t_high=0.2)
     summary["Mean power 90-110 Hz, 100-200 ms"] = f"{band_power:.3e} V²"
 
+    if extra_summary:
+        summary.update(extra_summary)
+
     figures = []
     for fig, fig_title, caption in evoked_qa(evoked, save_dir=None):
         figures.append({
@@ -320,6 +330,67 @@ def build_evoked_section(evoked, *, section_id, title, label=None):
             "data_uri": _fig_to_data_uri(fig),
         })
         plt.close(fig)
+
+    return {
+        "id": section_id,
+        "title": title,
+        "summary": summary,
+        "figures": figures,
+    }
+
+
+def build_phase_consistency_section(
+    epochs_a, epochs_b, *, section_id, title, alpha=0.01,
+):
+    """Build a phase-consistency section from two polarities of Epochs.
+
+    Pairs :func:`ffrprep.analysis.compute_phase_consistency` with
+    :func:`ffrprep.analysis.plot_phase_consistency_masked`; the masked
+    plot is embedded as a single inline PNG data URI alongside a
+    summary table recording the number of sweeps used and the
+    significance threshold applied to the mask.
+
+    Parameters
+    ----------
+    epochs_a, epochs_b : mne.Epochs
+        Two polarities of Epochs (typically positive / negative for an
+        FFR experiment), matched in sampling rate, time axis, and
+        channel count.
+    section_id : str
+        Anchor used by the report template.
+    title : str
+        Heading shown in the report.
+    alpha : float, default 0.01
+        Significance level forwarded to
+        ``plot_phase_consistency_masked``; controls the per-cell
+        masking cutoff.
+    """
+    from .analysis import (
+        compute_phase_consistency,
+        plot_phase_consistency_masked,
+    )
+
+    phasecon, xaxis, yaxis, numsweeps = compute_phase_consistency(
+        epochs_a, epochs_b,
+    )
+    fig = plot_phase_consistency_masked(
+        phasecon, xaxis, yaxis, numsweeps, alpha=alpha,
+    )
+
+    summary = {
+        "Number of sweeps used": str(numsweeps),
+        "Significance threshold (alpha)": str(alpha),
+    }
+    figures = [{
+        "title": "Phase Consistency (masked)",
+        "caption": (
+            "Phase consistency across two polarities (A, B) plus "
+            "their sum (add) and difference (sub), masked at the "
+            "given significance threshold."
+        ),
+        "data_uri": _fig_to_data_uri(fig),
+    }]
+    plt.close(fig)
 
     return {
         "id": section_id,
