@@ -857,6 +857,42 @@ def plot_phase_consistency_masked(
     return fig
 
 
+def _xcorr_normalized(a, b, sfreq):
+    """Normalized cross-correlation of two 1-D signals.
+
+    Truncates both inputs to the shorter length, computes
+    ``scipy.signal.correlate(b, a, mode="full")``, and normalises by
+    ``std(a) * std(b) * len(a)`` so the result lies in [-1, 1] for
+    matching-amplitude inputs.
+
+    Parameters
+    ----------
+    a, b : array-like
+        Two 1-D time-series sampled at ``sfreq``. Multi-dimensional
+        inputs are squeezed.
+    sfreq : float
+        Sampling rate (Hz). Used to convert lag indices to ms.
+
+    Returns
+    -------
+    corrs : ndarray
+        Full cross-correlation, length ``2 * min(len(a), len(b)) - 1``.
+    lag_ms : ndarray
+        Lag axis in milliseconds, same length as ``corrs``, monotonic
+        and centred on 0 for equal-length inputs.
+    """
+    a = np.asarray(a).squeeze()
+    b = np.asarray(b).squeeze()
+    n = min(len(a), len(b))
+    a = a[:n]
+    b = b[:n]
+    corrs = signal.correlate(b, a, mode="full")
+    corrs = corrs / (np.std(a) * np.std(b) * len(a))
+    lag = np.arange(-len(a) + 1, len(b))
+    lag_ms = lag / sfreq * 1000
+    return corrs, lag_ms
+
+
 def corr_stim_to_resp(stim, resp, sfreq):
     """
     Compute the correlation between stimulus and brain response.
@@ -881,24 +917,9 @@ def corr_stim_to_resp(stim, resp, sfreq):
     peak_lag : float
         The lag at which the maximum correlation occurs.
     """
-
-    stim = np.asarray(stim).squeeze()
-    resp = np.asarray(resp).squeeze()
-
-    minimum_length = min(len(stim), len(resp))
-    stim = stim[:minimum_length]
-    resp = resp[:minimum_length]
-
-    corrs = signal.correlate(resp, stim, mode="full")
-    corrs = corrs / (np.std(stim) * np.std(resp) * len(stim))
-
-    lag = np.arange(-len(stim) + 1, len(resp))
-    lag_milliseconds = lag / sfreq * 1000
+    corrs, lag_ms = _xcorr_normalized(stim, resp, sfreq)
     peak_n = np.argmax(corrs)
-    peak_corr = corrs[peak_n]
-    peak_lag = lag_milliseconds[peak_n]
-
-    return peak_corr, peak_lag
+    return corrs[peak_n], lag_ms[peak_n]
 
 
 def corr_resp_to_resp(resp1, resp2, sfreq):
@@ -925,22 +946,10 @@ def corr_resp_to_resp(resp1, resp2, sfreq):
     peak_lag : float
         The lag at which the maximum correlation occurs.
     """
-    resp1 = np.asarray(resp1).squeeze()
-    resp2 = np.asarray(resp2).squeeze()
-
-    minimum_length = min(len(resp1), len(resp2))
-    resp1 = resp1[:minimum_length]
-    resp2 = resp2[:minimum_length]
-
-    corrs = signal.correlate(resp2, resp1, mode="full")
-    corrs = corrs / (np.std(resp1) * np.std(resp2) * len(resp1))
-
-    lag = np.arange(-len(resp1) + 1, len(resp2))
-    lag_milliseconds = lag / sfreq * 1000
-
+    corrs, lag_ms = _xcorr_normalized(resp1, resp2, sfreq)
     peak_n = np.argmax(corrs)
     peak_corr = corrs[peak_n]
-    peak_lag = lag_milliseconds[peak_n]
+    peak_lag = lag_ms[peak_n]
 
     return peak_corr, peak_lag
 

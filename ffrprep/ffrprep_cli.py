@@ -875,25 +875,30 @@ def _load_stim_waveform(path):
     return reader(path)
 
 
-def _stim_correlation_summary(evoked, events_fpath, bids_root, trial_type):
-    """Compute stimulus-to-response correlation for an Evoked + trial_type.
+def _stim_correlation_data(evoked, events_fpath, bids_root, trial_type):
+    """Compute stim-vs-response correlation summary + cross-correlation figure.
 
     Looks up the BIDS ``stim_file`` column in ``events_fpath`` for the
     first row matching ``trial_type``, resolves the referenced
     stimulus file relative to ``bids_root``, loads it via
-    :func:`_load_stim_waveform` (suffix-dispatched, format-flexible),
-    resamples to the Evoked's sampling rate, and runs
-    :func:`ffrprep.analysis.corr_stim_to_resp` against the Evoked's
-    first channel.
+    :func:`_load_stim_waveform`, resamples to the Evoked's sampling
+    rate, and runs :func:`ffrprep.analysis._xcorr_normalized` against
+    the Evoked's first channel to get the full correlation curve.
 
-    Returns a dict of summary entries (``"Stim correlation (peak r)"``
-    and ``"Stim correlation (lag, ms)"``) suitable to pass through as
-    ``extra_summary`` to :func:`reports.build_evoked_section`. Returns
-    an empty dict when any of the preconditions is missing (no
-    events.tsv, no ``stim_file`` column, no row matching
-    ``trial_type``, file absent, unsupported format) — silently, so
-    the analysis report still renders cleanly when stimuli are
-    unavailable.
+    Returns a dict with two keys:
+
+    - ``"summary"``: maps to a dict suitable for
+      ``build_evoked_section``'s ``extra_summary`` kwarg (peak r +
+      lag in ms).
+    - ``"figures"``: list of section-figure dicts (``title``,
+      ``caption``, ``data_uri``) suitable for ``extra_figures``;
+      currently a single cross-correlation-vs-lag line plot with the
+      peak marked.
+
+    Returns an empty dict ``{}`` when any precondition is missing
+    (no events.tsv, no ``stim_file`` column, no row matching
+    ``trial_type``, file absent, unsupported format) so the analysis
+    report still renders cleanly when stimuli are unavailable.
     """
     if events_fpath is None or not Path(events_fpath).exists():
         return {}
@@ -914,9 +919,12 @@ def _stim_correlation_summary(evoked, events_fpath, bids_root, trial_type):
         return {}
     stim_sfreq, stim = loaded
 
+    import numpy as np
+    import matplotlib.pyplot as plt
     from scipy.signal import resample_poly
 
-    from ffrprep.analysis import corr_stim_to_resp
+    from ffrprep.analysis import _xcorr_normalized
+    from ffrprep.reports import _fig_to_data_uri
 
     evoked_sfreq = float(evoked.info["sfreq"])
     if int(stim_sfreq) != int(evoked_sfreq):
@@ -930,10 +938,39 @@ def _stim_correlation_summary(evoked, events_fpath, bids_root, trial_type):
         g = gcd(target, source)
         stim = resample_poly(stim, target // g, source // g)
 
-    peak_corr, peak_lag = corr_stim_to_resp(stim, evoked.data[0], evoked_sfreq)
+    corrs, lag_ms = _xcorr_normalized(stim, evoked.data[0], evoked_sfreq)
+    peak_n = int(np.argmax(corrs))
+    peak_corr = float(corrs[peak_n])
+    peak_lag = float(lag_ms[peak_n])
+
+    fig, ax = plt.subplots(figsize=(12, 4))
+    ax.plot(lag_ms, corrs, color="#0173B2", linewidth=1.2)
+    ax.axvline(peak_lag, color="#D55E00", linestyle="--", linewidth=1.2,
+               alpha=0.8, label=f"peak r={peak_corr:.3f} @ {peak_lag:.2f} ms")
+    ax.axhline(0, color="#737373", linewidth=0.5)
+    ax.set_xlabel("Lag (ms)", fontsize=10)
+    ax.set_ylabel("Normalized cross-correlation", fontsize=10)
+    ax.set_title(f"Stim ↔ response cross-correlation ({trial_type})",
+                 fontsize=11, fontweight="bold")
+    ax.legend(fontsize=9, loc="upper right")
+    ax.grid(True, alpha=0.3)
+    plt.tight_layout()
+    figure = {
+        "title": "Stim ↔ response cross-correlation",
+        "caption": (
+            f"Normalized cross-correlation across lags; peak at "
+            f"{peak_lag:.2f} ms (r = {peak_corr:.3f})."
+        ),
+        "data_uri": _fig_to_data_uri(fig),
+    }
+    plt.close(fig)
+
     return {
-        "Stim correlation (peak r)": f"{peak_corr:.3f}",
-        "Stim correlation (lag, ms)": f"{peak_lag:.2f}",
+        "summary": {
+            "Stim correlation (peak r)": f"{peak_corr:.3f}",
+            "Stim correlation (lag, ms)": f"{peak_lag:.2f}",
+        },
+        "figures": [figure],
     }
 
 
@@ -1008,10 +1045,10 @@ def _build_analysis_report(args, derivatives_info, subject):
                 # The combined evoked ("combined") and difference
                 # evokeds ("diff_AvsB") don't have a single matching
                 # stim_file in events.tsv; skip them.
-                extra = {}
+                stim_data = {}
                 if raw_cond and not raw_cond.startswith("diff_") \
                         and raw_cond != "combined":
-                    extra = _stim_correlation_summary(
+                    stim_data = _stim_correlation_data(
                         evoked, events_fpath, bids_root, raw_cond,
                     )
                 sections.append(reports.build_evoked_section(
@@ -1019,7 +1056,8 @@ def _build_analysis_report(args, derivatives_info, subject):
                     section_id=f"evoked-{task}-{run}-{idx}-{ev_idx}",
                     title=f"Evoked ({cond})",
                     label="Evoked",
-                    extra_summary=extra or None,
+                    extra_summary=stim_data.get("summary") or None,
+                    extra_figures=stim_data.get("figures") or None,
                 ))
 
         # Phase consistency: requires both polarities as separate

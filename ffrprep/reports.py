@@ -277,7 +277,8 @@ def evoked_qa(evoked, save_dir=None, prefix="ffr_evoked"):
 
 
 def build_evoked_section(
-    evoked, *, section_id, title, label=None, extra_summary=None,
+    evoked, *, section_id, title, label=None,
+    extra_summary=None, extra_figures=None,
 ):
     """Build a section descriptor from an Evoked object.
 
@@ -291,6 +292,9 @@ def build_evoked_section(
     supplied keys override any same-named defaults (e.g. for
     surfacing ``corr_stim_to_resp`` scalars computed at the CLI layer
     where the BIDS events.tsv + stimulus files are accessible).
+    ``extra_figures`` is appended to the figures list after the
+    built-in ``evoked_qa`` output; entries must already be section-
+    figure dicts (``{"title", "caption", "data_uri"}``).
     """
     from .analysis import compute_power, rms_snr
 
@@ -330,6 +334,8 @@ def build_evoked_section(
             "data_uri": _fig_to_data_uri(fig),
         })
         plt.close(fig)
+    if extra_figures:
+        figures.extend(extra_figures)
 
     return {
         "id": section_id,
