@@ -107,3 +107,50 @@ def test_autocorrelation_periodic_signal_peaks_at_period():
     assert acf[10] > 0.9, f"ACF at lag=10 (one period) was {acf[10]!r}"
     # Half period later → strongly anti-correlated
     assert acf[5] < -0.9, f"ACF at lag=5 (half period) was {acf[5]!r}"
+
+
+# ---------------------------------------------------------------------------
+# _xcorr_normalized: shared cross-correlation building block
+# ---------------------------------------------------------------------------
+
+def test_xcorr_normalized_returns_corrs_and_lags():
+    """``_xcorr_normalized`` returns the full normalized cross-correlation + lag axis."""
+    from ffrprep.analysis import _xcorr_normalized
+
+    rng = np.random.default_rng(0)
+    a = rng.standard_normal(256)
+    b = rng.standard_normal(256)
+    sfreq = 1000.0
+
+    corrs, lag_ms = _xcorr_normalized(a, b, sfreq)
+    # signal.correlate(b, a, mode="full") gives 2*N - 1 lags
+    assert len(corrs) == 2 * 256 - 1
+    assert len(lag_ms) == len(corrs)
+    # Lag axis is monotonic and centred on 0
+    assert lag_ms[0] < 0 < lag_ms[-1]
+    assert abs(lag_ms[0] + lag_ms[-1]) < 1e-6, (
+        "lag axis should be symmetric around 0 for equal-length inputs"
+    )
+
+
+def test_xcorr_normalized_peak_matches_corr_stim_to_resp():
+    """Peak of ``_xcorr_normalized`` matches the scalars from corr_stim_to_resp.
+
+    Locks in the refactor invariant: the existing public function is a
+    thin wrapper that just picks the peak from the shared helper.
+    """
+    from ffrprep.analysis import _xcorr_normalized, corr_stim_to_resp
+
+    rng = np.random.default_rng(1)
+    stim = rng.standard_normal(512)
+    resp = rng.standard_normal(512)
+    sfreq = 2000.0
+
+    corrs, lag_ms = _xcorr_normalized(stim, resp, sfreq)
+    peak_idx = int(np.argmax(corrs))
+    expected_peak_r = corrs[peak_idx]
+    expected_peak_lag = lag_ms[peak_idx]
+
+    peak_r, peak_lag = corr_stim_to_resp(stim, resp, sfreq)
+    assert peak_r == expected_peak_r
+    assert peak_lag == expected_peak_lag

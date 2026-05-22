@@ -332,6 +332,55 @@ def test_build_evoked_section_extra_summary_overrides_defaults():
     assert section["summary"]["Channels"] == "OVERRIDDEN"
 
 
+def test_build_evoked_section_accepts_extra_figures():
+    """Caller-supplied extra_figures are appended to the figures list.
+
+    Used by the stim-correlation wiring to add a cross-correlation
+    line plot to the per-condition Evoked section alongside the
+    builder's own evoked_qa figures.
+    """
+    import matplotlib.pyplot as _plt
+
+    n_channels = 1
+    sfreq = 1000.0
+    n_times = 500
+    rng = np.random.default_rng(59)
+    data = rng.normal(0, 1e-6, size=(n_channels, n_times))
+    info = mne.create_info(
+        ch_names=["Cz"], sfreq=sfreq, ch_types=["eeg"],
+    )
+    evoked = mne.EvokedArray(data, info, tmin=-0.04, verbose=False)
+
+    from ffrprep.reports import build_evoked_section, _fig_to_data_uri
+
+    fig, ax = _plt.subplots(figsize=(4, 2))
+    ax.plot([0, 1], [0, 1])
+    data_uri = _fig_to_data_uri(fig)
+    _plt.close(fig)
+
+    extra_fig = {
+        "title": "Custom figure",
+        "caption": "From extra_figures",
+        "data_uri": data_uri,
+    }
+
+    section = build_evoked_section(
+        evoked,
+        section_id="evoked-active-1-0-0",
+        title="Evoked",
+        extra_figures=[extra_fig],
+    )
+    titles = [f["title"] for f in section["figures"]]
+    assert "Custom figure" in titles, (
+        f"extra_figures entries must appear in section['figures']; "
+        f"got titles {titles}"
+    )
+    # And the built-in evoked_qa figures are still there too.
+    assert len(section["figures"]) >= 2, (
+        "extra_figures should append, not replace, the built-in figures"
+    )
+
+
 def test_build_epoch_section_skips_response_consistency_for_few_epochs():
     """With < 10 epochs, response_consistency is omitted to avoid noise.
 
