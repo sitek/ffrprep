@@ -269,6 +269,51 @@ def test_build_phase_consistency_section_honors_alpha(
     assert section["summary"]["Significance threshold (alpha)"] == "0.05"
 
 
+def test_build_phase_consistency_section_surfaces_pol_names_in_summary(
+    synthetic_two_polarity_epochs,
+):
+    """``pol_names`` ties the subplot labels to actual trial-type names.
+
+    Without the param, the underlying PR-35 plot labels subplots
+    "A" / "B" (plus auto-derived "add" / "sub"), which is opaque
+    in the report. With the param, the summary surfaces the two
+    polarities so report readers know which is which.
+    """
+    from ffrprep.reports import build_phase_consistency_section
+
+    epochs_a, epochs_b = synthetic_two_polarity_epochs
+    section = build_phase_consistency_section(
+        epochs_a, epochs_b,
+        section_id="phase-active-1",
+        title="Phase Consistency",
+        pol_names=("Positive", "Negative"),
+    )
+    summary = section["summary"]
+    assert "Polarities" in summary, (
+        f"summary must include Polarities row; got {list(summary.keys())}"
+    )
+    # The two polarity names should both appear in the row value.
+    pol_str = summary["Polarities"]
+    assert "Positive" in pol_str and "Negative" in pol_str, (
+        f"Polarities row must mention both names; got {pol_str!r}"
+    )
+
+
+def test_build_phase_consistency_section_default_pol_names_unchanged(
+    synthetic_two_polarity_epochs,
+):
+    """When ``pol_names`` is None, no Polarities row is added."""
+    from ffrprep.reports import build_phase_consistency_section
+
+    epochs_a, epochs_b = synthetic_two_polarity_epochs
+    section = build_phase_consistency_section(
+        epochs_a, epochs_b,
+        section_id="phase-active-1",
+        title="Phase Consistency",
+    )
+    assert "Polarities" not in section["summary"]
+
+
 def test_build_evoked_section_accepts_extra_summary():
     """Caller-supplied extra_summary entries are folded into the summary table.
 
