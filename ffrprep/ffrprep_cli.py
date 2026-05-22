@@ -831,10 +831,16 @@ def _phase_consistency_section_for_group(grp, preproc_subject_dir):
     epochs_b = mne.read_epochs(
         str(per_cond[1]), preload=True, verbose=False,
     )
+    # Extract the trial-type token from each filename so subplot
+    # titles in the masked plot read e.g. "Positive" / "Negative"
+    # instead of the opaque PR-35 "A" / "B" defaults.
+    pol_a = _condition_from_preproc_filename(per_cond[0].name)
+    pol_b = _condition_from_preproc_filename(per_cond[1].name)
     return reports.build_phase_consistency_section(
         epochs_a, epochs_b,
         section_id=f"phase-consistency-{identifier}",
         title="Phase Consistency",
+        pol_names=(pol_a, pol_b),
     )
 
 

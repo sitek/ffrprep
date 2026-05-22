@@ -346,7 +346,7 @@ def build_evoked_section(
 
 
 def build_phase_consistency_section(
-    epochs_a, epochs_b, *, section_id, title, alpha=0.01,
+    epochs_a, epochs_b, *, section_id, title, alpha=0.01, pol_names=None,
 ):
     """Build a phase-consistency section from two polarities of Epochs.
 
@@ -370,30 +370,72 @@ def build_phase_consistency_section(
         Significance level forwarded to
         ``plot_phase_consistency_masked``; controls the per-cell
         masking cutoff.
+    pol_names : tuple[str, str] | None
+        Display names for the two polarities (e.g. ``("Positive",
+        "Negative")``). When given, replaces the PR-35 plot's opaque
+        ``A`` / ``B`` subplot titles with the actual trial-type
+        names and adds a ``Polarities`` row to the summary so
+        report readers know which subplot is which. The ``add`` /
+        ``sub`` subplots are auto-labelled
+        ``"<a> + <b>"`` / ``"<a> − <b>"``.
     """
     from .analysis import (
         compute_phase_consistency,
         plot_phase_consistency_masked,
     )
+    # Import seaborn for its side effect: registering the "flare"
+    # (and reversed "flare_r") colormaps with matplotlib. Once
+    # imported, plt.get_cmap("flare_r") resolves cleanly.
+    import seaborn as _sns  # noqa: F401
 
     phasecon, xaxis, yaxis, numsweeps = compute_phase_consistency(
         epochs_a, epochs_b,
-    )
-    fig = plot_phase_consistency_masked(
-        phasecon, xaxis, yaxis, numsweeps, alpha=alpha,
     )
 
     summary = {
         "Number of sweeps used": str(numsweeps),
         "Significance threshold (alpha)": str(alpha),
     }
-    figures = [{
-        "title": "Phase Consistency (masked)",
-        "caption": (
+
+    if pol_names is not None:
+        pol_a, pol_b = pol_names
+        # Rename the phase-consistency dict keys so the plot's
+        # subplot titles surface the trial-type names. Falls back
+        # to the original key if a label can't be resolved (defensive
+        # for forward-compatibility with PR-35 changes to phasecon
+        # key naming).
+        label_map = {
+            "A": pol_a,
+            "B": pol_b,
+            "add": f"{pol_a} + {pol_b}",
+            "sub": f"{pol_a} − {pol_b}",  # minus sign U+2212
+        }
+        renamed = {label_map.get(k, k): v for k, v in phasecon.items()}
+        ordered = [label_map.get(k, k) for k in phasecon.keys()]
+        fig = plot_phase_consistency_masked(
+            renamed, xaxis, yaxis, numsweeps,
+            alpha=alpha, pol_names=ordered, cmap="flare_r",
+        )
+        summary["Polarities"] = f"{pol_a} / {pol_b}"
+        caption = (
+            f"Phase consistency across {pol_a} and {pol_b} polarities "
+            f"plus their sum and difference, masked at the given "
+            f"significance threshold."
+        )
+    else:
+        fig = plot_phase_consistency_masked(
+            phasecon, xaxis, yaxis, numsweeps,
+            alpha=alpha, cmap="flare_r",
+        )
+        caption = (
             "Phase consistency across two polarities (A, B) plus "
             "their sum (add) and difference (sub), masked at the "
             "given significance threshold."
-        ),
+        )
+
+    figures = [{
+        "title": "Phase Consistency (masked)",
+        "caption": caption,
         "data_uri": _fig_to_data_uri(fig),
     }]
     plt.close(fig)

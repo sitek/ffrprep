@@ -754,7 +754,8 @@ def plot_phase_consistency_masked(
     pol_names=None,
     vmax=0.14,
     ylim=None,
-    figsize=(12, 8)
+    figsize=(12, 8),
+    cmap="viridis",
 ):
     """
     Plot phase consistency with significance masking.
@@ -779,6 +780,9 @@ def plot_phase_consistency_masked(
         Frequency limits
     figsize : tuple
         Figure size
+    cmap : str or matplotlib colormap, default "viridis"
+        Colormap used for the per-cell values. Below-threshold cells
+        are coloured black via ``set_under``.
 
     Returns
     -------
@@ -803,8 +807,8 @@ def plot_phase_consistency_masked(
         masked[masked < cutoff] = 0
         maskedphasecon[pol_name] = masked
 
-    # Create colormap with black for zero
-    cmap = plt.cm.viridis.copy()
+    # Resolve cmap from str / Colormap and reserve black for below-cutoff
+    cmap = plt.get_cmap(cmap).copy()
     cmap.set_under('black')
 
     n_pols = len(pol_names)
