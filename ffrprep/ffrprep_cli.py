@@ -838,14 +838,51 @@ def _phase_consistency_section_for_group(grp, preproc_subject_dir):
     )
 
 
+def _read_wav_stim(path):
+    """Load a WAV file as (sample_rate, mono float waveform)."""
+    from scipy.io import wavfile
+
+    sample_rate, data = wavfile.read(str(path))
+    data = data.astype(float)
+    if data.ndim > 1:
+        # Stereo / multichannel — collapse to mono by averaging channels.
+        data = data.mean(axis=1)
+    return int(sample_rate), data
+
+
+# Format-flexible stimulus loader dispatch. Add new entries here to
+# support other audio formats (e.g. ``".flac": _read_flac_stim``);
+# the report layer doesn't care how the bytes get parsed.
+_STIM_READERS = {
+    ".wav": _read_wav_stim,
+}
+
+
+def _load_stim_waveform(path):
+    """Return ``(sample_rate, mono_waveform)`` for a stimulus file.
+
+    Dispatches on file extension via :data:`_STIM_READERS`. Returns
+    ``None`` when the file is missing or its suffix isn't registered,
+    so the caller can treat unsupported formats the same way it
+    treats absent files (silent no-op in the analysis report).
+    """
+    path = Path(path)
+    if not path.exists():
+        return None
+    reader = _STIM_READERS.get(path.suffix.lower())
+    if reader is None:
+        return None
+    return reader(path)
+
+
 def _stim_correlation_summary(evoked, events_fpath, bids_root, trial_type):
     """Compute stimulus-to-response correlation for an Evoked + trial_type.
 
     Looks up the BIDS ``stim_file`` column in ``events_fpath`` for the
     first row matching ``trial_type``, resolves the referenced
-    stimulus file relative to ``bids_root``, loads it (currently only
-    .wav via ``scipy.io.wavfile.read``), resamples it to the Evoked's
-    sampling rate, and runs
+    stimulus file relative to ``bids_root``, loads it via
+    :func:`_load_stim_waveform` (suffix-dispatched, format-flexible),
+    resamples to the Evoked's sampling rate, and runs
     :func:`ffrprep.analysis.corr_stim_to_resp` against the Evoked's
     first channel.
 
@@ -854,8 +891,9 @@ def _stim_correlation_summary(evoked, events_fpath, bids_root, trial_type):
     ``extra_summary`` to :func:`reports.build_evoked_section`. Returns
     an empty dict when any of the preconditions is missing (no
     events.tsv, no ``stim_file`` column, no row matching
-    ``trial_type``, file absent, or load failure) — silently, so the
-    analysis report still renders cleanly when stimuli are unavailable.
+    ``trial_type``, file absent, unsupported format) — silently, so
+    the analysis report still renders cleanly when stimuli are
+    unavailable.
     """
     if events_fpath is None or not Path(events_fpath).exists():
         return {}
@@ -868,22 +906,17 @@ def _stim_correlation_summary(evoked, events_fpath, bids_root, trial_type):
     if rows.empty:
         return {}
     rel_path = str(rows.iloc[0]["stim_file"]).strip()
-    if not rel_path or rel_path.lower() == "nan":
+    if not rel_path or rel_path.lower() in {"nan", "n/a"}:
         return {}
     stim_path = Path(bids_root) / rel_path
-    if not stim_path.exists():
+    loaded = _load_stim_waveform(stim_path)
+    if loaded is None:
         return {}
+    stim_sfreq, stim = loaded
 
-    from scipy.io import wavfile
     from scipy.signal import resample_poly
 
     from ffrprep.analysis import corr_stim_to_resp
-
-    stim_sfreq, stim = wavfile.read(str(stim_path))
-    stim = stim.astype(float)
-    if stim.ndim > 1:
-        # Stereo / multichannel WAV — collapse to mono.
-        stim = stim.mean(axis=1)
 
     evoked_sfreq = float(evoked.info["sfreq"])
     if int(stim_sfreq) != int(evoked_sfreq):

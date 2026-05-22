@@ -229,13 +229,60 @@ def download_raw_data(subjects=1, dataset_path=None, with_stimuli=False):
 
 
 # Module-level mapping of stimulus filename -> OSF download ID.
-# Empty until real OSF IDs land. The constant is lifted to module
-# scope so tests can monkeypatch it without a special seam.
+# Lifted to module scope so tests can monkeypatch it without a
+# special seam. Filenames match what the OSF "stimuli" folder ships.
 STIM_URLS = {
-    # "<filename>.wav": "<osf_id>",
-    # Populate once OSF stimulus IDs are available from the dataset
-    # maintainer.
+    "Da_Stimulus_44100Hz_pol1.wav": "nqex7",
+    "Da_Stimulus_44100Hz_pol2.wav": "6a0c8b8a63bed96a1ea06735",
 }
+
+
+# Mapping from BIDS events.tsv ``trial_type`` value to the
+# ``stim_file`` path (relative to the dataset root, per BIDS spec).
+# Inferred from the example dataset: trial value 1 -> pol1.wav,
+# value 2 -> pol2.wav, so trial_type=positive aligns with pol1 and
+# trial_type=negative with pol2. If the dataset maintainer used the
+# opposite polarity convention, flip the two entries here.
+STIM_FILE_MAP = {
+    "positive": "stimuli/Da_Stimulus_44100Hz_pol1.wav",
+    "negative": "stimuli/Da_Stimulus_44100Hz_pol2.wav",
+}
+
+
+def _augment_events_with_stim_file(bids_root, mapping=None):
+    """Insert a ``stim_file`` column into every events.tsv under ``bids_root``.
+
+    Walks ``<bids_root>/sub-*/eeg/*_events.tsv`` and adds a
+    ``stim_file`` column populated from ``mapping[trial_type]``
+    (defaults to the example-dataset :data:`STIM_FILE_MAP`).
+    Files already carrying a ``stim_file`` column are left untouched
+    so user-supplied values are preserved (idempotent on re-run).
+    Trial types absent from ``mapping`` get the BIDS ``n/a`` sentinel.
+
+    Parameters
+    ----------
+    bids_root : str or pathlib.Path
+        BIDS dataset root (the folder that contains ``sub-*``).
+    mapping : dict[str, str], optional
+        ``trial_type -> stim_file`` lookup. Defaults to
+        :data:`STIM_FILE_MAP`.
+    """
+    import pandas as pd
+
+    if mapping is None:
+        mapping = STIM_FILE_MAP
+
+    bids_root = Path(bids_root)
+    for tsv_path in sorted(bids_root.glob("sub-*/eeg/*_events.tsv")):
+        df = pd.read_csv(tsv_path, sep="\t")
+        if "stim_file" in df.columns:
+            continue
+        if "trial_type" not in df.columns:
+            continue
+        df["stim_file"] = df["trial_type"].map(
+            lambda t: mapping.get(str(t), "n/a")
+        )
+        df.to_csv(tsv_path, sep="\t", index=False, na_rep="n/a")
 
 
 def download_stimuli(dataset_path=None):
@@ -246,7 +293,10 @@ def download_stimuli(dataset_path=None):
     BIDS ``events.tsv`` and consumed by stimulus-aware analyses (e.g.
     :func:`ffrprep.analysis.corr_stim_to_resp`). They are shared across
     subjects, so they land at ``<dataset>/ffrprep_raw_data/stimuli/``
-    per the BIDS specification.
+    per the BIDS specification. After downloading, every
+    ``sub-*/eeg/*_events.tsv`` is augmented with a ``stim_file``
+    column based on :data:`STIM_FILE_MAP` so the downstream analysis
+    has the linkage to operate on.
 
     Parameters
     ----------
@@ -271,6 +321,7 @@ def download_stimuli(dataset_path=None):
         osf_url = f"{base_url}{osf_id}"
         _download_single_file(osf_url, stim_dir, save_name=filename)
 
+    _augment_events_with_stim_file(base)
     return stim_dir
 
 
