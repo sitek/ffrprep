@@ -1020,3 +1020,117 @@ def test_load_stim_waveform_missing_file_returns_none(tmp_path):
     from ffrprep.ffrprep_cli import _load_stim_waveform
 
     assert _load_stim_waveform(tmp_path / "does_not_exist.wav") is None
+
+
+# ---------------------------------------------------------------------------
+# _stim_correlation_data_combined / _diff: combined + difference Evoked wiring
+# ---------------------------------------------------------------------------
+
+def _setup_synthetic_stim_dataset(tmp_path, sfreq=16384.0):
+    """Build a tiny BIDS-like tree with one events.tsv + stim wav.
+
+    Returns ``(events_fpath, bids_root)``. Suitable for the
+    _stim_correlation_data* helpers' precondition-satisfaction needs.
+    """
+    import numpy as np
+    import pandas as pd
+
+    bids_root = tmp_path / "ds"
+    eeg_dir = bids_root / "sub-01" / "eeg"
+    eeg_dir.mkdir(parents=True)
+    stim_dir = bids_root / "stimuli"
+    stim_dir.mkdir(parents=True)
+
+    # Synthetic stim wav at 44.1 kHz (matches the example dataset's
+    # native rate); will be resampled to evoked sfreq downstream.
+    stim_sfreq = 44100
+    rng = np.random.default_rng(31)
+    stim = rng.integers(-1000, 1000, size=4096).astype(np.int16)
+    stim_path = stim_dir / "stim.wav"
+    _write_wav(stim_path, stim, stim_sfreq)
+
+    # Two trial types, both pointing at the same stim. Mirrors the
+    # canonical FFR setup where pol1/pol2 stims are sign-inverted
+    # versions of the same waveform.
+    events_fpath = eeg_dir / "sub-01_task-active_run-1_events.tsv"
+    pd.DataFrame({
+        "onset": [1.0, 2.0],
+        "duration": [0.17, 0.17],
+        "trial_type": ["positive", "negative"],
+        "value": [1, 2],
+        "stim_file": ["stimuli/stim.wav", "stimuli/stim.wav"],
+    }).to_csv(events_fpath, sep="\t", index=False)
+    return events_fpath, bids_root
+
+
+def _synthetic_evoked(sfreq=16384.0, n_times=1024):
+    """Build a tiny single-channel Evoked for stim-correlation tests."""
+    import numpy as np
+    import mne
+
+    rng = np.random.default_rng(43)
+    data = rng.normal(0, 1e-6, size=(1, n_times))
+    info = mne.create_info(
+        ch_names=["Cz"], sfreq=sfreq, ch_types=["eeg"],
+    )
+    return mne.EvokedArray(data, info, tmin=-0.04, verbose=False)
+
+
+def test_stim_correlation_data_combined_has_raw_and_envelope_rows(tmp_path):
+    """Combined Evoked payload has 2 summary rows + 2 figures (raw + envelope)."""
+    from ffrprep.ffrprep_cli import _stim_correlation_data_combined
+
+    events_fpath, bids_root = _setup_synthetic_stim_dataset(tmp_path)
+    evoked = _synthetic_evoked()
+
+    data = _stim_correlation_data_combined(evoked, events_fpath, bids_root)
+    summary = data["summary"]
+    assert "Stim correlation (peak r)" in summary
+    assert "Stim correlation (lag, ms)" in summary
+    assert "Stim envelope correlation (peak r)" in summary
+    assert "Stim envelope correlation (lag, ms)" in summary
+    figures = data["figures"]
+    assert len(figures) == 2
+    titles = [f["title"] for f in figures]
+    assert any("envelope" in t.lower() for t in titles), (
+        f"one figure title must mention envelope; got {titles}"
+    )
+    assert any("envelope" not in t.lower() for t in titles), (
+        f"one figure title must be the raw cross-correlation; got {titles}"
+    )
+
+
+def test_stim_correlation_data_diff_has_one_row(tmp_path):
+    """Diff Evoked payload has 1 raw summary row + 1 figure."""
+    from ffrprep.ffrprep_cli import _stim_correlation_data_diff
+
+    events_fpath, bids_root = _setup_synthetic_stim_dataset(tmp_path)
+    evoked = _synthetic_evoked()
+
+    data = _stim_correlation_data_diff(evoked, events_fpath, bids_root)
+    summary = data["summary"]
+    assert "Stim correlation (peak r)" in summary
+    assert "Stim correlation (lag, ms)" in summary
+    # No envelope row for the diff path — diff is the TFS proxy and
+    # correlates against raw waveform only.
+    assert "Stim envelope correlation (peak r)" not in summary
+    figures = data["figures"]
+    assert len(figures) == 1
+
+
+def test_stim_correlation_data_combined_returns_empty_when_stim_missing(tmp_path):
+    """No events.tsv → ``{}`` so the analysis report renders cleanly."""
+    from ffrprep.ffrprep_cli import _stim_correlation_data_combined
+
+    evoked = _synthetic_evoked()
+    bogus_events = tmp_path / "nope.tsv"
+    assert _stim_correlation_data_combined(evoked, bogus_events, tmp_path) == {}
+
+
+def test_stim_correlation_data_diff_returns_empty_when_stim_missing(tmp_path):
+    """No events.tsv → ``{}`` so the analysis report renders cleanly."""
+    from ffrprep.ffrprep_cli import _stim_correlation_data_diff
+
+    evoked = _synthetic_evoked()
+    bogus_events = tmp_path / "nope.tsv"
+    assert _stim_correlation_data_diff(evoked, bogus_events, tmp_path) == {}
