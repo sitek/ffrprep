@@ -836,11 +836,16 @@ def _phase_consistency_section_for_group(grp, preproc_subject_dir):
     # instead of the opaque PR-35 "A" / "B" defaults.
     pol_a = _condition_from_preproc_filename(per_cond[0].name)
     pol_b = _condition_from_preproc_filename(per_cond[1].name)
+    # Single-subject report: skip significance masking. The default
+    # alpha=0.01 mask hides meaningful structure at single-subject N;
+    # group-level callers can opt back in by passing mask=True
+    # (the library-safe default on build_phase_consistency_section).
     return reports.build_phase_consistency_section(
         epochs_a, epochs_b,
         section_id=f"phase-consistency-{identifier}",
         title="Phase Consistency",
         pol_names=(pol_a, pol_b),
+        mask=False,
     )
 
 
@@ -881,73 +886,120 @@ def _load_stim_waveform(path):
     return reader(path)
 
 
-def _stim_correlation_data(evoked, events_fpath, bids_root, trial_type):
-    """Compute stim-vs-response correlation summary + cross-correlation figure.
+def _resolve_stim_for_trial_type(events_fpath, bids_root, trial_type):
+    """Resolve the stim file referenced by ``trial_type`` in events.tsv.
 
-    Looks up the BIDS ``stim_file`` column in ``events_fpath`` for the
-    first row matching ``trial_type``, resolves the referenced
-    stimulus file relative to ``bids_root``, loads it via
-    :func:`_load_stim_waveform`, resamples to the Evoked's sampling
-    rate, and runs :func:`ffrprep.analysis._xcorr_normalized` against
-    the Evoked's first channel to get the full correlation curve.
-
-    Returns a dict with two keys:
-
-    - ``"summary"``: maps to a dict suitable for
-      ``build_evoked_section``'s ``extra_summary`` kwarg (peak r +
-      lag in ms).
-    - ``"figures"``: list of section-figure dicts (``title``,
-      ``caption``, ``data_uri``) suitable for ``extra_figures``;
-      currently a single cross-correlation-vs-lag line plot with the
-      peak marked.
-
-    Returns an empty dict ``{}`` when any precondition is missing
-    (no events.tsv, no ``stim_file`` column, no row matching
-    ``trial_type``, file absent, unsupported format) so the analysis
-    report still renders cleanly when stimuli are unavailable.
+    Returns ``(sample_rate, mono_waveform)`` for the first row whose
+    ``trial_type`` column matches, or ``None`` if any precondition is
+    missing (no events.tsv, no ``stim_file`` column, no matching row,
+    sentinel ``n/a`` / ``nan`` value, file absent, unsupported format).
     """
     if events_fpath is None or not Path(events_fpath).exists():
-        return {}
+        return None
     import pandas as pd
 
     events = pd.read_csv(events_fpath, sep="\t")
     if "stim_file" not in events.columns or "trial_type" not in events.columns:
-        return {}
+        return None
     rows = events[events["trial_type"].astype(str) == str(trial_type)]
     if rows.empty:
-        return {}
+        return None
     rel_path = str(rows.iloc[0]["stim_file"]).strip()
     if not rel_path or rel_path.lower() in {"nan", "n/a"}:
-        return {}
-    stim_path = Path(bids_root) / rel_path
-    loaded = _load_stim_waveform(stim_path)
-    if loaded is None:
-        return {}
-    stim_sfreq, stim = loaded
+        return None
+    return _load_stim_waveform(Path(bids_root) / rel_path)
 
+
+def _resolve_first_stim(events_fpath, bids_root):
+    """Resolve the first non-``n/a`` stim referenced anywhere in events.tsv.
+
+    Used by the combined / diff Evoked stim-correlation paths, which
+    don't map to a single ``trial_type``. Returns
+    ``(sample_rate, mono_waveform)`` or ``None`` when no valid
+    ``stim_file`` reference exists.
+    """
+    if events_fpath is None or not Path(events_fpath).exists():
+        return None
+    import pandas as pd
+
+    events = pd.read_csv(events_fpath, sep="\t")
+    if "stim_file" not in events.columns:
+        return None
+    for raw in events["stim_file"]:
+        rel_path = str(raw).strip()
+        if not rel_path or rel_path.lower() in {"nan", "n/a"}:
+            continue
+        loaded = _load_stim_waveform(Path(bids_root) / rel_path)
+        if loaded is not None:
+            return loaded
+    return None
+
+
+def _resample_stim_to_evoked_sfreq(stim, stim_sfreq, evoked_sfreq):
+    """Resample ``stim`` to ``evoked_sfreq`` when the rates differ."""
+    if int(stim_sfreq) == int(evoked_sfreq):
+        return stim
+    from math import gcd
+
+    from scipy.signal import resample_poly
+
+    target = int(evoked_sfreq)
+    source = int(stim_sfreq)
+    g = gcd(target, source)
+    return resample_poly(stim, target // g, source // g)
+
+
+def _compute_stim_correlation(evoked, stim, stim_sfreq, *, label=None,
+                              trial_type_label=None):
+    """Compute one stim↔response correlation: returns summary + figure.
+
+    Parameters
+    ----------
+    evoked : mne.Evoked
+        Response. First channel is used.
+    stim : np.ndarray
+        1-D stimulus waveform at ``stim_sfreq``. Resampled to match
+        the evoked sampling rate when the rates differ.
+    stim_sfreq : float
+        Stimulus sample rate (Hz).
+    label : str, optional
+        Suffix injected into summary keys + figure title to
+        distinguish variants (e.g. ``"envelope"``). When None, the
+        bare ``"Stim correlation …"`` naming is used (matching the
+        legacy per-polarity output).
+    trial_type_label : str, optional
+        Cosmetic label appended in parentheses to the figure title
+        (e.g. ``"positive"``). Purely informational.
+
+    Returns
+    -------
+    dict
+        ``{"summary": {peak r row, lag row}, "figures": [fig dict]}``.
+    """
     import numpy as np
     import matplotlib.pyplot as plt
-    from scipy.signal import resample_poly
 
     from ffrprep.analysis import _xcorr_normalized
     from ffrprep.reports import _fig_to_data_uri
 
     evoked_sfreq = float(evoked.info["sfreq"])
-    if int(stim_sfreq) != int(evoked_sfreq):
-        # Resample stim to match evoked sfreq before correlation.
-        # resample_poly takes integer up/down factors; use gcd to
-        # avoid huge rationals.
-        from math import gcd
-
-        target = int(evoked_sfreq)
-        source = int(stim_sfreq)
-        g = gcd(target, source)
-        stim = resample_poly(stim, target // g, source // g)
+    stim = _resample_stim_to_evoked_sfreq(stim, stim_sfreq, evoked_sfreq)
 
     corrs, lag_ms = _xcorr_normalized(stim, evoked.data[0], evoked_sfreq)
     peak_n = int(np.argmax(corrs))
     peak_corr = float(corrs[peak_n])
     peak_lag = float(lag_ms[peak_n])
+
+    key_prefix = "Stim correlation" if label is None else (
+        f"Stim {label} correlation"
+    )
+    title_prefix = "Stim ↔ response cross-correlation" if label is None else (
+        f"Stim {label} ↔ response cross-correlation"
+    )
+    full_title = (
+        f"{title_prefix} ({trial_type_label})"
+        if trial_type_label else title_prefix
+    )
 
     fig, ax = plt.subplots(figsize=(12, 4))
     ax.plot(lag_ms, corrs, color="#0173B2", linewidth=1.2)
@@ -956,13 +1008,12 @@ def _stim_correlation_data(evoked, events_fpath, bids_root, trial_type):
     ax.axhline(0, color="#737373", linewidth=0.5)
     ax.set_xlabel("Lag (ms)", fontsize=10)
     ax.set_ylabel("Normalized cross-correlation", fontsize=10)
-    ax.set_title(f"Stim ↔ response cross-correlation ({trial_type})",
-                 fontsize=11, fontweight="bold")
+    ax.set_title(full_title, fontsize=11, fontweight="bold")
     ax.legend(fontsize=9, loc="upper right")
     ax.grid(True, alpha=0.3)
     plt.tight_layout()
     figure = {
-        "title": "Stim ↔ response cross-correlation",
+        "title": title_prefix,
         "caption": (
             f"Normalized cross-correlation across lags; peak at "
             f"{peak_lag:.2f} ms (r = {peak_corr:.3f})."
@@ -973,11 +1024,81 @@ def _stim_correlation_data(evoked, events_fpath, bids_root, trial_type):
 
     return {
         "summary": {
-            "Stim correlation (peak r)": f"{peak_corr:.3f}",
-            "Stim correlation (lag, ms)": f"{peak_lag:.2f}",
+            f"{key_prefix} (peak r)": f"{peak_corr:.3f}",
+            f"{key_prefix} (lag, ms)": f"{peak_lag:.2f}",
         },
         "figures": [figure],
     }
+
+
+def _stim_correlation_data(evoked, events_fpath, bids_root, trial_type):
+    """Compute stim-vs-response correlation for a per-trial-type Evoked.
+
+    Returns ``{"summary": ..., "figures": ...}`` (one raw-waveform row
+    + one figure) suitable for passing through to
+    :func:`reports.build_evoked_section` as ``extra_summary`` and
+    ``extra_figures``. Returns ``{}`` silently when any precondition
+    chain in :func:`_resolve_stim_for_trial_type` fails.
+    """
+    loaded = _resolve_stim_for_trial_type(events_fpath, bids_root, trial_type)
+    if loaded is None:
+        return {}
+    stim_sfreq, stim = loaded
+    return _compute_stim_correlation(
+        evoked, stim, stim_sfreq, trial_type_label=str(trial_type),
+    )
+
+
+def _stim_correlation_data_combined(evoked, events_fpath, bids_root):
+    """Stim correlation for a combined Evoked (raw + envelope).
+
+    Combined Evoked ≈ ENV proxy in FFR (averages across both
+    polarities, so the TFS half-cancels). Two correlations are
+    returned: against the **raw** stimulus waveform (the
+    legacy-style metric) and against the stimulus **envelope**
+    (|hilbert(stim)|, the FFR-relevant metric). Two summary rows
+    and two figures are merged into a single payload.
+
+    Returns ``{}`` when no usable ``stim_file`` reference exists
+    in ``events.tsv``.
+    """
+    loaded = _resolve_first_stim(events_fpath, bids_root)
+    if loaded is None:
+        return {}
+    stim_sfreq, stim = loaded
+    raw_data = _compute_stim_correlation(
+        evoked, stim, stim_sfreq, trial_type_label="combined",
+    )
+
+    import numpy as np
+    from scipy.signal import hilbert
+
+    envelope = np.abs(hilbert(stim))
+    env_data = _compute_stim_correlation(
+        evoked, envelope, stim_sfreq, label="envelope",
+        trial_type_label="combined",
+    )
+
+    return {
+        "summary": {**raw_data["summary"], **env_data["summary"]},
+        "figures": raw_data["figures"] + env_data["figures"],
+    }
+
+
+def _stim_correlation_data_diff(evoked, events_fpath, bids_root):
+    """Stim correlation for a difference Evoked (raw waveform only).
+
+    Difference Evoked ≈ TFS proxy in FFR (the polarity-cancellation
+    contribution survives); raw stim waveform is the right reference.
+    Returns ``{}`` when no usable ``stim_file`` reference exists.
+    """
+    loaded = _resolve_first_stim(events_fpath, bids_root)
+    if loaded is None:
+        return {}
+    stim_sfreq, stim = loaded
+    return _compute_stim_correlation(
+        evoked, stim, stim_sfreq, trial_type_label="diff",
+    )
 
 
 def _build_analysis_report(args, derivatives_info, subject):
@@ -1046,17 +1167,26 @@ def _build_analysis_report(args, derivatives_info, subject):
             for ev_idx, evoked in enumerate(evoked_list):
                 raw_cond = evoked.comment or f"condition-{ev_idx}"
                 cond = _resolve_condition_labels(raw_cond, events_fpath)
-                # Stim correlation: only meaningful when the Evoked is
-                # tied to a single trial type (per-condition output).
-                # The combined evoked ("combined") and difference
-                # evokeds ("diff_AvsB") don't have a single matching
-                # stim_file in events.tsv; skip them.
-                stim_data = {}
-                if raw_cond and not raw_cond.startswith("diff_") \
-                        and raw_cond != "combined":
+                # Stim correlation: per-trial-type Evokeds use the
+                # straight stim_file lookup; combined Evokeds get
+                # both raw + envelope correlations (combined ≈ ENV
+                # proxy in FFR); diff Evokeds get a raw correlation
+                # (diff ≈ TFS proxy). Helpers silently no-op when
+                # the events.tsv / stim_file linkage isn't available.
+                if raw_cond == "combined":
+                    stim_data = _stim_correlation_data_combined(
+                        evoked, events_fpath, bids_root,
+                    )
+                elif raw_cond and raw_cond.startswith("diff_"):
+                    stim_data = _stim_correlation_data_diff(
+                        evoked, events_fpath, bids_root,
+                    )
+                elif raw_cond:
                     stim_data = _stim_correlation_data(
                         evoked, events_fpath, bids_root, raw_cond,
                     )
+                else:
+                    stim_data = {}
                 sections.append(reports.build_evoked_section(
                     evoked,
                     section_id=f"evoked-{task}-{run}-{idx}-{ev_idx}",
