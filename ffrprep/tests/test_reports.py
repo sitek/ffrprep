@@ -314,6 +314,59 @@ def test_build_phase_consistency_section_default_pol_names_unchanged(
     assert "Polarities" not in section["summary"]
 
 
+def test_build_phase_consistency_section_mask_false_drops_alpha_row(
+    synthetic_two_polarity_epochs,
+):
+    """``mask=False`` skips significance masking and the alpha summary row.
+
+    For single-subject reports the masking hides meaningful structure;
+    deferring it to future group-level builds. The caption should
+    surface that no masking was applied so report readers know which
+    cells they're seeing.
+    """
+    from ffrprep.reports import build_phase_consistency_section
+
+    epochs_a, epochs_b = synthetic_two_polarity_epochs
+    section = build_phase_consistency_section(
+        epochs_a, epochs_b,
+        section_id="phase-active-1",
+        title="Phase Consistency",
+        mask=False,
+    )
+    summary = section["summary"]
+    assert "Significance threshold (alpha)" not in summary, (
+        "alpha is irrelevant when no masking is applied; drop the row"
+    )
+    # One figure still produced; its caption must communicate that
+    # no masking was applied.
+    assert len(section["figures"]) == 1
+    caption = section["figures"][0]["caption"]
+    assert "no significance masking" in caption.lower(), (
+        f"caption must note that no masking was applied; got {caption!r}"
+    )
+
+
+def test_build_phase_consistency_section_mask_true_default_unchanged(
+    synthetic_two_polarity_epochs,
+):
+    """Default ``mask=True`` preserves the existing masked-plot path.
+
+    Regression lock: the existing tests above exercise the masked
+    path implicitly via the default; this one is explicit so a
+    future default flip is caught.
+    """
+    from ffrprep.reports import build_phase_consistency_section
+
+    epochs_a, epochs_b = synthetic_two_polarity_epochs
+    section = build_phase_consistency_section(
+        epochs_a, epochs_b,
+        section_id="phase-active-1",
+        title="Phase Consistency",
+    )
+    # alpha row IS present in the default masked branch
+    assert "Significance threshold (alpha)" in section["summary"]
+
+
 def test_build_evoked_section_accepts_extra_summary():
     """Caller-supplied extra_summary entries are folded into the summary table.
 
