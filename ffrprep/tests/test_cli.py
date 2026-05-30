@@ -61,7 +61,7 @@ def test_optional_arguments_defaults():
     assert args.tmin == -0.2
     assert args.tmax == 0.6
     assert args.n_procs == 1
-    # Default flipped: per-trial-type outputs are emitted out of the box
+    # Default flipped: per-trial-type outputs are emitted by default
     # for the canonical FFR setup. --no-split-by-trial-type opts out.
     assert args.split_by_trial_type is True
     assert args.trial_types is None
@@ -950,7 +950,7 @@ def test_collect_evoked_groups_empty_dir_returns_empty_list(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# _load_stim_waveform: format-flexible stimulus loader
+# _load_stim_waveform: stimulus loader dispatch
 # ---------------------------------------------------------------------------
 
 def _write_wav(path, data, sample_rate):

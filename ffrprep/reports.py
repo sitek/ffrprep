@@ -346,15 +346,16 @@ def build_evoked_section(
 
 
 def build_phase_consistency_section(
-    epochs_a, epochs_b, *, section_id, title, alpha=0.01, pol_names=None,
+    epochs_a, epochs_b, *, section_id, title,
+    alpha=0.01, pol_names=None, mask=True,
 ):
     """Build a phase-consistency section from two polarities of Epochs.
 
     Pairs :func:`ffrprep.analysis.compute_phase_consistency` with
-    :func:`ffrprep.analysis.plot_phase_consistency_masked`; the masked
-    plot is embedded as a single inline PNG data URI alongside a
-    summary table recording the number of sweeps used and the
-    significance threshold applied to the mask.
+    either :func:`ffrprep.analysis.plot_phase_consistency_masked`
+    (when ``mask=True``) or :func:`ffrprep.analysis.plot_phase_consistency`
+    (when ``mask=False``); the resulting plot is embedded as a single
+    inline PNG data URI alongside a summary table.
 
     Parameters
     ----------
@@ -369,7 +370,7 @@ def build_phase_consistency_section(
     alpha : float, default 0.01
         Significance level forwarded to
         ``plot_phase_consistency_masked``; controls the per-cell
-        masking cutoff.
+        masking cutoff. Ignored when ``mask=False``.
     pol_names : tuple[str, str] | None
         Display names for the two polarities (e.g. ``("Positive",
         "Negative")``). When given, replaces the PR-35 plot's opaque
@@ -378,9 +379,16 @@ def build_phase_consistency_section(
         report readers know which subplot is which. The ``add`` /
         ``sub`` subplots are auto-labelled
         ``"<a> + <b>"`` / ``"<a> − <b>"``.
+    mask : bool, default True
+        When True, apply significance masking via
+        ``plot_phase_consistency_masked`` and surface the threshold
+        in the summary table. When False, render the unmasked plot
+        via ``plot_phase_consistency`` and drop the alpha-related
+        summary row.
     """
     from .analysis import (
         compute_phase_consistency,
+        plot_phase_consistency,
         plot_phase_consistency_masked,
     )
     # Import seaborn for its side effect: registering the "flare"
@@ -392,18 +400,15 @@ def build_phase_consistency_section(
         epochs_a, epochs_b,
     )
 
-    summary = {
-        "Number of sweeps used": str(numsweeps),
-        "Significance threshold (alpha)": str(alpha),
-    }
+    summary = {"Number of sweeps used": str(numsweeps)}
+    if mask:
+        summary["Significance threshold (alpha)"] = str(alpha)
 
     if pol_names is not None:
         pol_a, pol_b = pol_names
         # Rename the phase-consistency dict keys so the plot's
-        # subplot titles surface the trial-type names. Falls back
-        # to the original key if a label can't be resolved (defensive
-        # for forward-compatibility with PR-35 changes to phasecon
-        # key naming).
+        # subplot titles surface the trial-type names. Keys not
+        # present in label_map pass through unchanged.
         label_map = {
             "A": pol_a,
             "B": pol_b,
@@ -412,29 +417,51 @@ def build_phase_consistency_section(
         }
         renamed = {label_map.get(k, k): v for k, v in phasecon.items()}
         ordered = [label_map.get(k, k) for k in phasecon.keys()]
-        fig = plot_phase_consistency_masked(
-            renamed, xaxis, yaxis, numsweeps,
-            alpha=alpha, pol_names=ordered, cmap="flare_r",
-        )
         summary["Polarities"] = f"{pol_a} / {pol_b}"
-        caption = (
-            f"Phase consistency across {pol_a} and {pol_b} polarities "
-            f"plus their sum and difference, masked at the given "
-            f"significance threshold."
-        )
+        if mask:
+            fig = plot_phase_consistency_masked(
+                renamed, xaxis, yaxis, numsweeps,
+                alpha=alpha, pol_names=ordered, cmap="flare_r",
+            )
+            caption = (
+                f"Phase consistency across {pol_a} and {pol_b} "
+                f"polarities plus their sum and difference, masked "
+                f"at the given significance threshold."
+            )
+        else:
+            fig = plot_phase_consistency(
+                renamed, xaxis, yaxis,
+                pol_names=ordered, cmap="flare_r",
+            )
+            caption = (
+                f"Phase consistency across {pol_a} and {pol_b} "
+                f"polarities plus their sum and difference; no "
+                f"significance masking applied."
+            )
     else:
-        fig = plot_phase_consistency_masked(
-            phasecon, xaxis, yaxis, numsweeps,
-            alpha=alpha, cmap="flare_r",
-        )
-        caption = (
-            "Phase consistency across two polarities (A, B) plus "
-            "their sum (add) and difference (sub), masked at the "
-            "given significance threshold."
-        )
+        if mask:
+            fig = plot_phase_consistency_masked(
+                phasecon, xaxis, yaxis, numsweeps,
+                alpha=alpha, cmap="flare_r",
+            )
+            caption = (
+                "Phase consistency across two polarities (A, B) plus "
+                "their sum (add) and difference (sub), masked at the "
+                "given significance threshold."
+            )
+        else:
+            fig = plot_phase_consistency(
+                phasecon, xaxis, yaxis, cmap="flare_r",
+            )
+            caption = (
+                "Phase consistency across two polarities (A, B) plus "
+                "their sum (add) and difference (sub); no significance "
+                "masking applied."
+            )
 
+    figure_title = "Phase Consistency (masked)" if mask else "Phase Consistency"
     figures = [{
-        "title": "Phase Consistency (masked)",
+        "title": figure_title,
         "caption": caption,
         "data_uri": _fig_to_data_uri(fig),
     }]

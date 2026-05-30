@@ -136,8 +136,8 @@ def test_xcorr_normalized_returns_corrs_and_lags():
 def test_xcorr_normalized_peak_matches_corr_stim_to_resp():
     """Peak of ``_xcorr_normalized`` matches the scalars from corr_stim_to_resp.
 
-    Locks in the refactor invariant: the existing public function is a
-    thin wrapper that just picks the peak from the shared helper.
+    ``corr_stim_to_resp`` returns ``(corrs[argmax], lag_ms[argmax])``
+    from the shared helper; regression-lock the equality.
     """
     from ffrprep.analysis import _xcorr_normalized, corr_stim_to_resp
 

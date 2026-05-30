@@ -836,10 +836,9 @@ def _phase_consistency_section_for_group(grp, preproc_subject_dir):
     # instead of the opaque PR-35 "A" / "B" defaults.
     pol_a = _condition_from_preproc_filename(per_cond[0].name)
     pol_b = _condition_from_preproc_filename(per_cond[1].name)
-    # Single-subject report: skip significance masking. The default
-    # alpha=0.01 mask hides meaningful structure at single-subject N;
-    # group-level callers can opt back in by passing mask=True
-    # (the library-safe default on build_phase_consistency_section).
+    # Single-subject report: skip significance masking. At
+    # single-subject N the alpha=0.01 cutoff blackens most cells;
+    # group-level callers pass mask=True.
     return reports.build_phase_consistency_section(
         epochs_a, epochs_b,
         section_id=f"phase-consistency-{identifier}",
@@ -861,9 +860,8 @@ def _read_wav_stim(path):
     return int(sample_rate), data
 
 
-# Format-flexible stimulus loader dispatch. Add new entries here to
-# support other audio formats (e.g. ``".flac": _read_flac_stim``);
-# the report layer doesn't care how the bytes get parsed.
+# Stimulus loader dispatch by file extension. Add new entries to
+# support other audio formats (e.g. ``".flac": _read_flac_stim``).
 _STIM_READERS = {
     ".wav": _read_wav_stim,
 }
