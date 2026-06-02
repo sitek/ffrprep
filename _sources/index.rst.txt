@@ -13,9 +13,9 @@
 .. image:: https://img.shields.io/pypi/v/ffrprep.svg
         :target: https://pypi.python.org/pypi/ffrprep
 
-.. image:: https://img.shields.io/docker/pulls/sitek/ffrprep
+.. image:: https://img.shields.io/docker/pulls/ksitek/ffrprep
     :alt: Dockerpulls
-    :target: https://cloud.docker.com/u/sitek/repository/docker/sitek/ffrprep
+    :target: https://cloud.docker.com/u/ksitek/repository/docker/ksitek/ffrprep
 
 .. image:: https://img.shields.io/github/repo-size/sitek/ffrprep.svg
         :target: https://github.com/sitek/ffrprep.zip
