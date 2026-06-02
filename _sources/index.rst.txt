@@ -58,7 +58,7 @@ parallel workers per subject) with the published Docker image:
 
     docker run --rm \
       -v /path/to/your/bids_dataset:/data:rw \
-      ksitek/ffrprep:latest \
+      sitek/ffrprep:latest \
       /data /data/derivatives participant \
       --participant_label 01 02 \
       --stage both \
