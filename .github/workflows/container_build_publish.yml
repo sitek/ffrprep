@@ -62,7 +62,7 @@ jobs:
           context: ./
           # Note: tags has to be all lower-case
           tags: |
-            sitek/ffrprep:latest 
+            ksitek/ffrprep:latest 
             ghcr.io/sitek/ffrprep:latest
           # build on feature branches, push only on main branch
           push: ${{ github.ref == 'refs/heads/main' }}
