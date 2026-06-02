@@ -35,7 +35,7 @@ the ``ffrprep-download`` console script bundled inside the image.
     # to skip the stimulus download.
     docker run --rm \
       -v ~/ffrprep_tutorial:/out:rw \
-      sitek/ffrprep:latest \
+      ksitek/ffrprep:latest \
       download example --with-stimuli --out /out
 
 The same fetch is available from Python via
@@ -73,7 +73,7 @@ Next, obtain the ``ffrprep`` container image. Choose either Docker or Singularit
 .. code-block:: bash
 
     # Pull the latest ffrprep Docker image
-    docker pull sitek/ffrprep:latest
+    docker pull ksitek/ffrprep:latest
     
     # Verify the image was downloaded
     docker images | grep ffrprep
@@ -83,7 +83,7 @@ Next, obtain the ``ffrprep`` container image. Choose either Docker or Singularit
 .. code-block:: bash
 
     # Build Singularity image from Docker Hub
-    singularity build ffrprep_latest.sif docker://sitek/ffrprep:latest
+    singularity build ffrprep_latest.sif docker://ksitek/ffrprep:latest
     
     # Verify the image was created
     ls -lh ffrprep_latest.sif
@@ -103,7 +103,7 @@ Now let's run the preprocessing stage on our example data:
     # Run preprocessing with Docker
     docker run -ti --rm \
         -v $(pwd):/data \
-        sitek/ffrprep:latest \
+        ksitek/ffrprep:latest \
         /data/bids_dataset \
         /data/bids_dataset/derivatives \
         participant \
@@ -192,7 +192,7 @@ Once preprocessing is complete and looks good, run the analysis stage:
 
     docker run -ti --rm \
         -v $(pwd):/data \
-        sitek/ffrprep:latest \
+        ksitek/ffrprep:latest \
         /data/bids_dataset \
         /data/bids_dataset/derivatives \
         participant \
@@ -393,7 +393,7 @@ For convenience, here's how to run both preprocessing and analysis in one comman
 
     docker run -ti --rm \
         -v $(pwd):/data \
-        sitek/ffrprep:latest \
+        ksitek/ffrprep:latest \
         /data/bids_dataset \
         /data/bids_dataset/derivatives \
         participant \
