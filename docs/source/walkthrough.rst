@@ -18,27 +18,50 @@ Before starting, ensure you have:
 Step 1: Download Example Data
 =============================
 
-First, let's download some example FFR data to work with. ``ffrprep`` provides convenient functions to download BIDS-formatted example datasets:
+First, let's download some example FFR data to work with. The
+``download`` subcommand of the ``ffrprep`` container fetches the
+example OSF dataset; the container's entrypoint dispatches it to
+the ``ffrprep-download`` console script bundled inside the image.
+
+.. code-block:: bash
+
+    mkdir -p ~/ffrprep_tutorial
+
+    # Fetch the EEG data AND the stimulus files referenced by
+    # events.tsv. --with-stimuli augments every
+    # sub-*/eeg/*_events.tsv with the BIDS stim_file column so the
+    # analysis report can compute the stim ↔ response
+    # cross-correlation. Drop the flag (or pass --no-with-stimuli)
+    # to skip the stimulus download.
+    docker run --rm \
+      -v ~/ffrprep_tutorial:/out:rw \
+      sitek/ffrprep:latest \
+      download example --with-stimuli --out /out
+
+The same fetch is available from Python via
+``ffrprep.datasets.download_example_data``:
 
 .. code-block:: python
 
     from ffrprep.datasets import download_example_data
     import os
-    
-    # Create a working directory
+
     work_dir = os.path.expanduser("~/ffrprep_tutorial")
     os.makedirs(work_dir, exist_ok=True)
-    
-    # Download example data (1 subject)
-    dataset_path = download_example_data(dataset_path=work_dir)
+    dataset_path = download_example_data(
+        dataset_path=work_dir, with_stimuli=True,
+    )
     print(f"Example data downloaded to: {dataset_path}")
 
-This will download a complete BIDS dataset with:
+Either form produces a complete BIDS dataset with:
 
 - Raw EEG data from one subject
 - Proper BIDS directory structure
 - Required metadata files (``dataset_description.json``, etc.)
-- Event files and channel information
+- Event files and channel information (with the ``stim_file``
+  column populated when ``with_stimuli=True``)
+- ``stimuli/<filename>.wav`` audio files (when
+  ``with_stimuli=True``)
 
 Step 2: Get the ffrprep Container
 =================================
@@ -50,7 +73,7 @@ Next, obtain the ``ffrprep`` container image. Choose either Docker or Singularit
 .. code-block:: bash
 
     # Pull the latest ffrprep Docker image
-    docker pull ffrprep/ffrprep:latest
+    docker pull sitek/ffrprep:latest
     
     # Verify the image was downloaded
     docker images | grep ffrprep
@@ -60,7 +83,7 @@ Next, obtain the ``ffrprep`` container image. Choose either Docker or Singularit
 .. code-block:: bash
 
     # Build Singularity image from Docker Hub
-    singularity build ffrprep_latest.sif docker://ffrprep/ffrprep:latest
+    singularity build ffrprep_latest.sif docker://sitek/ffrprep:latest
     
     # Verify the image was created
     ls -lh ffrprep_latest.sif
@@ -80,7 +103,7 @@ Now let's run the preprocessing stage on our example data:
     # Run preprocessing with Docker
     docker run -ti --rm \
         -v $(pwd):/data \
-        ffrprep/ffrprep:latest \
+        sitek/ffrprep:latest \
         /data/bids_dataset \
         /data/bids_dataset/derivatives \
         participant \
@@ -166,39 +189,56 @@ Once preprocessing is complete and looks good, run the analysis stage:
 .. code-block:: bash
 
     cd ~/ffrprep_tutorial
-    
+
     docker run -ti --rm \
         -v $(pwd):/data \
-        ffrprep/ffrprep:latest \
+        sitek/ffrprep:latest \
         /data/bids_dataset \
         /data/bids_dataset/derivatives \
         participant \
-        --stage analysis \
-        --by_event_type
+        --stage analysis
 
 **Using Singularity:**
 
 .. code-block:: bash
 
     cd ~/ffrprep_tutorial
-    
+
     singularity run --cleanenv \
         -B $(pwd):/data \
         ffrprep_latest.sif \
         /data/bids_dataset \
         /data/bids_dataset/derivatives \
         participant \
-        --stage analysis \
-        --by_event_type
+        --stage analysis
 
 The analysis stage will:
 
 - Load preprocessed epoched data
-- Compute evoked responses (average across trials)
-- Create separate evoked responses for each event type (``--by_event_type``)
-- Generate time-frequency representations  
-- Compute FFR-specific metrics
-- Save results in standard formats
+- Compute one evoked response per ``trial_type`` value
+  (``_desc-evoked{Cond}.fif``), a combined evoked across all events
+  (``_desc-evoked.fif``), and — for 2-trial-type datasets — an
+  auto-paired difference evoked
+  (``_desc-evokedDiff{A}Vs{B}.fif``). The trial-type split is on by
+  default (``--split-by-trial-type``); pass
+  ``--no-split-by-trial-type`` to fall back to a single combined
+  evoked. For datasets with 3+ trial types, pass
+  ``--difference-pairs A:B [C:D …]`` to opt in to explicit
+  difference evokeds, or restrict the per-type outputs to a subset
+  with ``--trial-types A B``.
+- Generate time-frequency representations, autocorrelation, and
+  pitch-tracking plots for each evoked.
+- Compute FFR scalar metrics (RMS SNR, mean band-power) for each
+  evoked.
+- Compute the stim ↔ response cross-correlation (peak r + lag,
+  plus an envelope correlation on the combined evoked) when the
+  BIDS ``stim_file`` column is populated in ``events.tsv``. See
+  Step 1 above for ``ffrprep-download example --with-stimuli``
+  which fetches the stimulus files and augments ``events.tsv``.
+- Compute per (task, run) phase consistency across polarities
+  (two-trial-type datasets only) and a trial-to-trial response-
+  consistency row on each per-condition Epoched section.
+- Save results in standard formats.
 
 Step 6: Inspect Analysis Outputs
 ================================
@@ -220,16 +260,41 @@ The analysis outputs include:
 
 **Data files (per subject, per task / run):**
 
-- ``*_desc-evoked.fif``: Evoked response data (loadable with MNE-Python)
-- ``*_desc-evoked.json``: BIDS sidecar with ``AverageCount``, ``Baseline``,
-  ``SamplingFrequency``, etc.
+- ``*_desc-evoked{Cond}.fif``: per-trial-type evoked response data
+  (e.g. ``_desc-evokedPositive.fif``, ``_desc-evokedNegative.fif``).
+  Sidecar carries ``Condition`` and the standard ``AverageCount`` /
+  ``Baseline`` / ``SamplingFrequency`` fields.
+- ``*_desc-evoked.fif``: combined evoked across all events. Sidecar
+  omits ``Condition`` (it isn't tied to a single trial type).
+- ``*_desc-evokedDiff{A}Vs{B}.fif``: difference evoked for the
+  ``A`` − ``B`` polarity pair (auto-emitted for 2-trial-type
+  datasets; opt in via ``--difference-pairs`` for 3+). Sidecar
+  carries ``DifferenceOf: [A, B]``.
 
 **Report:**
 
-- ``sub-XX_analysis_report.html``: single-file HTML report per subject,
-  embedding waveform, PSD, time-frequency representation,
-  autocorrelation, and pitch-track figures plus FFR scalar metrics
-  (RMS SNR, mean band-power) per (task, run) section.
+- ``sub-XX_analysis_report.html``: single-file HTML report per subject.
+  One section per (task, run) group, containing:
+
+  - per-trial-type Evoked sections with waveform / PSD / TFR /
+    autocorrelation / pitch-track figures, the FFR scalar metrics
+    (RMS SNR, mean band-power), and a stim ↔ response
+    cross-correlation row + lag plot (when ``stim_file`` is
+    populated in ``events.tsv``);
+  - a combined Evoked section with the same plots plus a second
+    stim correlation row + plot for the **envelope** (``|hilbert
+    (stim)|``);
+  - a difference Evoked section with the same plots plus a single
+    raw-waveform stim correlation row + plot;
+  - a Phase Consistency section (two-trial-type datasets only):
+    masked phase-coherence time–frequency heatmap across both
+    polarities plus their sum and difference, using seaborn's
+    ``flare_r`` colormap.
+
+  The matched preprocessing report
+  (``sub-XX_preprocessing_report.html``) additionally shows a
+  ``Mean trial-to-trial r`` row on each Epoched section (when at
+  least 10 epochs are present).
 
 **Key analysis features to examine:**
 
@@ -241,6 +306,13 @@ The analysis outputs include:
   good phase-locking.
 - **RMS SNR**: Response RMS / baseline RMS over the 100–200 ms
   response window. Higher is better.
+- **Stim ↔ response cross-correlation**: peak r near zero lag (or
+  within typical FFR lag of ~7–14 ms after onset) indicates good
+  stimulus tracking. The envelope correlation on the combined
+  evoked is the natural metric for ENV-following responses.
+- **Phase consistency**: bright cells in the masked plot mark
+  (frequency, time) regions where the response phase is
+  reproducible across trials.
 
 Step 7: Working with Outputs in Python
 ======================================
@@ -263,7 +335,7 @@ Set up the paths to access the derivatives from both preprocessing and analysis 
 
 .. code-block:: python
 
-    derivatives_path = Path("~/ffrprep_tutorial/bids_dataset/derivatives")
+    derivatives_path = Path.home() / "ffrprep_tutorial" / "bids_dataset" / "derivatives"
     analysis_path = derivatives_path / "ffrprep-analysis" / "sub-01"
 
 **Load and visualize evoked responses:**
@@ -321,7 +393,7 @@ For convenience, here's how to run both preprocessing and analysis in one comman
 
     docker run -ti --rm \
         -v $(pwd):/data \
-        ffrprep/ffrprep:latest \
+        sitek/ffrprep:latest \
         /data/bids_dataset \
         /data/bids_dataset/derivatives \
         participant \
@@ -329,7 +401,6 @@ For convenience, here's how to run both preprocessing and analysis in one comman
         --high_pass 1.0 \
         --low_pass 40.0 \
         --ref_channels average \
-        --by_event_type \
         --n_procs 2
 
 **Singularity:**
@@ -346,7 +417,6 @@ For convenience, here's how to run both preprocessing and analysis in one comman
         --high_pass 1.0 \
         --low_pass 40.0 \
         --ref_channels average \
-        --by_event_type \
         --n_procs 2
 
 Troubleshooting
@@ -355,19 +425,23 @@ Troubleshooting
 **Common issues and solutions:**
 
 1. **Permission errors with containers:**
+
    - Ensure your data directory has proper permissions
    - On Linux, you may need to add ``--user $(id -u):$(id -g)`` to Docker commands
 
 2. **Memory issues:**
+
    - Reduce the number of parallel workers with ``--n_procs 1`` (each worker
      loads its own raw + epochs into memory; footprint scales linearly with N)
    - Process fewer subjects at once
 
 3. **BIDS validation errors:**
+
    - Check that your dataset follows BIDS conventions
    - Use ``--skip_bids_validation`` if necessary (not recommended)
 
 4. **No FFR found in data:**
+
    - Verify your stimulus timing and event codes
    - Check that the frequency range matches your stimulus
    - Ensure sufficient trial counts

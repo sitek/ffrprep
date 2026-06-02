@@ -84,8 +84,8 @@ def rms_snr(evoked, response_lower=0.100, response_upper=0.200):
         RMS(response window) / RMS(baseline window)
         for the first channel in `evoked.data`.
 
-    Example
-    -------
+    Examples
+    --------
     Compute RMS SNR for a 100-200 ms response window
 
     >>> snr = rms_snr(evoked, response_lower=0.100, response_upper=0.200)
@@ -170,21 +170,19 @@ def compute_pitch_and_conf(evoked,
     -------
     dict
         A dictionary with the following keys:
-        - 'times':
-            Array of time points corresponding to the center of each window.
-        - 'pitch_hz':
-            Array of pitch estimates (in Hz) for each window.
-        - 'pitch_hz_smooth':
-            Smoothed pitch estimates (in Hz) for each window.
-        - 'peak_strength':
-            Array of normalized autocorrelation strengths for each window.
-        - 'conf_rmax':
-            Array of maximum normalized autocorrelation values for each window.
-        - 'conf_pnr':
-            Array of pitch-to-noise ratios for each window.
-        - 'conf_z':
-            Array of z-scores for the maximum autocorrelation values
-            for each window.
+
+        - ``'times'`` — array of time points corresponding to the center of
+          each window.
+        - ``'pitch_hz'`` — array of pitch estimates (in Hz) for each window.
+        - ``'pitch_hz_smooth'`` — smoothed pitch estimates (in Hz) for each
+          window.
+        - ``'peak_strength'`` — array of normalized autocorrelation strengths
+          for each window.
+        - ``'conf_rmax'`` — array of maximum normalized autocorrelation values
+          for each window.
+        - ``'conf_pnr'`` — array of pitch-to-noise ratios for each window.
+        - ``'conf_z'`` — array of z-scores for the maximum autocorrelation
+          values for each window.
 
     Examples
     --------
@@ -341,24 +339,25 @@ def plot_pitch_and_conf(results):
     results : dict
         Dictionary as returned by compute_pitch_and_conf(). The dictionary must
         contain at least the following keys:
-          - 'times' : array-like
-              1-D array of time stamps in seconds for the pitch track.
-          - 'pitch_hz_smooth' : array-like
-              1-D array of smoothed pitch values in Hz.
-              Use NaN for unvoiced frames.
+
+        - ``'times'`` (array-like) — 1-D array of time stamps in seconds for
+          the pitch track.
+        - ``'pitch_hz_smooth'`` (array-like) — 1-D array of smoothed pitch
+          values in Hz. Use NaN for unvoiced frames.
+
         The dictionary may also include the following optional entries:
-          - 'peak_strength' : array-like or None
-              Per-frame peak strength values that can be used as an alternate
-              confidence measure for coloring the pitch scatter.
-          - 'conf_rmax' : array-like or None
-              Preferred confidence metric (e.g., correlation maximum).
-              If present and aligned with the pitch/times vector,
-              it will be used to color the
-              pitch points and plotted in the bottom panel.
-          - 'conf_z' : array-like or None
-              Z-score confidence values (plotted in bottom panel when present).
-          - 'conf_pnr' : array-like or None
-              PNR (pitch-to-noise ratio) confidence values (plotted in bottom).
+
+        - ``'peak_strength'`` (array-like or None) — per-frame peak strength
+          values that can be used as an alternate confidence measure for
+          coloring the pitch scatter.
+        - ``'conf_rmax'`` (array-like or None) — preferred confidence metric
+          (e.g., correlation maximum). If present and aligned with the
+          pitch/times vector, it will be used to color the pitch points and
+          plotted in the bottom panel.
+        - ``'conf_z'`` (array-like or None) — z-score confidence values
+          (plotted in bottom panel when present).
+        - ``'conf_pnr'`` (array-like or None) — PNR (pitch-to-noise ratio)
+          confidence values (plotted in bottom).
 
     Returns
     -------
@@ -387,11 +386,12 @@ def plot_pitch_and_conf(results):
     - Requires matplotlib.pyplot (imported as plt in the function)
       and numpy (np) to be available in the module scope.
 
-    Example
-    -------
-    # Assuming compute_pitch_and_conf() returns the expected dict:
-    results = compute_pitch_and_conf(audio_chunk)
-    plot_pitch_and_conf(results)
+    Examples
+    --------
+    Assuming ``compute_pitch_and_conf()`` returns the expected dict::
+
+        results = compute_pitch_and_conf(audio_chunk)
+        plot_pitch_and_conf(results)
     """
     import matplotlib.pyplot as plt
     from mpl_toolkits.axes_grid1 import make_axes_locatable
