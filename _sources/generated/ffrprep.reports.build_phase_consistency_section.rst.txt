@@ -1,0 +1,6 @@
+﻿ffrprep.reports.build\_phase\_consistency\_section
+==================================================
+
+.. currentmodule:: ffrprep.reports
+
+.. autofunction:: build_phase_consistency_section

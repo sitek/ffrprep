@@ -1,0 +1,6 @@
+﻿ffrprep.reports.build\_analysis\_report
+=======================================
+
+.. currentmodule:: ffrprep.reports
+
+.. autofunction:: build_analysis_report

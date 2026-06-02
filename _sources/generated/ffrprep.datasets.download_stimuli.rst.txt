@@ -1,0 +1,6 @@
+﻿ffrprep.datasets.download\_stimuli
+==================================
+
+.. currentmodule:: ffrprep.datasets
+
+.. autofunction:: download_stimuli

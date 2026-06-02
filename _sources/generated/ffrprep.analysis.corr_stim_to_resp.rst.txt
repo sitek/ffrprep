@@ -1,0 +1,6 @@
+﻿ffrprep.analysis.corr\_stim\_to\_resp
+=====================================
+
+.. currentmodule:: ffrprep.analysis
+
+.. autofunction:: corr_stim_to_resp

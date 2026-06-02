@@ -1,0 +1,6 @@
+﻿ffrprep.analysis.corr\_resp\_to\_resp
+=====================================
+
+.. currentmodule:: ffrprep.analysis
+
+.. autofunction:: corr_resp_to_resp

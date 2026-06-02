@@ -1,0 +1,6 @@
+﻿ffrprep.preproc.create\_analysis\_workflow
+==========================================
+
+.. currentmodule:: ffrprep.preproc
+
+.. autofunction:: create_analysis_workflow

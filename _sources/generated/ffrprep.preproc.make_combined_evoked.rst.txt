@@ -1,0 +1,6 @@
+﻿ffrprep.preproc.make\_combined\_evoked
+======================================
+
+.. currentmodule:: ffrprep.preproc
+
+.. autofunction:: make_combined_evoked

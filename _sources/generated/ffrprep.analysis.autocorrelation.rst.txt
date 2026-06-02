@@ -1,0 +1,6 @@
+﻿ffrprep.analysis.autocorrelation
+================================
+
+.. currentmodule:: ffrprep.analysis
+
+.. autofunction:: autocorrelation

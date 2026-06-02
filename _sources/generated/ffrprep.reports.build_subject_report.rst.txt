@@ -1,0 +1,6 @@
+﻿ffrprep.reports.build\_subject\_report
+======================================
+
+.. currentmodule:: ffrprep.reports
+
+.. autofunction:: build_subject_report

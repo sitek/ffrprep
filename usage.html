@@ -46,19 +46,15 @@
   
   
   
-    <title>Usage &#8212; ffrprep 0+untagged.1.g0d93781 documentation</title>
-    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+    <title>Usage &#8212; ffrprep 0.1.dev1+gbb1e88005 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
     <link rel="stylesheet" type="text/css" href="_static/material.css?v=79c92029" />
     <link rel="stylesheet" type="text/css" href="_static/plot_directive.css" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="_static/sg_gallery.css?v=d2d258e8" />
-    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-binder.css?v=f4aeca0c" />
-    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-dataframe.css?v=2082cf3c" />
-    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-rendered-html.css?v=1277b6f3" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <script src="_static/documentation_options.js?v=2a605cb4"></script>
-    <script src="_static/doctools.js?v=9bcbadda"></script>
-    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/documentation_options.js?v=d4ffce98"></script>
+    <script src="_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="_static/copybutton.js?v=f281be69"></script>
     <script src="_static/design-tabs.js?v=f930bc37"></script>
@@ -89,7 +85,7 @@
   <nav class="md-header-nav md-grid">
     <div class="md-flex navheader">
       <div class="md-flex__cell md-flex__cell--shrink">
-        <a href="index.html" title="ffrprep 0+untagged.1.g0d93781 documentation"
+        <a href="index.html" title="ffrprep 0.1.dev1+gbb1e88005 documentation"
            class="md-header-nav__button md-logo">
           
             &nbsp;
@@ -137,7 +133,7 @@
       
         <div class="md-flex__cell md-flex__cell--shrink">
           <div class="md-header-nav__source">
-            <a href="https://github.com/spark-csd/ffrprep" title="Go to repository" class="md-source" data-md-source="github">
+            <a href="https://github.com/sitek/ffrprep" title="Go to repository" class="md-source" data-md-source="github">
 
     <div class="md-source__icon">
       <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 24 24" width="28" height="28">
@@ -175,7 +171,7 @@
   <nav class="md-tabs" data-md-component="tabs">
     <div class="md-tabs__inner md-grid">
       <ul class="md-tabs__list">
-          <li class="md-tabs__item"><a href="index.html" class="md-tabs__link">ffrprep 0+untagged.1.g0d93781 documentation</a></li>
+          <li class="md-tabs__item"><a href="index.html" class="md-tabs__link">ffrprep 0.1.dev1+gbb1e88005 documentation</a></li>
       </ul>
     </div>
   </nav>
@@ -187,16 +183,16 @@
               <div class="md-sidebar__inner">
                 <nav class="md-nav md-nav--primary" data-md-level="0">
   <label class="md-nav__title md-nav__title--site" for="__drawer">
-    <a href="index.html" title="ffrprep 0+untagged.1.g0d93781 documentation" class="md-nav__button md-logo">
+    <a href="index.html" title="ffrprep 0.1.dev1+gbb1e88005 documentation" class="md-nav__button md-logo">
       
         <img src="_static/" alt=" logo" width="48" height="48">
       
     </a>
     <a href="index.html"
-       title="ffrprep 0+untagged.1.g0d93781 documentation">ffrprep</a>
+       title="ffrprep 0.1.dev1+gbb1e88005 documentation">ffrprep</a>
   </label>
     <div class="md-nav__source">
-      <a href="https://github.com/spark-csd/ffrprep" title="Go to repository" class="md-source" data-md-source="github">
+      <a href="https://github.com/sitek/ffrprep" title="Go to repository" class="md-source" data-md-source="github">
 
     <div class="md-source__icon">
       <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 24 24" width="28" height="28">
@@ -237,6 +233,8 @@
               <ul class="md-nav__list">
         <li class="md-nav__item"><a href="#ffrprep-through-the-cli" class="md-nav__link">ffrprep through the CLI</a>
         </li>
+        <li class="md-nav__item"><a href="#downloading-the-example-dataset" class="md-nav__link">Downloading the example dataset</a>
+        </li>
         <li class="md-nav__item"><a href="#command-line-arguments" class="md-nav__link">Command-Line Arguments</a><nav class="md-nav">
               <ul class="md-nav__list">
         <li class="md-nav__item"><a href="#ffrprep.ffrprep_cli-get_parser-positional-arguments" class="md-nav__link">Positional Arguments</a>
@@ -253,11 +251,23 @@
         </li>
         <li class="md-nav__item"><a href="#example-2-full-analysis-with-custom-parameters" class="md-nav__link">Example 2 - Full analysis with custom parameters</a>
         </li>
-        <li class="md-nav__item"><a href="#example-3-usage-through-docker" class="md-nav__link">Example 3 - Usage through Docker</a>
+        <li class="md-nav__item"><a href="#example-3-per-trial-type-analysis-with-explicit-difference-pairs" class="md-nav__link">Example 3 - Per-trial-type analysis with explicit difference pairs</a>
         </li>
-        <li class="md-nav__item"><a href="#example-4-usage-through-singularity" class="md-nav__link">Example 4 - Usage through Singularity</a>
+        <li class="md-nav__item"><a href="#example-4-restrict-outputs-to-a-subset-no-split" class="md-nav__link">Example 4 - Restrict outputs to a subset, no split</a>
         </li></ul>
             </nav>
+        </li></ul>
+            </nav>
+        </li>
+        <li class="md-nav__item"><a href="#parallelization-and-cluster-usage" class="md-nav__link">Parallelization and cluster usage</a><nav class="md-nav">
+              <ul class="md-nav__list">
+        <li class="md-nav__item"><a href="#single-workstation" class="md-nav__link">Single workstation</a>
+        </li>
+        <li class="md-nav__item"><a href="#cluster-slurm-job-array" class="md-nav__link">Cluster (slurm job array)</a>
+        </li>
+        <li class="md-nav__item"><a href="#cluster-gnu-parallel-on-a-single-beefy-box" class="md-nav__link">Cluster (GNU parallel on a single beefy box)</a>
+        </li>
+        <li class="md-nav__item"><a href="#failure-handling" class="md-nav__link">Failure handling</a>
         </li></ul>
             </nav>
         </li>
@@ -286,13 +296,6 @@
     
     
       <a href="walkthrough.html" class="md-nav__link">Tutorial walkthrough</a>
-      
-    
-    </li>
-    <li class="md-nav__item">
-    
-    
-      <a href="auto_examples/index.html" class="md-nav__link">Examples</a>
       
     
     </li>
@@ -335,6 +338,8 @@
               <ul class="md-nav__list">
         <li class="md-nav__item"><a href="#ffrprep-through-the-cli" class="md-nav__link">ffrprep through the CLI</a>
         </li>
+        <li class="md-nav__item"><a href="#downloading-the-example-dataset" class="md-nav__link">Downloading the example dataset</a>
+        </li>
         <li class="md-nav__item"><a href="#command-line-arguments" class="md-nav__link">Command-Line Arguments</a><nav class="md-nav">
               <ul class="md-nav__list">
         <li class="md-nav__item"><a href="#ffrprep.ffrprep_cli-get_parser-positional-arguments" class="md-nav__link">Positional Arguments</a>
@@ -351,11 +356,23 @@
         </li>
         <li class="md-nav__item"><a href="#example-2-full-analysis-with-custom-parameters" class="md-nav__link">Example 2 - Full analysis with custom parameters</a>
         </li>
-        <li class="md-nav__item"><a href="#example-3-usage-through-docker" class="md-nav__link">Example 3 - Usage through Docker</a>
+        <li class="md-nav__item"><a href="#example-3-per-trial-type-analysis-with-explicit-difference-pairs" class="md-nav__link">Example 3 - Per-trial-type analysis with explicit difference pairs</a>
         </li>
-        <li class="md-nav__item"><a href="#example-4-usage-through-singularity" class="md-nav__link">Example 4 - Usage through Singularity</a>
+        <li class="md-nav__item"><a href="#example-4-restrict-outputs-to-a-subset-no-split" class="md-nav__link">Example 4 - Restrict outputs to a subset, no split</a>
         </li></ul>
             </nav>
+        </li></ul>
+            </nav>
+        </li>
+        <li class="md-nav__item"><a href="#parallelization-and-cluster-usage" class="md-nav__link">Parallelization and cluster usage</a><nav class="md-nav">
+              <ul class="md-nav__list">
+        <li class="md-nav__item"><a href="#single-workstation" class="md-nav__link">Single workstation</a>
+        </li>
+        <li class="md-nav__item"><a href="#cluster-slurm-job-array" class="md-nav__link">Cluster (slurm job array)</a>
+        </li>
+        <li class="md-nav__item"><a href="#cluster-gnu-parallel-on-a-single-beefy-box" class="md-nav__link">Cluster (GNU parallel on a single beefy box)</a>
+        </li>
+        <li class="md-nav__item"><a href="#failure-handling" class="md-nav__link">Failure handling</a>
         </li></ul>
             </nav>
         </li>
@@ -386,28 +403,58 @@
 automated preprocessing pipelines that include data loading, filtering, artifact removal, and report generation
 for neurophysiological data analysis.
 The exact command to run <code class="docutils literal notranslate"><span class="pre">ffrprep</span></code> depends on the Installation method and user. Regarding the latter, <code class="docutils literal notranslate"><span class="pre">ffrprep</span></code>
-can either be used as a <code class="docutils literal notranslate"><span class="pre">command</span> <span class="pre">line</span> <span class="pre">tool</span></code> or directly within <code class="docutils literal notranslate"><span class="pre">python</span></code>. Please refer to the <a class="reference external" href="https://SPARK-CSD.github.io/ffrprep/walkthrough">Tutorial</a> for a more detailed walkthrough.</p>
+can either be used as a <code class="docutils literal notranslate"><span class="pre">command</span> <span class="pre">line</span> <span class="pre">tool</span></code> or directly within <code class="docutils literal notranslate"><span class="pre">python</span></code>. Please refer to the <a class="reference external" href="https://sitek.github.io/ffrprep/walkthrough">Tutorial</a> for a more detailed walkthrough.</p>
 <p>Here’s a very conceptual example of running <code class="docutils literal notranslate"><span class="pre">ffrprep</span></code> via <code class="docutils literal notranslate"><span class="pre">CLI</span></code>:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ffrprep</span>
 <span class="n">ffrprep</span> <span class="n">optional_arguments</span>
 </pre></div>
 </div>
 <p>and here from within <code class="docutils literal notranslate"><span class="pre">python</span></code>:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">ffrprep</span> <span class="kn">import</span> <span class="n">ffrprep_function</span>
-<span class="kn">from</span> <span class="nn">ffrprep</span> <span class="kn">import</span> <span class="n">ffrprep_function</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ffrprep</span><span class="w"> </span><span class="kn">import</span> <span class="n">ffrprep_function</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ffrprep</span><span class="w"> </span><span class="kn">import</span> <span class="n">ffrprep_function</span>
 
 <span class="n">result</span> <span class="o">=</span> <span class="n">ffrprep_function</span><span class="p">(</span><span class="nb">input</span><span class="p">)</span>
 
 <span class="n">result</span> <span class="o">=</span> <span class="n">ffrprep_function</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">optional_arguments</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Below, we will focus on the <code class="docutils literal notranslate"><span class="pre">CLI</span></code> version. Thus, if you are interested in using <code class="docutils literal notranslate"><span class="pre">ffrprep</span></code> directly within <code class="docutils literal notranslate"><span class="pre">python</span></code>,
-please check the <a class="reference external" href="https://SPARK-CSD.github.io/ffrprep/auto_examples/index">Examples</a>.</p>
+<p>Below, we will focus on the <code class="docutils literal notranslate"><span class="pre">CLI</span></code> version. For programmatic use,
+the <a class="reference internal" href="api_ref.html#api-ref"><span class="std std-ref">Reference API</span></a> documents every public function with its
+signature and parameters.</p>
 <section id="ffrprep-through-the-cli">
 <h2 id="ffrprep-through-the-cli">ffrprep through the CLI<a class="headerlink" href="#ffrprep-through-the-cli" title="Link to this heading">¶</a></h2>
-<p>As <code class="docutils literal notranslate"><span class="pre">ffrprep</span></code> is a <a class="reference external" href="https://bids-apps.neuroimaging.io">BIDS-App</a> , it is primarily designed as a command-line tool, that you can directly from your terminal or command prompt.
-Ideally, using the provided <a class="reference external" href="https://spark-csd.github.io/ffrprep/installation.html#docker">Docker</a> or <a class="reference external" href="https://spark-csd.github.io/ffrprep/installation.html#singularity">Singularity</a> images as they encapsulate all dependencies and ensure a consistent environment across different systems, ensuring ease-of-use and
+<p>As <code class="docutils literal notranslate"><span class="pre">ffrprep</span></code> is a <a class="reference external" href="https://bids-apps.neuroimaging.io">BIDS-App</a> , it is primarily designed as a command-line tool that you can run directly from your terminal or command prompt.
+Ideally, using the provided <a class="reference external" href="https://sitek.github.io/ffrprep/installation.html#docker">Docker</a> or <a class="reference external" href="https://sitek.github.io/ffrprep/installation.html#singularity">Singularity</a> images as they encapsulate all dependencies and ensure a consistent environment across different systems, ensuring ease-of-use and
 reproducibility.</p>
+</section>
+<section id="downloading-the-example-dataset">
+<h2 id="downloading-the-example-dataset">Downloading the example dataset<a class="headerlink" href="#downloading-the-example-dataset" title="Link to this heading">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">download</span></code> subcommand of the container fetches the example
+OSF dataset used in the
+<a class="reference external" href="https://sitek.github.io/ffrprep/walkthrough">Tutorial</a>. The
+container’s entrypoint dispatches <code class="docutils literal notranslate"><span class="pre">download</span> <span class="pre">…</span></code> to the
+<code class="docutils literal notranslate"><span class="pre">ffrprep-download</span></code> console script bundled inside the image.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Just the EEG data (default)</span>
+docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-v<span class="w"> </span>/path/to/data:/out:rw<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>sitek/ffrprep:latest<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>download<span class="w"> </span>example<span class="w"> </span>--out<span class="w"> </span>/out
+
+<span class="c1"># Also fetch the stimulus audio + augment events.tsv with the</span>
+<span class="c1"># BIDS stim_file column (needed for the stim-vs-response</span>
+<span class="c1"># correlation in the analysis report)</span>
+docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-v<span class="w"> </span>/path/to/data:/out:rw<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>sitek/ffrprep:latest<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>download<span class="w"> </span>example<span class="w"> </span>--with-stimuli<span class="w"> </span>--out<span class="w"> </span>/out
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">--with-stimuli</span></code> is <code class="docutils literal notranslate"><span class="pre">BooleanOptionalAction</span></code> (default <code class="docutils literal notranslate"><span class="pre">False</span></code>);
+<code class="docutils literal notranslate"><span class="pre">--no-with-stimuli</span></code> is its inverse. The download lands the EEG
+data under <code class="docutils literal notranslate"><span class="pre">&lt;out&gt;/ffrprep_raw_data/</span></code> and the stimulus files
+under <code class="docutils literal notranslate"><span class="pre">&lt;out&gt;/ffrprep_raw_data/stimuli/</span></code> per the BIDS spec, then
+augments every <code class="docutils literal notranslate"><span class="pre">sub-*/eeg/*_events.tsv</span></code> with the matching
+<code class="docutils literal notranslate"><span class="pre">stim_file</span></code> column based on a <code class="docutils literal notranslate"><span class="pre">trial_type</span> <span class="pre">→</span> <span class="pre">filename</span></code> lookup.</p>
 </section>
 <section id="command-line-arguments">
 <h2 id="command-line-arguments">Command-Line Arguments<a class="headerlink" href="#command-line-arguments" title="Link to this heading">¶</a></h2>
@@ -416,10 +463,19 @@ reproducibility.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">usage</span><span class="p">:</span> <span class="n">ffrprep</span> <span class="p">[</span><span class="o">-</span><span class="n">h</span><span class="p">]</span> <span class="p">[</span><span class="o">-</span><span class="n">v</span><span class="p">]</span>
                <span class="p">[</span><span class="o">--</span><span class="n">participant_label</span> <span class="n">PARTICIPANT_LABEL</span> <span class="p">[</span><span class="n">PARTICIPANT_LABEL</span> <span class="o">...</span><span class="p">]]</span>
                <span class="p">[</span><span class="o">--</span><span class="n">stage</span> <span class="p">{</span><span class="n">preprocessing</span><span class="p">,</span><span class="n">analysis</span><span class="p">,</span><span class="n">both</span><span class="p">}]</span>
-               <span class="p">[</span><span class="o">--</span><span class="n">ref_channels</span> <span class="n">REF_CHANNELS</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">high_pass</span> <span class="n">HIGH_PASS</span><span class="p">]</span>
-               <span class="p">[</span><span class="o">--</span><span class="n">low_pass</span> <span class="n">LOW_PASS</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">baseline</span> <span class="n">BASELINE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">tmin</span> <span class="n">TMIN</span><span class="p">]</span>
-               <span class="p">[</span><span class="o">--</span><span class="n">tmax</span> <span class="n">TMAX</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">by_event_type</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">skip_bids_validation</span><span class="p">]</span>
-               <span class="p">[</span><span class="o">--</span><span class="n">n_procs</span> <span class="n">N_PROCS</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">work_dir</span> <span class="n">WORK_DIR</span><span class="p">]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">ref_channels</span> <span class="n">REF_CHANNELS</span> <span class="p">[</span><span class="n">REF_CHANNELS</span> <span class="o">...</span><span class="p">]]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">high_pass</span> <span class="n">HIGH_PASS</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">low_pass</span> <span class="n">LOW_PASS</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">l_freq</span> <span class="n">L_FREQ</span><span class="p">]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">h_freq</span> <span class="n">H_FREQ</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="nb">filter</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">baseline</span> <span class="n">START</span> <span class="n">END</span><span class="p">]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">picks</span> <span class="n">PICKS</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">on</span><span class="o">-</span><span class="n">missing</span> <span class="p">{</span><span class="n">warn</span><span class="p">,</span><span class="k">raise</span><span class="p">,</span><span class="n">ignore</span><span class="p">}]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">event</span><span class="o">-</span><span class="nb">id</span> <span class="n">EVENT_ID</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">events</span><span class="o">-</span><span class="n">file</span> <span class="n">EVENTS_FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">tmin</span> <span class="n">TMIN</span><span class="p">]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">tmax</span> <span class="n">TMAX</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">reject</span><span class="o">-</span><span class="n">eeg</span> <span class="n">REJECT_EEG</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">auto</span><span class="o">-</span><span class="n">reject</span><span class="p">]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">concat</span><span class="o">-</span><span class="n">runs</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">save</span><span class="o">-</span><span class="n">each</span><span class="o">-</span><span class="n">node</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">run</span> <span class="n">RUN</span> <span class="p">[</span><span class="n">RUN</span> <span class="o">...</span><span class="p">]]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">task</span> <span class="n">TASK</span> <span class="p">[</span><span class="n">TASK</span> <span class="o">...</span><span class="p">]]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">split</span><span class="o">-</span><span class="n">by</span><span class="o">-</span><span class="n">trial</span><span class="o">-</span><span class="nb">type</span> <span class="o">|</span> <span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">split</span><span class="o">-</span><span class="n">by</span><span class="o">-</span><span class="n">trial</span><span class="o">-</span><span class="nb">type</span><span class="p">]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">trial</span><span class="o">-</span><span class="n">types</span> <span class="n">TRIAL_TYPES</span> <span class="p">[</span><span class="n">TRIAL_TYPES</span> <span class="o">...</span><span class="p">]]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">difference</span><span class="o">-</span><span class="n">pairs</span> <span class="n">DIFFERENCE_PAIRS</span> <span class="p">[</span><span class="n">DIFFERENCE_PAIRS</span> <span class="o">...</span><span class="p">]]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">skip_bids_validation</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">n_procs</span> <span class="n">N_PROCS</span><span class="p">]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">work_dir</span> <span class="n">WORK_DIR</span><span class="p">]</span>
                <span class="n">bids_dir</span> <span class="n">output_dir</span> <span class="p">{</span><span class="n">participant</span><span class="p">,</span><span class="n">group</span><span class="p">}</span>
 </pre></div>
 </div>
@@ -455,7 +511,7 @@ reproducibility.</p>
 <dd><p>Assume the input dataset is BIDS compliant and skip the validation.</p>
 </dd>
 <dt><kbd>--n_procs</kbd></dt>
-<dd><p>Number of processors to use for parallel execution.</p>
+<dd><p>Number of parallel (task, run) workers per subject. Each worker runs its own preprocessing or analysis workflow with the Linear plugin. Memory footprint scales linearly with this value. A failure in any worker aborts the run. Default: 1 (sequential). For multi-node / cluster scaling, run one ffrprep invocation per subject (e.g. via slurm array or GNU parallel) and use –n_procs to control intra-subject parallelism.</p>
 </dd>
 <dt><kbd>--work_dir</kbd></dt>
 <dd><p>Path where intermediate results should be stored.</p>
@@ -466,7 +522,7 @@ reproducibility.</p>
 <h3 id="ffrprep.ffrprep_cli-get_parser-preprocessing-options">Preprocessing options<a class="headerlink" href="#ffrprep.ffrprep_cli-get_parser-preprocessing-options" title="Link to this heading">¶</a></h3>
 <dl class="option-list">
 <dt><kbd>--ref_channels</kbd></dt>
-<dd><p>Reference channel(s) for re-referencing. Can be “average” for average reference, a single channel name, or comma-separated list of channels.</p>
+<dd><p>Reference channel(s) for re-referencing. Provide space-separated channel names (e.g. –ref_channels M1 M2). Use ‘average’ for average reference. Comma-separated single-argument styles are also accepted for backward compatibility (e.g. ‘M1,M2’).</p>
 </dd>
 <dt><kbd>--high_pass</kbd></dt>
 <dd><p>High-pass filter cutoff frequency in Hz.</p>
@@ -474,8 +530,30 @@ reproducibility.</p>
 <dt><kbd>--low_pass</kbd></dt>
 <dd><p>Low-pass filter cutoff frequency in Hz.</p>
 </dd>
+<dt><kbd>--l_freq</kbd></dt>
+<dd><p>Lower-pass edge in Hz (MNE name: l_freq). If provided, overrides –high_pass. Use ‘None’ via –no-filter to disable.</p>
+</dd>
+<dt><kbd>--h_freq</kbd></dt>
+<dd><p>Upper-pass edge in Hz (MNE name: h_freq). If provided, overrides –low_pass. Use ‘None’ via –no-filter to disable.</p>
+</dd>
+<dt><kbd>--no-filter</kbd></dt>
+<dd><p>Disable filtering entirely (equivalent to l_freq=None and h_freq=None). When set, any provided l_freq/h_freq/high_pass/low_pass are ignored.</p>
+</dd>
 <dt><kbd>--baseline</kbd></dt>
-<dd><p>Baseline correction period. Format: start,end (e.g., “-0.2,0” for -200ms to 0ms).</p>
+<dd><p>Baseline correction period. Provide two numbers: START END in seconds (e.g. –baseline -0.2 0 for -200ms to 0ms).</p>
+</dd>
+<dt><kbd>--picks</kbd></dt>
+<dd><p>Channels to include in epochs. Comma-separated list or single channel name (e.g. ‘Cz’ or ‘Cz,Fz’). If not provided, all channels are considered.</p>
+</dd>
+<dt><kbd>--on-missing</kbd></dt>
+<dd><p>Possible choices: warn, raise, ignore</p>
+<p>Behavior when events referenced by event_id are missing: warn, raise, or ignore. Matches MNE’s on_missing option.</p>
+</dd>
+<dt><kbd>--event-id</kbd></dt>
+<dd><p>Event id mapping. Provide a JSON string like ‘{“A”:1,”B”:2}’ or comma-separated pairs like ‘A:1,B:2’. If not provided, event ids will be inferred from events file or annotations.</p>
+</dd>
+<dt><kbd>--events-file</kbd></dt>
+<dd><p>Optional path to an events.tsv file to use for epoching. If not provided, events will be inferred from annotations.</p>
 </dd>
 <dt><kbd>--tmin</kbd></dt>
 <dd><p>Start time of epochs relative to event onset (s).</p>
@@ -483,137 +561,259 @@ reproducibility.</p>
 <dt><kbd>--tmax</kbd></dt>
 <dd><p>End time of epochs relative to event onset (s).</p>
 </dd>
+<dt><kbd>--reject-eeg</kbd></dt>
+<dd><p>Peak-to-peak rejection threshold for EEG channels in Volts. Set to 0 to disable automatic rejection.</p>
+</dd>
+<dt><kbd>--no-auto-reject</kbd></dt>
+<dd><p>Disable automatic amplitude-based epoch rejection.</p>
+</dd>
+<dt><kbd>--concat-runs</kbd></dt>
+<dd><p>Concatenate multiple runs for a subject and process them as a single recording. By default runs are processed separately.</p>
+</dd>
+<dt><kbd>--save-each-node</kbd></dt>
+<dd><p>Write intermediate outputs to disk after each preprocessing step (disk-backed mode). This reduces peak memory at the expense of increased I/O and runtime.</p>
+</dd>
+<dt><kbd>--run</kbd></dt>
+<dd><p>Run label(s) to process for the participant (without the ‘run-’ prefix). If not provided, all runs found for the subject will be processed. Multiple runs can be provided as space-separated values, or as a single comma-separated string (e.g. ‘1 2’ or ‘1,2’).</p>
+</dd>
+<dt><kbd>--task</kbd></dt>
+<dd><p>Task label(s) to process for the participant (without the ‘task-’ prefix). If not provided, all tasks found for the subject will be processed. Multiple tasks can be provided as space-separated values, or as a single comma-separated string (e.g. ‘active passive’).</p>
+</dd>
 </dl>
 </section>
 <section id="ffrprep.ffrprep_cli-get_parser-analysis-options">
 <h3 id="ffrprep.ffrprep_cli-get_parser-analysis-options">Analysis options<a class="headerlink" href="#ffrprep.ffrprep_cli-get_parser-analysis-options" title="Link to this heading">¶</a></h3>
 <dl class="option-list">
-<dt><kbd>--by_event_type</kbd></dt>
-<dd><p>Create separate evoked responses for each event type.</p>
+<dt><kbd>--split-by-trial-type, --no-split-by-trial-type</kbd></dt>
+<dd><p>Emit per-trial-type epoched and evoked outputs. Pass –no-split-by-trial-type to fall back to a single combined output per (subject, task, run).</p>
+</dd>
+<dt><kbd>--trial-types</kbd></dt>
+<dd><p>Restrict per-trial-type outputs to this subset of trial types (matched against the events.tsv <code class="docutils literal notranslate"><span class="pre">trial_type</span></code> column). If omitted, all trial types are emitted.</p>
+</dd>
+<dt><kbd>--difference-pairs</kbd></dt>
+<dd><p>Difference evokeds to compute, given as <code class="docutils literal notranslate"><span class="pre">A:B</span></code> tokens (e.g. Pos:Neg). For exactly two trial types the diff is auto-computed; this flag is required to opt in to diffs when there are three or more trial types.</p>
 </dd>
 </dl>
 </section>
 <section id="example-call-s">
 <h3 id="example-call-s">Example Call(s)<a class="headerlink" href="#example-call-s" title="Link to this heading">¶</a></h3>
-<p>Below you’ll find two examples calls that hopefully help you to familiarize yourself with <code class="docutils literal notranslate"><span class="pre">ffrprep</span></code> and its options.
-We will start with the general structure of an <code class="docutils literal notranslate"><span class="pre">ffrprep</span></code> call and subsequently explain how to utilize it via the <code class="docutils literal notranslate"><span class="pre">docker</span></code>
-or <code class="docutils literal notranslate"><span class="pre">singularity</span></code> images.</p>
+<p>The examples below all use Docker — the recommended path. They
+build up from the simplest call (preprocessing only, one subject)
+to per-trial-type analysis outputs with explicit difference pairs.
+Singularity users can swap the <code class="docutils literal notranslate"><span class="pre">docker</span> <span class="pre">run</span> <span class="pre">…</span></code> invocation for
+<code class="docutils literal notranslate"><span class="pre">singularity</span> <span class="pre">run</span> <span class="pre">--cleanenv</span> <span class="pre">-B</span> <span class="pre">&lt;host&gt;:&lt;container&gt;</span> <span class="pre">&lt;image.sif&gt;</span></code>
+keeping every flag below the image name identical.</p>
+<p>All examples assume your BIDS dataset is at
+<code class="docutils literal notranslate"><span class="pre">/local/bids_dataset</span></code> on the host and the derivatives should
+land in <code class="docutils literal notranslate"><span class="pre">/local/bids_dataset/derivatives</span></code>.</p>
 <section id="example-1-basic-preprocessing">
 <h4 id="example-1-basic-preprocessing">Example 1 - Basic preprocessing<a class="headerlink" href="#example-1-basic-preprocessing" title="Link to this heading">¶</a></h4>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ffrprep<span class="w"> </span><span class="se">\</span>
-/data/bids_dataset<span class="w"> </span><span class="se">\</span>
-/data/bids_dataset/derivatives<span class="w"> </span><span class="se">\</span>
-participant<span class="w"> </span><span class="se">\</span>
---participant_label<span class="w"> </span><span class="m">01</span><span class="w"> </span><span class="m">02</span><span class="w"> </span><span class="se">\</span>
---stage<span class="w"> </span>preprocessing
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-v<span class="w"> </span>/local/bids_dataset:/data:rw<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>sitek/ffrprep:latest<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>/data<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>/data/derivatives<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>participant<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--participant_label<span class="w"> </span><span class="m">01</span><span class="w"> </span><span class="m">02</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--stage<span class="w"> </span>preprocessing
 </pre></div>
 </div>
-<p>Here’s what’s in this call:</p>
+<p>What’s in this call:</p>
 <ul class="simple">
-<li><p>The 1st positional argument <code class="docutils literal notranslate"><span class="pre">/data/bids_dataset</span></code> is the input BIDS dataset directory</p></li>
-<li><p>The 2nd positional argument <code class="docutils literal notranslate"><span class="pre">/data/bids_dataset/derivatives</span></code> indicates the output directory for results</p></li>
-<li><p>The 3rd positional argument <code class="docutils literal notranslate"><span class="pre">participant</span></code> specifies participant-level analysis</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--participant_label</span> <span class="pre">01</span> <span class="pre">02</span></code> processes only subjects sub-01 and sub-02</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--stage</span> <span class="pre">preprocessing</span></code> runs only the preprocessing stage</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">docker</span> <span class="pre">run</span> <span class="pre">--rm</span></code> runs the container and removes it after completion.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-v</span> <span class="pre">/local/bids_dataset:/data:rw</span></code> mounts the local BIDS dataset
+read-write so derivatives can be written back to disk.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">sitek/ffrprep:latest</span></code> is the published image (see
+<a class="reference internal" href="installation.html#installation"><span class="std std-ref">Installation</span></a> for tag pinning).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">/data</span></code> (1st positional) is the BIDS dataset inside the
+container; <code class="docutils literal notranslate"><span class="pre">/data/derivatives</span></code> (2nd) is the output directory;
+<code class="docutils literal notranslate"><span class="pre">participant</span></code> (3rd) is the BIDS-App analysis level.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--participant_label</span> <span class="pre">01</span> <span class="pre">02</span></code> processes only <code class="docutils literal notranslate"><span class="pre">sub-01</span></code> and
+<code class="docutils literal notranslate"><span class="pre">sub-02</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--stage</span> <span class="pre">preprocessing</span></code> runs only the preprocessing stage.</p></li>
 </ul>
 </section>
 <section id="example-2-full-analysis-with-custom-parameters">
 <h4 id="example-2-full-analysis-with-custom-parameters">Example 2 - Full analysis with custom parameters<a class="headerlink" href="#example-2-full-analysis-with-custom-parameters" title="Link to this heading">¶</a></h4>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-v<span class="w"> </span>/local/bids_dataset:/data:rw<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>sitek/ffrprep:latest<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>/data<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>/data/derivatives<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>participant<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--stage<span class="w"> </span>both<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--high_pass<span class="w"> </span><span class="m">0</span>.5<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--low_pass<span class="w"> </span><span class="m">50</span>.0<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--ref_channels<span class="w"> </span>average<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--baseline<span class="w"> </span><span class="s2">"-0.1,0"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--n_procs<span class="w"> </span><span class="m">4</span>
+</pre></div>
+</div>
+<p>What’s in this call:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">--stage</span> <span class="pre">both</span></code> runs both preprocessing and analysis stages.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--high_pass</span> <span class="pre">0.5</span></code> / <code class="docutils literal notranslate"><span class="pre">--low_pass</span> <span class="pre">50.0</span></code> set the band-pass filter
+in Hz.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--ref_channels</span> <span class="pre">average</span></code> uses an average reference.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--baseline</span> <span class="pre">"-0.1,0"</span></code> sets the baseline window to −100 ms → 0 ms.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--n_procs</span> <span class="pre">4</span></code> runs 4 per-(task, run) iterations in parallel per
+subject (see <a class="reference internal" href="#parallelization"><span class="std std-ref">Parallelization</span></a> below).</p></li>
+</ul>
+<p>By default the analysis stage emits one evoked response per
+<code class="docutils literal notranslate"><span class="pre">trial_type</span></code> value in <code class="docutils literal notranslate"><span class="pre">events.tsv</span></code>
+(<code class="docutils literal notranslate"><span class="pre">_desc-evoked{Cond}.fif</span></code>), a combined evoked across all events
+(<code class="docutils literal notranslate"><span class="pre">_desc-evoked.fif</span></code>), and — for 2-trial-type datasets — an
+auto-paired difference evoked (<code class="docutils literal notranslate"><span class="pre">_desc-evokedDiff{A}Vs{B}.fif</span></code>).
+This per-trial-type split is governed by <code class="docutils literal notranslate"><span class="pre">--split-by-trial-type</span></code>
+(default on); pass <code class="docutils literal notranslate"><span class="pre">--no-split-by-trial-type</span></code> to emit only the
+combined evoked. Examples 3 and 4 below show how to pick explicit
+difference pairs or restrict the output set.</p>
+</section>
+<section id="example-3-per-trial-type-analysis-with-explicit-difference-pairs">
+<h4 id="example-3-per-trial-type-analysis-with-explicit-difference-pairs">Example 3 - Per-trial-type analysis with explicit difference pairs<a class="headerlink" href="#example-3-per-trial-type-analysis-with-explicit-difference-pairs" title="Link to this heading">¶</a></h4>
+<p>For datasets with more than two <code class="docutils literal notranslate"><span class="pre">trial_type</span></code> values, the
+automatic difference is ambiguous; use
+<code class="docutils literal notranslate"><span class="pre">--difference-pairs</span> <span class="pre">A:B</span> <span class="pre">[C:D</span> <span class="pre">…]</span></code> to specify which pairs to
+subtract. Each pair becomes one
+<code class="docutils literal notranslate"><span class="pre">_desc-evokedDiff{A}Vs{B}.fif</span></code> file. The per-trial-type
+<code class="docutils literal notranslate"><span class="pre">_desc-evoked{Cond}.fif</span></code> and combined <code class="docutils literal notranslate"><span class="pre">_desc-evoked.fif</span></code>
+files are always emitted.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-v<span class="w"> </span>/local/bids_dataset:/data:rw<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>sitek/ffrprep:latest<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>/data<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>/data/derivatives<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>participant<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--stage<span class="w"> </span>both<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--difference-pairs<span class="w"> </span>positive:negative<span class="w"> </span>tone1:tone2<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--n_procs<span class="w"> </span><span class="m">4</span>
+</pre></div>
+</div>
+<p>What’s in this call:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">--difference-pairs</span> <span class="pre">positive:negative</span> <span class="pre">tone1:tone2</span></code> emits two
+difference evokeds:
+<code class="docutils literal notranslate"><span class="pre">_desc-evokedDiffPositiveVsNegative.fif</span></code> (positive − negative)
+and <code class="docutils literal notranslate"><span class="pre">_desc-evokedDiffTone1VsTone2.fif</span></code> (tone1 − tone2).</p></li>
+<li><p>All per-trial-type and combined evokeds for this (task, run) group
+are also written — <code class="docutils literal notranslate"><span class="pre">--split-by-trial-type</span></code> is on by default, and
+<code class="docutils literal notranslate"><span class="pre">--difference-pairs</span></code> requires it (the pairs are subtracted from
+the per-trial-type evokeds, so combining it with
+<code class="docutils literal notranslate"><span class="pre">--no-split-by-trial-type</span></code> would leave nothing to subtract).</p></li>
+</ul>
+</section>
+<section id="example-4-restrict-outputs-to-a-subset-no-split">
+<h4 id="example-4-restrict-outputs-to-a-subset-no-split">Example 4 - Restrict outputs to a subset, no split<a class="headerlink" href="#example-4-restrict-outputs-to-a-subset-no-split" title="Link to this heading">¶</a></h4>
+<p>The trial-type split is controlled by a single boolean flag, exposed
+in both forms via <code class="docutils literal notranslate"><span class="pre">argparse.BooleanOptionalAction</span></code>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">--split-by-trial-type</span></code> (the <strong>default</strong>) emits the combined
+evoked <strong>plus</strong> one <code class="docutils literal notranslate"><span class="pre">_desc-evoked{Cond}.fif</span></code> per trial type
+<strong>plus</strong> the auto-paired / explicit difference evokeds. Passing
+this flag explicitly is equivalent to omitting it.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--no-split-by-trial-type</span></code> strips back to the combined evoked
+only — no per-trial-type files, no differences.</p></li>
+</ul>
+<p>To keep the split on but restrict it to a subset of trial types
+(while still emitting the combined evoked), pass
+<code class="docutils literal notranslate"><span class="pre">--trial-types</span> <span class="pre">A</span> <span class="pre">B</span></code>.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Combined evoked only — strips per-trial-type files and</span>
+<span class="c1"># any (auto-paired or explicit) difference evokeds</span>
+docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-v<span class="w"> </span>/local/bids_dataset:/data:rw<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>sitek/ffrprep:latest<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>/data<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>/data/derivatives<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>participant<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--stage<span class="w"> </span>both<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--no-split-by-trial-type<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--n_procs<span class="w"> </span><span class="m">4</span>
+
+<span class="c1"># Only emit per-trial-type files for "positive" + the combined</span>
+<span class="c1"># evoked; drop the "negative" output even though events.tsv</span>
+<span class="c1"># contains both</span>
+docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-v<span class="w"> </span>/local/bids_dataset:/data:rw<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>sitek/ffrprep:latest<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>/data<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>/data/derivatives<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>participant<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--stage<span class="w"> </span>both<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--trial-types<span class="w"> </span>positive<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--n_procs<span class="w"> </span><span class="m">4</span>
+</pre></div>
+</div>
+</section>
+</section>
+</section>
+<section id="parallelization-and-cluster-usage">
+<span id="parallelization"></span><h2 id="parallelization-and-cluster-usage">Parallelization and cluster usage<a class="headerlink" href="#parallelization-and-cluster-usage" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">ffrprep</span></code> follows the standard BIDS-App parallelism model:</p>
+<ul class="simple">
+<li><p><strong>Inside one invocation</strong> — <code class="docutils literal notranslate"><span class="pre">--n_procs</span> <span class="pre">N</span></code> runs N per-(task, run) iterations
+concurrently for the subject(s) being processed. Each worker runs its own
+preprocessing or analysis workflow with the Nipype <code class="docutils literal notranslate"><span class="pre">Linear</span></code> plugin.
+Default: <code class="docutils literal notranslate"><span class="pre">--n_procs</span> <span class="pre">1</span></code> (sequential). Memory footprint scales linearly
+with N — each worker loads its own raw + epochs into memory, so dial it
+down on small machines.</p></li>
+<li><p><strong>Across invocations</strong> — for multi-node / cluster scaling, run one
+<code class="docutils literal notranslate"><span class="pre">ffrprep</span></code> invocation per subject under your scheduler (slurm job array,
+GNU parallel, HTCondor, etc.). Both layers compose: 8 parallel slurm
+tasks each with <code class="docutils literal notranslate"><span class="pre">--n_procs</span> <span class="pre">4</span></code> gives 32-way effective parallelism.</p></li>
+</ul>
+<section id="single-workstation">
+<h3 id="single-workstation">Single workstation<a class="headerlink" href="#single-workstation" title="Link to this heading">¶</a></h3>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ffrprep<span class="w"> </span><span class="se">\</span>
 /data/bids_dataset<span class="w"> </span><span class="se">\</span>
 /data/bids_dataset/derivatives<span class="w"> </span><span class="se">\</span>
 participant<span class="w"> </span><span class="se">\</span>
---stage<span class="w"> </span>both<span class="w"> </span><span class="se">\</span>
---high_pass<span class="w"> </span><span class="m">0</span>.5<span class="w"> </span><span class="se">\</span>
---low_pass<span class="w"> </span><span class="m">50</span>.0<span class="w"> </span><span class="se">\</span>
---ref_channels<span class="w"> </span>average<span class="w"> </span><span class="se">\</span>
---baseline<span class="w"> </span><span class="s2">"-0.1,0"</span><span class="w"> </span><span class="se">\</span>
---by_event_type
-</pre></div>
-</div>
-<p>Here’s what’s in this call:</p>
-<ul class="simple">
-<li><p>The 1st positional argument <code class="docutils literal notranslate"><span class="pre">/data/bids_dataset</span></code> is the input BIDS dataset directory</p></li>
-<li><p>The 2nd positional argument <code class="docutils literal notranslate"><span class="pre">/data/bids_dataset/derivatives</span></code> indicates the output directory for results</p></li>
-<li><p>The 3rd positional argument <code class="docutils literal notranslate"><span class="pre">participant</span></code> specifies participant-level analysis</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--stage</span> <span class="pre">both</span></code> runs both preprocessing and analysis stages</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--high_pass</span> <span class="pre">0.5</span></code> sets high-pass filter to 0.5 Hz</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--low_pass</span> <span class="pre">50.0</span></code> sets low-pass filter to 50 Hz</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--ref_channels</span> <span class="pre">average</span></code> uses average reference</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--baseline</span> <span class="pre">"-0.1,0"</span></code> sets baseline from -100ms to 0ms</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--by_event_type</span></code> creates separate evoked responses for each event type</p></li>
-</ul>
-</section>
-<section id="example-3-usage-through-docker">
-<h4 id="example-3-usage-through-docker">Example 3 - Usage through Docker<a class="headerlink" href="#example-3-usage-through-docker" title="Link to this heading">¶</a></h4>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>run<span class="w"> </span>-ti<span class="w"> </span>--rm<span class="w"> </span><span class="se">\</span>
--v<span class="w"> </span>/local/bids_dataset:/data:ro<span class="w"> </span><span class="se">\</span>
--v<span class="w"> </span>/local/bids_dataset/derivatives:/outputs<span class="w"> </span><span class="se">\</span>
-ffrprep/ffrprep:latest<span class="w"> </span><span class="se">\</span>
-/data<span class="w"> </span><span class="se">\</span>
-/outputs<span class="w"> </span><span class="se">\</span>
-participant<span class="w"> </span><span class="se">\</span>
---participant_label<span class="w"> </span><span class="m">01</span><span class="w"> </span><span class="se">\</span>
---stage<span class="w"> </span>both<span class="w"> </span><span class="se">\</span>
---high_pass<span class="w"> </span><span class="m">1</span>.0<span class="w"> </span><span class="se">\</span>
---low_pass<span class="w"> </span><span class="m">40</span>.0<span class="w"> </span><span class="se">\</span>
+--participant_label<span class="w"> </span><span class="m">01</span><span class="w"> </span><span class="m">02</span><span class="w"> </span><span class="m">03</span><span class="w"> </span><span class="se">\</span>
 --n_procs<span class="w"> </span><span class="m">4</span>
 </pre></div>
 </div>
-<p>Here’s what’s in this call:</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">docker</span> <span class="pre">run</span> <span class="pre">-ti</span> <span class="pre">--rm</span></code> runs the Docker container interactively and removes it after completion</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">-v</span> <span class="pre">/local/bids_dataset:/data:ro</span></code> mounts local BIDS data directory as read-only</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">-v</span> <span class="pre">/local/bids_dataset/derivatives:/outputs</span></code> mounts local output directory</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">ffrprep/ffrprep:latest</span></code> specifies the Docker image to use</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">/data</span></code> is the BIDS dataset directory (inside container)</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">/outputs</span></code> is the output directory (inside container)</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">participant</span></code> specifies participant-level analysis</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--participant_label</span> <span class="pre">01</span></code> processes only subject sub-01</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--n_procs</span> <span class="pre">4</span></code> uses 4 processors for parallel processing</p></li>
-</ul>
+<p>The 4 workers chew through each subject’s (task, run) iterations in parallel,
+then move to the next subject.</p>
 </section>
-<section id="example-4-usage-through-singularity">
-<h4 id="example-4-usage-through-singularity">Example 4 - Usage through Singularity<a class="headerlink" href="#example-4-usage-through-singularity" title="Link to this heading">¶</a></h4>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>singularity<span class="w"> </span>run<span class="w"> </span>--cleanenv<span class="w"> </span><span class="se">\</span>
--B<span class="w"> </span>/local/bids_dataset:/data:ro<span class="w"> </span><span class="se">\</span>
--B<span class="w"> </span>/local/bids_dataset/derivatives:/outputs<span class="w"> </span><span class="se">\</span>
-ffrprep_latest.sif<span class="w"> </span><span class="se">\</span>
-/data<span class="w"> </span><span class="se">\</span>
-/outputs<span class="w"> </span><span class="se">\</span>
-participant<span class="w"> </span><span class="se">\</span>
---participant_label<span class="w"> </span><span class="m">01</span><span class="w"> </span><span class="m">02</span><span class="w"> </span><span class="m">03</span><span class="w"> </span><span class="se">\</span>
---stage<span class="w"> </span>preprocessing<span class="w"> </span><span class="se">\</span>
---high_pass<span class="w"> </span><span class="m">2</span>.0<span class="w"> </span><span class="se">\</span>
---ref_channels<span class="w"> </span><span class="s2">"Cz,Fz"</span><span class="w"> </span><span class="se">\</span>
---tmin<span class="w"> </span>-0.1<span class="w"> </span><span class="se">\</span>
---tmax<span class="w"> </span><span class="m">0</span>.5
+<section id="cluster-slurm-job-array">
+<h3 id="cluster-slurm-job-array">Cluster (slurm job array)<a class="headerlink" href="#cluster-slurm-job-array" title="Link to this heading">¶</a></h3>
+<p>Run one invocation per subject via the scheduler; each job uses
+<code class="docutils literal notranslate"><span class="pre">--n_procs</span></code> for intra-subject parallelism. Example wrapper script:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># ffrprep_one_subject.sh</span>
+<span class="c1">#!/bin/bash</span>
+<span class="c1">#SBATCH --array=0-99</span>
+<span class="c1">#SBATCH --cpus-per-task=4</span>
+<span class="c1">#SBATCH --mem=16G</span>
+<span class="nv">SUBJECTS</span><span class="o">=(</span>sub-01<span class="w"> </span>sub-02<span class="w"> </span>sub-03<span class="w"> </span>...<span class="o">)</span>
+<span class="nv">SUB</span><span class="o">=</span><span class="si">${</span><span class="nv">SUBJECTS</span><span class="p">[</span><span class="nv">$SLURM_ARRAY_TASK_ID</span><span class="p">]</span><span class="si">}</span>
+ffrprep<span class="w"> </span>/data<span class="w"> </span>/data/derivatives<span class="w"> </span>participant<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--participant_label<span class="w"> </span><span class="si">${</span><span class="nv">SUB</span><span class="p">#sub-</span><span class="si">}</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--n_procs<span class="w"> </span><span class="nv">$SLURM_CPUS_PER_TASK</span>
 </pre></div>
 </div>
-<p>Here’s what’s in this call:</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">singularity</span> <span class="pre">run</span> <span class="pre">--cleanenv</span></code> runs the Singularity container with a clean environment</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">-B</span> <span class="pre">/local/bids_dataset:/data:ro</span></code> binds local BIDS data directory as read-only</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">-B</span> <span class="pre">/local/bids_dataset/derivatives:/outputs</span></code> binds local output directory</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">ffrprep_latest.sif</span></code> specifies the Singularity image file to use</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">/data</span></code> is the BIDS dataset directory (inside container)</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">/outputs</span></code> is the output directory (inside container)</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">participant</span></code> specifies participant-level analysis</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--participant_label</span> <span class="pre">01</span> <span class="pre">02</span> <span class="pre">03</span></code> processes subjects sub-01, sub-02, and sub-03</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--stage</span> <span class="pre">preprocessing</span></code> runs only the preprocessing stage</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--high_pass</span> <span class="pre">2.0</span></code> sets high-pass filter to 2.0 Hz</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--ref_channels</span> <span class="pre">"Cz,Fz"</span></code> uses Cz and Fz channels as reference</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--tmin</span> <span class="pre">-0.1</span></code> sets epoch start time to -100ms</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--tmax</span> <span class="pre">0.5</span></code> sets epoch end time to 500ms</p></li>
-</ul>
 </section>
+<section id="cluster-gnu-parallel-on-a-single-beefy-box">
+<h3 id="cluster-gnu-parallel-on-a-single-beefy-box">Cluster (GNU parallel on a single beefy box)<a class="headerlink" href="#cluster-gnu-parallel-on-a-single-beefy-box" title="Link to this heading">¶</a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>parallel<span class="w"> </span>-j<span class="w"> </span><span class="m">8</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">"ffrprep /data /data/derivatives participant \</span>
+<span class="s2">     --participant_label {} --n_procs 4"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>:::<span class="w"> </span><span class="m">01</span><span class="w"> </span><span class="m">02</span><span class="w"> </span><span class="m">03</span><span class="w"> </span><span class="m">04</span><span class="w"> </span><span class="m">05</span><span class="w"> </span><span class="m">06</span><span class="w"> </span><span class="m">07</span><span class="w"> </span><span class="m">08</span>
+</pre></div>
+</div>
+</section>
+<section id="failure-handling">
+<h3 id="failure-handling">Failure handling<a class="headerlink" href="#failure-handling" title="Link to this heading">¶</a></h3>
+<p>A failure in any (task, run) iteration aborts the run (fail-fast). The
+exception propagates up from the worker to the CLI entry point, so the
+underlying error is visible in the terminal output. Per-iteration logs
+land in <code class="docutils literal notranslate"><span class="pre">&lt;work_dir&gt;/&lt;task&gt;-&lt;run&gt;.log</span></code> so you can drill into the
+failing iteration without scanning the whole subject log.</p>
 </section>
 </section>
 <section id="support-and-communication">
 <h2 id="support-and-communication">Support and communication<a class="headerlink" href="#support-and-communication" title="Link to this heading">¶</a></h2>
-<p>The documentation of this project is found here: <a class="reference external" href="https://YourGitHubHandle.github.io/ffrprep">https://YourGitHubHandle.github.io/ffrprep</a>.</p>
+<p>The documentation of this project is found here: <a class="reference external" href="https://sitek.github.io/ffrprep">https://sitek.github.io/ffrprep</a>.</p>
 <p>All bugs, concerns and enhancement requests for this software can be submitted here:
-<a class="reference external" href="https://github.com/YourGitHubHandle/ffrprep/issues">https://github.com/YourGitHubHandle/ffrprep/issues</a>.</p>
+<a class="reference external" href="https://github.com/sitek/ffrprep/issues">https://github.com/sitek/ffrprep/issues</a>.</p>
 <p>If you have a problem or would like to ask a question about how to use <code class="docutils literal notranslate"><span class="pre">ffrprep</span></code>,
 please submit a question to <a class="reference external" href="http://neurostars.org/tags/ffrprep">NeuroStars.org</a> with an <code class="docutils literal notranslate"><span class="pre">ffrprep</span></code> tag.
 NeuroStars.org is a platform similar to StackOverflow but dedicated to neuroinformatics.</p>
@@ -678,7 +878,7 @@ Datalad also performs version control over your data.</p>
               
           </div>
             Created using
-            <a href="http://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+            <a href="http://www.sphinx-doc.org/">Sphinx</a> 9.0.4.
              and
             <a href="https://github.com/bashtage/sphinx-material/">Material for
               Sphinx</a>

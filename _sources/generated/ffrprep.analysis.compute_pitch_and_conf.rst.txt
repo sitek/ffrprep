@@ -1,0 +1,6 @@
+﻿ffrprep.analysis.compute\_pitch\_and\_conf
+==========================================
+
+.. currentmodule:: ffrprep.analysis
+
+.. autofunction:: compute_pitch_and_conf

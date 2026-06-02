@@ -1,0 +1,6 @@
+﻿ffrprep.preproc.make\_evoked
+============================
+
+.. currentmodule:: ffrprep.preproc
+
+.. autofunction:: make_evoked

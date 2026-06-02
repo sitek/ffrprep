@@ -1,0 +1,6 @@
+﻿ffrprep.preproc.build\_analysis\_payload
+========================================
+
+.. currentmodule:: ffrprep.preproc
+
+.. autofunction:: build_analysis_payload

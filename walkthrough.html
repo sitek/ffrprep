@@ -46,25 +46,21 @@
   
   
   
-    <title>Tutorial walkthrough &#8212; ffrprep 0+untagged.1.g0d93781 documentation</title>
-    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+    <title>Tutorial walkthrough &#8212; ffrprep 0.1.dev1+gbb1e88005 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
     <link rel="stylesheet" type="text/css" href="_static/material.css?v=79c92029" />
     <link rel="stylesheet" type="text/css" href="_static/plot_directive.css" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="_static/sg_gallery.css?v=d2d258e8" />
-    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-binder.css?v=f4aeca0c" />
-    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-dataframe.css?v=2082cf3c" />
-    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-rendered-html.css?v=1277b6f3" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <script src="_static/documentation_options.js?v=2a605cb4"></script>
-    <script src="_static/doctools.js?v=9bcbadda"></script>
-    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/documentation_options.js?v=d4ffce98"></script>
+    <script src="_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="_static/copybutton.js?v=f281be69"></script>
     <script src="_static/design-tabs.js?v=f930bc37"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Examples" href="auto_examples/index.html" />
+    <link rel="next" title="Reference API" href="api_ref.html" />
     <link rel="prev" title="Pipeline details" href="pipeline_details.html" />
   
    
@@ -89,7 +85,7 @@
   <nav class="md-header-nav md-grid">
     <div class="md-flex navheader">
       <div class="md-flex__cell md-flex__cell--shrink">
-        <a href="index.html" title="ffrprep 0+untagged.1.g0d93781 documentation"
+        <a href="index.html" title="ffrprep 0.1.dev1+gbb1e88005 documentation"
            class="md-header-nav__button md-logo">
           
             &nbsp;
@@ -137,7 +133,7 @@
       
         <div class="md-flex__cell md-flex__cell--shrink">
           <div class="md-header-nav__source">
-            <a href="https://github.com/spark-csd/ffrprep" title="Go to repository" class="md-source" data-md-source="github">
+            <a href="https://github.com/sitek/ffrprep" title="Go to repository" class="md-source" data-md-source="github">
 
     <div class="md-source__icon">
       <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 24 24" width="28" height="28">
@@ -175,7 +171,7 @@
   <nav class="md-tabs" data-md-component="tabs">
     <div class="md-tabs__inner md-grid">
       <ul class="md-tabs__list">
-          <li class="md-tabs__item"><a href="index.html" class="md-tabs__link">ffrprep 0+untagged.1.g0d93781 documentation</a></li>
+          <li class="md-tabs__item"><a href="index.html" class="md-tabs__link">ffrprep 0.1.dev1+gbb1e88005 documentation</a></li>
       </ul>
     </div>
   </nav>
@@ -187,16 +183,16 @@
               <div class="md-sidebar__inner">
                 <nav class="md-nav md-nav--primary" data-md-level="0">
   <label class="md-nav__title md-nav__title--site" for="__drawer">
-    <a href="index.html" title="ffrprep 0+untagged.1.g0d93781 documentation" class="md-nav__button md-logo">
+    <a href="index.html" title="ffrprep 0.1.dev1+gbb1e88005 documentation" class="md-nav__button md-logo">
       
         <img src="_static/" alt=" logo" width="48" height="48">
       
     </a>
     <a href="index.html"
-       title="ffrprep 0+untagged.1.g0d93781 documentation">ffrprep</a>
+       title="ffrprep 0.1.dev1+gbb1e88005 documentation">ffrprep</a>
   </label>
     <div class="md-nav__source">
-      <a href="https://github.com/spark-csd/ffrprep" title="Go to repository" class="md-source" data-md-source="github">
+      <a href="https://github.com/sitek/ffrprep" title="Go to repository" class="md-source" data-md-source="github">
 
     <div class="md-source__icon">
       <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 24 24" width="28" height="28">
@@ -278,13 +274,6 @@
 
   </ul>
 </nav>
-      
-    
-    </li>
-    <li class="md-nav__item">
-    
-    
-      <a href="auto_examples/index.html" class="md-nav__link">Examples</a>
       
     
     </li>
@@ -377,25 +366,46 @@
 </section>
 <section id="step-1-download-example-data">
 <h2 id="step-1-download-example-data">Step 1: Download Example Data<a class="headerlink" href="#step-1-download-example-data" title="Link to this heading">¶</a></h2>
-<p>First, let’s download some example FFR data to work with. <code class="docutils literal notranslate"><span class="pre">ffrprep</span></code> provides convenient functions to download BIDS-formatted example datasets:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">ffrprep.datasets</span> <span class="kn">import</span> <span class="n">download_example_data</span>
-<span class="kn">import</span> <span class="nn">os</span>
+<p>First, let’s download some example FFR data to work with. The
+<code class="docutils literal notranslate"><span class="pre">download</span></code> subcommand of the <code class="docutils literal notranslate"><span class="pre">ffrprep</span></code> container fetches the
+example OSF dataset; the container’s entrypoint dispatches it to
+the <code class="docutils literal notranslate"><span class="pre">ffrprep-download</span></code> console script bundled inside the image.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>mkdir<span class="w"> </span>-p<span class="w"> </span>~/ffrprep_tutorial
 
-<span class="c1"># Create a working directory</span>
+<span class="c1"># Fetch the EEG data AND the stimulus files referenced by</span>
+<span class="c1"># events.tsv. --with-stimuli augments every</span>
+<span class="c1"># sub-*/eeg/*_events.tsv with the BIDS stim_file column so the</span>
+<span class="c1"># analysis report can compute the stim ↔ response</span>
+<span class="c1"># cross-correlation. Drop the flag (or pass --no-with-stimuli)</span>
+<span class="c1"># to skip the stimulus download.</span>
+docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-v<span class="w"> </span>~/ffrprep_tutorial:/out:rw<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>sitek/ffrprep:latest<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>download<span class="w"> </span>example<span class="w"> </span>--with-stimuli<span class="w"> </span>--out<span class="w"> </span>/out
+</pre></div>
+</div>
+<p>The same fetch is available from Python via
+<code class="docutils literal notranslate"><span class="pre">ffrprep.datasets.download_example_data</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ffrprep.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="n">download_example_data</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+
 <span class="n">work_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s2">"~/ffrprep_tutorial"</span><span class="p">)</span>
 <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">work_dir</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-
-<span class="c1"># Download example data (1 subject)</span>
-<span class="n">dataset_path</span> <span class="o">=</span> <span class="n">download_example_data</span><span class="p">(</span><span class="n">dataset_path</span><span class="o">=</span><span class="n">work_dir</span><span class="p">)</span>
+<span class="n">dataset_path</span> <span class="o">=</span> <span class="n">download_example_data</span><span class="p">(</span>
+    <span class="n">dataset_path</span><span class="o">=</span><span class="n">work_dir</span><span class="p">,</span> <span class="n">with_stimuli</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Example data downloaded to: </span><span class="si">{</span><span class="n">dataset_path</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>This will download a complete BIDS dataset with:</p>
+<p>Either form produces a complete BIDS dataset with:</p>
 <ul class="simple">
 <li><p>Raw EEG data from one subject</p></li>
 <li><p>Proper BIDS directory structure</p></li>
 <li><p>Required metadata files (<code class="docutils literal notranslate"><span class="pre">dataset_description.json</span></code>, etc.)</p></li>
-<li><p>Event files and channel information</p></li>
+<li><p>Event files and channel information (with the <code class="docutils literal notranslate"><span class="pre">stim_file</span></code>
+column populated when <code class="docutils literal notranslate"><span class="pre">with_stimuli=True</span></code>)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">stimuli/&lt;filename&gt;.wav</span></code> audio files (when
+<code class="docutils literal notranslate"><span class="pre">with_stimuli=True</span></code>)</p></li>
 </ul>
 </section>
 <section id="step-2-get-the-ffrprep-container">
@@ -403,7 +413,7 @@
 <p>Next, obtain the <code class="docutils literal notranslate"><span class="pre">ffrprep</span></code> container image. Choose either Docker or Singularity:</p>
 <p><strong>Option A: Docker</strong></p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Pull the latest ffrprep Docker image</span>
-docker<span class="w"> </span>pull<span class="w"> </span>ffrprep/ffrprep:latest
+docker<span class="w"> </span>pull<span class="w"> </span>sitek/ffrprep:latest
 
 <span class="c1"># Verify the image was downloaded</span>
 docker<span class="w"> </span>images<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>ffrprep
@@ -411,7 +421,7 @@ docker<span class="w"> </span>images<span class="w"> </span><span class="p">|</s
 </div>
 <p><strong>Option B: Singularity</strong></p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Build Singularity image from Docker Hub</span>
-singularity<span class="w"> </span>build<span class="w"> </span>ffrprep_latest.sif<span class="w"> </span>docker://ffrprep/ffrprep:latest
+singularity<span class="w"> </span>build<span class="w"> </span>ffrprep_latest.sif<span class="w"> </span>docker://sitek/ffrprep:latest
 
 <span class="c1"># Verify the image was created</span>
 ls<span class="w"> </span>-lh<span class="w"> </span>ffrprep_latest.sif
@@ -428,7 +438,7 @@ ls<span class="w"> </span>-lh<span class="w"> </span>ffrprep_latest.sif
 <span class="c1"># Run preprocessing with Docker</span>
 docker<span class="w"> </span>run<span class="w"> </span>-ti<span class="w"> </span>--rm<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>-v<span class="w"> </span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span>:/data<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>ffrprep/ffrprep:latest<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>sitek/ffrprep:latest<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>/data/bids_dataset<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>/data/bids_dataset/derivatives<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>participant<span class="w"> </span><span class="se">\</span>
@@ -478,12 +488,12 @@ singularity<span class="w"> </span>run<span class="w"> </span>--cleanenv<span cl
 <span class="nb">cd</span><span class="w"> </span>~/ffrprep_tutorial/bids_dataset/derivatives/ffrprep-preprocessing
 
 <span class="c1"># List the generated files</span>
-find<span class="w"> </span>.<span class="w"> </span>-name<span class="w"> </span><span class="s2">"*.html"</span><span class="w"> </span>-o<span class="w"> </span>-name<span class="w"> </span><span class="s2">"*.h5"</span>
+find<span class="w"> </span>.<span class="w"> </span>-name<span class="w"> </span><span class="s2">"*.fif"</span><span class="w"> </span>-o<span class="w"> </span>-name<span class="w"> </span><span class="s2">"*.json"</span><span class="w"> </span>-o<span class="w"> </span>-name<span class="w"> </span><span class="s2">"*.html"</span>
 
 <span class="c1"># Open the preprocessing report in your browser</span>
-open<span class="w"> </span>sub-*/sub-*_preprocessing_report.html<span class="w">  </span><span class="c1"># macOS</span>
+open<span class="w"> </span>sub-*/eeg/sub-*_preprocessing_report.html<span class="w">  </span><span class="c1"># macOS</span>
 <span class="c1"># or</span>
-xdg-open<span class="w"> </span>sub-*/sub-*_preprocessing_report.html<span class="w">  </span><span class="c1"># Linux</span>
+xdg-open<span class="w"> </span>sub-*/eeg/sub-*_preprocessing_report.html<span class="w">  </span><span class="c1"># Linux</span>
 </pre></div>
 </div>
 <p>The preprocessing report will show:</p>
@@ -510,12 +520,11 @@ xdg-open<span class="w"> </span>sub-*/sub-*_preprocessing_report.html<span class
 
 docker<span class="w"> </span>run<span class="w"> </span>-ti<span class="w"> </span>--rm<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>-v<span class="w"> </span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span>:/data<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>ffrprep/ffrprep:latest<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>sitek/ffrprep:latest<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>/data/bids_dataset<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>/data/bids_dataset/derivatives<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>participant<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--stage<span class="w"> </span>analysis<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--by_event_type
+<span class="w">    </span>--stage<span class="w"> </span>analysis
 </pre></div>
 </div>
 <p><strong>Using Singularity:</strong></p>
@@ -527,18 +536,36 @@ singularity<span class="w"> </span>run<span class="w"> </span>--cleanenv<span cl
 <span class="w">    </span>/data/bids_dataset<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>/data/bids_dataset/derivatives<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>participant<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--stage<span class="w"> </span>analysis<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--by_event_type
+<span class="w">    </span>--stage<span class="w"> </span>analysis
 </pre></div>
 </div>
 <p>The analysis stage will:</p>
 <ul class="simple">
 <li><p>Load preprocessed epoched data</p></li>
-<li><p>Compute evoked responses (average across trials)</p></li>
-<li><p>Create separate evoked responses for each event type (<code class="docutils literal notranslate"><span class="pre">--by_event_type</span></code>)</p></li>
-<li><p>Generate time-frequency representations</p></li>
-<li><p>Compute FFR-specific metrics</p></li>
-<li><p>Save results in standard formats</p></li>
+<li><p>Compute one evoked response per <code class="docutils literal notranslate"><span class="pre">trial_type</span></code> value
+(<code class="docutils literal notranslate"><span class="pre">_desc-evoked{Cond}.fif</span></code>), a combined evoked across all events
+(<code class="docutils literal notranslate"><span class="pre">_desc-evoked.fif</span></code>), and — for 2-trial-type datasets — an
+auto-paired difference evoked
+(<code class="docutils literal notranslate"><span class="pre">_desc-evokedDiff{A}Vs{B}.fif</span></code>). The trial-type split is on by
+default (<code class="docutils literal notranslate"><span class="pre">--split-by-trial-type</span></code>); pass
+<code class="docutils literal notranslate"><span class="pre">--no-split-by-trial-type</span></code> to fall back to a single combined
+evoked. For datasets with 3+ trial types, pass
+<code class="docutils literal notranslate"><span class="pre">--difference-pairs</span> <span class="pre">A:B</span> <span class="pre">[C:D</span> <span class="pre">…]</span></code> to opt in to explicit
+difference evokeds, or restrict the per-type outputs to a subset
+with <code class="docutils literal notranslate"><span class="pre">--trial-types</span> <span class="pre">A</span> <span class="pre">B</span></code>.</p></li>
+<li><p>Generate time-frequency representations, autocorrelation, and
+pitch-tracking plots for each evoked.</p></li>
+<li><p>Compute FFR scalar metrics (RMS SNR, mean band-power) for each
+evoked.</p></li>
+<li><p>Compute the stim ↔ response cross-correlation (peak r + lag,
+plus an envelope correlation on the combined evoked) when the
+BIDS <code class="docutils literal notranslate"><span class="pre">stim_file</span></code> column is populated in <code class="docutils literal notranslate"><span class="pre">events.tsv</span></code>. See
+Step 1 above for <code class="docutils literal notranslate"><span class="pre">ffrprep-download</span> <span class="pre">example</span> <span class="pre">--with-stimuli</span></code>
+which fetches the stimulus files and augments <code class="docutils literal notranslate"><span class="pre">events.tsv</span></code>.</p></li>
+<li><p>Compute per (task, run) phase consistency across polarities
+(two-trial-type datasets only) and a trial-to-trial response-
+consistency row on each per-condition Epoched section.</p></li>
+<li><p>Save results in standard formats.</p></li>
 </ul>
 </section>
 <section id="step-6-inspect-analysis-outputs">
@@ -555,26 +582,62 @@ open<span class="w"> </span>sub-*/sub-*_analysis_report.html
 </pre></div>
 </div>
 <p>The analysis outputs include:</p>
-<p><strong>Data files:</strong></p>
+<p><strong>Data files (per subject, per task / run):</strong></p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">*_evoked.fif</span></code>: Evoked response data (can be loaded with MNE-Python)</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">*_tfr.h5</span></code>: Time-frequency representations</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">*_metrics.json</span></code>: Quantitative FFR metrics</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">*_desc-evoked{Cond}.fif</span></code>: per-trial-type evoked response data
+(e.g. <code class="docutils literal notranslate"><span class="pre">_desc-evokedPositive.fif</span></code>, <code class="docutils literal notranslate"><span class="pre">_desc-evokedNegative.fif</span></code>).
+Sidecar carries <code class="docutils literal notranslate"><span class="pre">Condition</span></code> and the standard <code class="docutils literal notranslate"><span class="pre">AverageCount</span></code> /
+<code class="docutils literal notranslate"><span class="pre">Baseline</span></code> / <code class="docutils literal notranslate"><span class="pre">SamplingFrequency</span></code> fields.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">*_desc-evoked.fif</span></code>: combined evoked across all events. Sidecar
+omits <code class="docutils literal notranslate"><span class="pre">Condition</span></code> (it isn’t tied to a single trial type).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">*_desc-evokedDiff{A}Vs{B}.fif</span></code>: difference evoked for the
+<code class="docutils literal notranslate"><span class="pre">A</span></code> − <code class="docutils literal notranslate"><span class="pre">B</span></code> polarity pair (auto-emitted for 2-trial-type
+datasets; opt in via <code class="docutils literal notranslate"><span class="pre">--difference-pairs</span></code> for 3+). Sidecar
+carries <code class="docutils literal notranslate"><span class="pre">DifferenceOf:</span> <span class="pre">[A,</span> <span class="pre">B]</span></code>.</p></li>
 </ul>
-<p><strong>Reports:</strong></p>
-<p>Interactive HTML reports with:</p>
+<p><strong>Report:</strong></p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">sub-XX_analysis_report.html</span></code>: single-file HTML report per subject.
+One section per (task, run) group, containing:</p>
 <ul class="simple">
-<li><p>Evoked response waveforms</p></li>
-<li><p>Time-frequency plots</p></li>
-<li><p>Scalp topographies</p></li>
-<li><p>FFR metrics summary</p></li>
+<li><p>per-trial-type Evoked sections with waveform / PSD / TFR /
+autocorrelation / pitch-track figures, the FFR scalar metrics
+(RMS SNR, mean band-power), and a stim ↔ response
+cross-correlation row + lag plot (when <code class="docutils literal notranslate"><span class="pre">stim_file</span></code> is
+populated in <code class="docutils literal notranslate"><span class="pre">events.tsv</span></code>);</p></li>
+<li><p>a combined Evoked section with the same plots plus a second
+stim correlation row + plot for the <strong>envelope</strong> (<code class="docutils literal notranslate"><span class="pre">|hilbert</span>
+<span class="pre">(stim)|</span></code>);</p></li>
+<li><p>a difference Evoked section with the same plots plus a single
+raw-waveform stim correlation row + plot;</p></li>
+<li><p>a Phase Consistency section (two-trial-type datasets only):
+masked phase-coherence time–frequency heatmap across both
+polarities plus their sum and difference, using seaborn’s
+<code class="docutils literal notranslate"><span class="pre">flare_r</span></code> colormap.</p></li>
+</ul>
+<p>The matched preprocessing report
+(<code class="docutils literal notranslate"><span class="pre">sub-XX_preprocessing_report.html</span></code>) additionally shows a
+<code class="docutils literal notranslate"><span class="pre">Mean</span> <span class="pre">trial-to-trial</span> <span class="pre">r</span></code> row on each Epoched section (when at
+least 10 epochs are present).</p>
+</li>
 </ul>
 <p><strong>Key analysis features to examine:</strong></p>
 <ul class="simple">
-<li><p><strong>Evoked waveforms</strong>: Look for clear FFR responses</p></li>
-<li><p><strong>Time-frequency</strong>: Check for sustained oscillatory activity</p></li>
-<li><p><strong>Topographies</strong>: Verify expected scalp distributions</p></li>
-<li><p><strong>Metrics</strong>: Review quantitative measures (amplitude, phase-locking, etc.)</p></li>
+<li><p><strong>Evoked waveform</strong>: Look for the clear FFR response in the
+post-stimulus window.</p></li>
+<li><p><strong>Power spectral density</strong>: Check for spectral peaks at the stimulus
+fundamental frequency and its harmonics.</p></li>
+<li><p><strong>Autocorrelation</strong>: Periodic peaks at the stimulus period indicate
+good phase-locking.</p></li>
+<li><p><strong>RMS SNR</strong>: Response RMS / baseline RMS over the 100–200 ms
+response window. Higher is better.</p></li>
+<li><p><strong>Stim ↔ response cross-correlation</strong>: peak r near zero lag (or
+within typical FFR lag of ~7–14 ms after onset) indicates good
+stimulus tracking. The envelope correlation on the combined
+evoked is the natural metric for ENV-following responses.</p></li>
+<li><p><strong>Phase consistency</strong>: bright cells in the masked plot mark
+(frequency, time) regions where the response phase is
+reproducible across trials.</p></li>
 </ul>
 </section>
 <section id="step-7-working-with-outputs-in-python">
@@ -582,41 +645,50 @@ open<span class="w"> </span>sub-*/sub-*_analysis_report.html
 <p>After running <code class="docutils literal notranslate"><span class="pre">ffrprep</span></code>, you can load and analyze the outputs directly in Python using MNE-Python. This allows for custom analyses, visualization, and integration with your existing analysis pipelines.</p>
 <p><strong>Import required libraries and set up paths:</strong></p>
 <p>First, import the necessary libraries and define the paths to your processed data.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">mne</span>
-<span class="kn">import</span> <span class="nn">json</span>
-<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">mne</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 </pre></div>
 </div>
 <p><strong>Define paths to the processed data:</strong></p>
 <p>Set up the paths to access the derivatives from both preprocessing and analysis stages.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">derivatives_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">"~/ffrprep_tutorial/bids_dataset/derivatives"</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">derivatives_path</span> <span class="o">=</span> <span class="n">Path</span><span class="o">.</span><span class="n">home</span><span class="p">()</span> <span class="o">/</span> <span class="s2">"ffrprep_tutorial"</span> <span class="o">/</span> <span class="s2">"bids_dataset"</span> <span class="o">/</span> <span class="s2">"derivatives"</span>
 <span class="n">analysis_path</span> <span class="o">=</span> <span class="n">derivatives_path</span> <span class="o">/</span> <span class="s2">"ffrprep-analysis"</span> <span class="o">/</span> <span class="s2">"sub-01"</span>
 </pre></div>
 </div>
 <p><strong>Load and visualize evoked responses:</strong></p>
 <p>The evoked responses contain the averaged EEG data across trials, which is the core of FFR analysis.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">evoked_files</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">analysis_path</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">"*_evoked.fif"</span><span class="p">))</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">evoked_files</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">analysis_path</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">"*_desc-evoked.fif"</span><span class="p">))</span>
 <span class="n">evoked</span> <span class="o">=</span> <span class="n">mne</span><span class="o">.</span><span class="n">read_evokeds</span><span class="p">(</span><span class="n">evoked_files</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
 
 <span class="c1"># Plot the evoked response</span>
 <span class="n">evoked</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
 </pre></div>
 </div>
-<p><strong>Load and examine quantitative FFR metrics:</strong></p>
-<p><code class="docutils literal notranslate"><span class="pre">ffrprep</span></code> computes various quantitative metrics that characterize the FFR response, such as amplitude, phase-locking values, and spectral properties.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">metrics_file</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">analysis_path</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">"*_metrics.json"</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
-<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">metrics_file</span><span class="p">,</span> <span class="s1">'r'</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-    <span class="n">metrics</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+<p><strong>Load and examine the BIDS sidecar:</strong></p>
+<p>Each evoked <code class="docutils literal notranslate"><span class="pre">.fif</span></code> has a sibling JSON sidecar carrying provenance
+and computed metadata (<code class="docutils literal notranslate"><span class="pre">AverageCount</span></code>, <code class="docutils literal notranslate"><span class="pre">SamplingFrequency</span></code>,
+<code class="docutils literal notranslate"><span class="pre">Tmin</span></code> / <code class="docutils literal notranslate"><span class="pre">Tmax</span></code>, <code class="docutils literal notranslate"><span class="pre">Baseline</span></code>, and run/condition identifiers).</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">sidecar_files</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">analysis_path</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">"*_desc-evoked.json"</span><span class="p">))</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">sidecar_files</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="s2">"r"</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">sidecar</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
 
-<span class="nb">print</span><span class="p">(</span><span class="s2">"FFR Metrics:"</span><span class="p">,</span> <span class="n">metrics</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Sidecar:"</span><span class="p">,</span> <span class="n">sidecar</span><span class="p">)</span>
 </pre></div>
 </div>
-<p><strong>Load and visualize time-frequency representations:</strong></p>
-<p>Time-frequency analysis shows how spectral power changes over time, which is particularly important for understanding FFR dynamics.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">tfr_files</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">analysis_path</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">"*_tfr.h5"</span><span class="p">))</span>
-<span class="k">if</span> <span class="n">tfr_files</span><span class="p">:</span>
-    <span class="n">tfr</span> <span class="o">=</span> <span class="n">mne</span><span class="o">.</span><span class="n">time_frequency</span><span class="o">.</span><span class="n">read_tfrs</span><span class="p">(</span><span class="n">tfr_files</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-    <span class="n">tfr</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
+<p><strong>Compute time-frequency yourself:</strong></p>
+<p>The HTML report embeds a time-frequency representation across the
+FFR band but does not save the TFR object to a separate file.
+Recompute it from the loaded Evoked when you need it for further
+analysis:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="n">freqs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mf">70.0</span><span class="p">,</span> <span class="mf">300.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">)</span>
+<span class="n">tfr</span> <span class="o">=</span> <span class="n">mne</span><span class="o">.</span><span class="n">time_frequency</span><span class="o">.</span><span class="n">tfr_multitaper</span><span class="p">(</span>
+    <span class="n">evoked</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">freqs</span><span class="o">=</span><span class="n">freqs</span><span class="p">,</span> <span class="n">n_cycles</span><span class="o">=</span><span class="n">freqs</span> <span class="o">/</span> <span class="mf">4.0</span><span class="p">,</span>
+    <span class="n">time_bandwidth</span><span class="o">=</span><span class="mf">4.0</span><span class="p">,</span> <span class="n">return_itc</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">tfr</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>
 </pre></div>
 </div>
 </section>
@@ -626,7 +698,7 @@ open<span class="w"> </span>sub-*/sub-*_analysis_report.html
 <p><strong>Docker:</strong></p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>run<span class="w"> </span>-ti<span class="w"> </span>--rm<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>-v<span class="w"> </span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span>:/data<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>ffrprep/ffrprep:latest<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>sitek/ffrprep:latest<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>/data/bids_dataset<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>/data/bids_dataset/derivatives<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>participant<span class="w"> </span><span class="se">\</span>
@@ -634,7 +706,6 @@ open<span class="w"> </span>sub-*/sub-*_analysis_report.html
 <span class="w">    </span>--high_pass<span class="w"> </span><span class="m">1</span>.0<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--low_pass<span class="w"> </span><span class="m">40</span>.0<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--ref_channels<span class="w"> </span>average<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--by_event_type<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--n_procs<span class="w"> </span><span class="m">2</span>
 </pre></div>
 </div>
@@ -649,7 +720,6 @@ open<span class="w"> </span>sub-*/sub-*_analysis_report.html
 <span class="w">    </span>--high_pass<span class="w"> </span><span class="m">1</span>.0<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--low_pass<span class="w"> </span><span class="m">40</span>.0<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--ref_channels<span class="w"> </span>average<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>--by_event_type<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>--n_procs<span class="w"> </span><span class="m">2</span>
 </pre></div>
 </div>
@@ -658,19 +728,32 @@ open<span class="w"> </span>sub-*/sub-*_analysis_report.html
 <h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Link to this heading">¶</a></h2>
 <p><strong>Common issues and solutions:</strong></p>
 <ol class="arabic simple">
-<li><p><strong>Permission errors with containers:</strong>
-- Ensure your data directory has proper permissions
-- On Linux, you may need to add <code class="docutils literal notranslate"><span class="pre">--user</span> <span class="pre">$(id</span> <span class="pre">-u):$(id</span> <span class="pre">-g)</span></code> to Docker commands</p></li>
-<li><p><strong>Memory issues:</strong>
-- Reduce the number of parallel processes with <code class="docutils literal notranslate"><span class="pre">--n_procs</span> <span class="pre">1</span></code>
-- Process fewer subjects at once</p></li>
-<li><p><strong>BIDS validation errors:</strong>
-- Check that your dataset follows BIDS conventions
-- Use <code class="docutils literal notranslate"><span class="pre">--skip_bids_validation</span></code> if necessary (not recommended)</p></li>
-<li><p><strong>No FFR found in data:</strong>
-- Verify your stimulus timing and event codes
-- Check that the frequency range matches your stimulus
-- Ensure sufficient trial counts</p></li>
+<li><p><strong>Permission errors with containers:</strong></p>
+<ul class="simple">
+<li><p>Ensure your data directory has proper permissions</p></li>
+<li><p>On Linux, you may need to add <code class="docutils literal notranslate"><span class="pre">--user</span> <span class="pre">$(id</span> <span class="pre">-u):$(id</span> <span class="pre">-g)</span></code> to Docker commands</p></li>
+</ul>
+</li>
+<li><p><strong>Memory issues:</strong></p>
+<ul class="simple">
+<li><p>Reduce the number of parallel workers with <code class="docutils literal notranslate"><span class="pre">--n_procs</span> <span class="pre">1</span></code> (each worker
+loads its own raw + epochs into memory; footprint scales linearly with N)</p></li>
+<li><p>Process fewer subjects at once</p></li>
+</ul>
+</li>
+<li><p><strong>BIDS validation errors:</strong></p>
+<ul class="simple">
+<li><p>Check that your dataset follows BIDS conventions</p></li>
+<li><p>Use <code class="docutils literal notranslate"><span class="pre">--skip_bids_validation</span></code> if necessary (not recommended)</p></li>
+</ul>
+</li>
+<li><p><strong>No FFR found in data:</strong></p>
+<ul class="simple">
+<li><p>Verify your stimulus timing and event codes</p></li>
+<li><p>Check that the frequency range matches your stimulus</p></li>
+<li><p>Ensure sufficient trial counts</p></li>
+</ul>
+</li>
 </ol>
 </section>
 <section id="next-steps">
@@ -710,12 +793,12 @@ open<span class="w"> </span>sub-*/sub-*_analysis_report.html
             </a>
           
           
-            <a href="auto_examples/index.html" title="Examples"
+            <a href="api_ref.html" title="Reference API"
                class="md-flex md-footer-nav__link md-footer-nav__link--next"
                rel="next">
             <div class="md-flex__cell md-flex__cell--stretch md-footer-nav__title"><span
                 class="md-flex__ellipsis"> <span
-                class="md-footer-nav__direction"> "Next" </span> Examples </span>
+                class="md-footer-nav__direction"> "Next" </span> Reference API </span>
             </div>
             <div class="md-flex__cell md-flex__cell--shrink"><i
                 class="md-icon md-icon--arrow-forward md-footer-nav__button"></i>
@@ -733,7 +816,7 @@ open<span class="w"> </span>sub-*/sub-*_analysis_report.html
               
           </div>
             Created using
-            <a href="http://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+            <a href="http://www.sphinx-doc.org/">Sphinx</a> 9.0.4.
              and
             <a href="https://github.com/bashtage/sphinx-material/">Material for
               Sphinx</a>

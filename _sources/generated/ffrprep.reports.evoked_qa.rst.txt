@@ -1,0 +1,6 @@
+﻿ffrprep.reports.evoked\_qa
+==========================
+
+.. currentmodule:: ffrprep.reports
+
+.. autofunction:: evoked_qa

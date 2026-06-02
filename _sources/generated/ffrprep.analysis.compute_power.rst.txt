@@ -1,0 +1,6 @@
+﻿ffrprep.analysis.compute\_power
+===============================
+
+.. currentmodule:: ffrprep.analysis
+
+.. autofunction:: compute_power

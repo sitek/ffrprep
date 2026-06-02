@@ -1,0 +1,6 @@
+﻿ffrprep.analysis.plot\_phase\_consistency
+=========================================
+
+.. currentmodule:: ffrprep.analysis
+
+.. autofunction:: plot_phase_consistency

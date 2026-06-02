@@ -1,0 +1,6 @@
+﻿ffrprep.analysis.compute\_phase\_consistency
+============================================
+
+.. currentmodule:: ffrprep.analysis
+
+.. autofunction:: compute_phase_consistency

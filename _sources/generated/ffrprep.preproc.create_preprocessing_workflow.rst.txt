@@ -1,0 +1,6 @@
+﻿ffrprep.preproc.create\_preprocessing\_workflow
+===============================================
+
+.. currentmodule:: ffrprep.preproc
+
+.. autofunction:: create_preprocessing_workflow

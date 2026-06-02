@@ -1,0 +1,6 @@
+﻿ffrprep.analysis.plot\_pitch\_and\_conf
+=======================================
+
+.. currentmodule:: ffrprep.analysis
+
+.. autofunction:: plot_pitch_and_conf

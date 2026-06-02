@@ -1,0 +1,6 @@
+﻿ffrprep.analysis.rms\_snr
+=========================
+
+.. currentmodule:: ffrprep.analysis
+
+.. autofunction:: rms_snr

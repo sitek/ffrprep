@@ -1,0 +1,6 @@
+﻿ffrprep.reports.epoch\_qa
+=========================
+
+.. currentmodule:: ffrprep.reports
+
+.. autofunction:: epoch_qa

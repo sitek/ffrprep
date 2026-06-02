@@ -1,0 +1,6 @@
+﻿ffrprep.preproc.make\_difference\_evokeds
+=========================================
+
+.. currentmodule:: ffrprep.preproc
+
+.. autofunction:: make_difference_evokeds

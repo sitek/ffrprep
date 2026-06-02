@@ -1,0 +1,6 @@
+﻿ffrprep.reports.build\_evoked\_section
+======================================
+
+.. currentmodule:: ffrprep.reports
+
+.. autofunction:: build_evoked_section

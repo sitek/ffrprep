@@ -1,0 +1,6 @@
+﻿ffrprep.reports.make\_group
+===========================
+
+.. currentmodule:: ffrprep.reports
+
+.. autofunction:: make_group

@@ -1,0 +1,6 @@
+﻿ffrprep.analysis.compute\_fft
+=============================
+
+.. currentmodule:: ffrprep.analysis
+
+.. autofunction:: compute_fft

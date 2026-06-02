@@ -1,0 +1,6 @@
+﻿ffrprep.reports.build\_epoch\_section
+=====================================
+
+.. currentmodule:: ffrprep.reports
+
+.. autofunction:: build_epoch_section

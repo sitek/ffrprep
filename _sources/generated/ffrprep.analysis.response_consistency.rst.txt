@@ -1,0 +1,6 @@
+﻿ffrprep.analysis.response\_consistency
+======================================
+
+.. currentmodule:: ffrprep.analysis
+
+.. autofunction:: response_consistency

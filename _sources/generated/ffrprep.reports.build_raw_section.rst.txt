@@ -1,0 +1,6 @@
+﻿ffrprep.reports.build\_raw\_section
+===================================
+
+.. currentmodule:: ffrprep.reports
+
+.. autofunction:: build_raw_section

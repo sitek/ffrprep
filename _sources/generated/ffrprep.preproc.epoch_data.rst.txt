@@ -1,0 +1,6 @@
+﻿ffrprep.preproc.epoch\_data
+===========================
+
+.. currentmodule:: ffrprep.preproc
+
+.. autofunction:: epoch_data
