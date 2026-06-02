@@ -24,3 +24,13 @@ tests/__pycache__/*
 ffrprep/tests/__pycache__/*
 
 __pycache__/*
+
+
+# IDE / user-local
+*.code-workspace
+
+# nipype crash dumps
+crash-*.pklz
+
+# prevent silent AI rules/guidelines
+CLAUDE.md

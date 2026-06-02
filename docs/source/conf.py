@@ -45,7 +45,6 @@ extensions = [
     "matplotlib.sphinxext.plot_directive",
     "numpydoc",
     "sphinx_copybutton",
-    "sphinx_gallery.gen_gallery",
     "sphinxarg.ext",
     "sphinx_design",
     "sphinx-jsonschema",
@@ -205,41 +204,24 @@ intersphinx_mapping = {
     "matplotlib": ("https://matplotlib.org/stable", None),
 }
 
-sphinx_gallery_conf = {
-    "doc_module": "ffrprep",
-    "reference_url": {"ffrprep": None},
-    "thumbnail_size": (250, 250),
-    "ignore_pattern": r"/wip.*\.py",
-    # path to your example scripts
-    "examples_dirs": ["../../examples"],
-    # path to where to save gallery generated output
-    "gallery_dirs": ["auto_examples"],
-    # specify that examples should be ordered according to filename
-    # directory where function granular galleries are stored
-    "backreferences_dir": "gen_modules/backreferences",
-    # Modules for which function level galleries are created.  In
-    # this case sphinx_gallery and numpy in a tuple of strings.
-    "doc_module": ("ffrprep"),
-}
-
 html_theme_options = {
     # Set the name of the project to appear in the navigation.
     "nav_title": "ffrprep",
     # Specify a base_url used to generate sitemap.xml. If not
     # specified, then no sitemap will be built.
-    "base_url": "https://spark-csd.github.io/ffrprep",
+    "base_url": "https://sitek.github.io/ffrprep",
     # Set the color and the accent color
     "color_primary": "deep-purple",
     "color_accent": "purple",
     # Set the repo location to get a badge with stats
-    "repo_url": "https://github.com/spark-csd/ffrprep",
+    "repo_url": "https://github.com/sitek/ffrprep",
     "repo_name": "ffrprep",
     # Visible levels of the global TOC; -1 means unlimited
     "globaltoc_depth": 1,
     # If False, expand all TOC entries
     "globaltoc_collapse": False,
     # If True, show hidden TOC entries
-    "globaltoc_includehidden": False,
+    "globaltoc_includehidden": True,
 }
 
 html_sidebars = {"**": ["logo-text.html", "globaltoc.html", "localtoc.html", "searchbox.html"]}
