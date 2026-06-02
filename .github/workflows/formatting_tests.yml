@@ -1,20 +1,13 @@
 name: tests & formatting
 
-# The events/triggers when it should be run
-# Here we set that the workflow should run
-# whenever there was a push or PR to the 
-# main branch
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
   pull_request_target:
-    branches: [main]  
+    branches: [main]
 
-# We define the jobs that should be run
-# and the respective runner, ie virtual machine
-# Here, the workflow runs on the latest ubuntu
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -23,45 +16,30 @@ jobs:
       matrix:
         python-version: ["3.11"]
 
-    # Below we define all steps that should be
-    # run within the workflow        
     steps:
+      - name: Checkout repo
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
 
-    # Step 1: Checkout the repository
-    - name: Checkout repo
-      if: github.event_name == 'pull_request'
-      uses: actions/checkout@v2
-      with:
-        ref: ${{ github.event.pull_request.head.sha }}
-    
-    # Step 1b: Fallback checkout for non-pull requests
-    - name: Checkout default repo
-      if: github.event_name != 'pull_request'
-      uses: actions/checkout@v2
+      - name: Checkout default repo
+        if: github.event_name != 'pull_request'
+        uses: actions/checkout@v4
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
 
-    # Step 2: Set up Python environment
-    - name: Set up Python
-      uses: actions/setup-python@v1
-      with:
-        python-version: ${{ matrix.python-version }}
+      - name: Set up Python
+        run: uv python install ${{ matrix.python-version }}
 
-    # Step 3: Install dependencies
-    - name: Install dependencies
-      run: |
-        pip install -r requirements-dev.txt
-    - name: Install ffrprep
-      run: |
-        pip install ./
+      - name: Install project + dev dependencies
+        run: uv sync --frozen
 
-    # Step 4: Run code formatting with flake8
-    - name: Code formatting
-      shell: bash -l {0}  
-      run: |
-        flake8
+      - name: Code formatting
+        run: uv run flake8
 
-    # Step 5: Run tests with pytest
-    - name: Test code
-      shell: bash -l {0}
-      run: |
-        pytest
+      - name: Test code
+        run: uv run pytest
