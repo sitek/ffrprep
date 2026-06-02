@@ -9,7 +9,7 @@ The general usage of ``ffrprep`` is to preprocess frequency-following response (
 automated preprocessing pipelines that include data loading, filtering, artifact removal, and report generation 
 for neurophysiological data analysis.
 The exact command to run ``ffrprep`` depends on the Installation method and user. Regarding the latter, ``ffrprep`` 
-can either be used as a ``command line tool`` or directly within ``python``. Please refer to the `Tutorial <https://SPARK-CSD.github.io/ffrprep/walkthrough>`_ for a more detailed walkthrough.
+can either be used as a ``command line tool`` or directly within ``python``. Please refer to the `Tutorial <https://sitek.github.io/ffrprep/walkthrough>`_ for a more detailed walkthrough.
 
 Here's a very conceptual example of running ``ffrprep`` via ``CLI``: ::
 
@@ -25,15 +25,48 @@ and here from within ``python``: ::
 
     result = ffrprep_function(input, optional_arguments)
 
-Below, we will focus on the ``CLI`` version. Thus, if you are interested in using ``ffrprep`` directly within ``python``,
-please check the `Examples <https://SPARK-CSD.github.io/ffrprep/auto_examples/index>`_.
+Below, we will focus on the ``CLI`` version. For programmatic use,
+the :ref:`api_ref` documents every public function with its
+signature and parameters.
 
 ffrprep through the CLI
 ===========================================
 
-As ``ffrprep`` is a `BIDS-App <https://bids-apps.neuroimaging.io>`_ , it is primarily designed as a command-line tool, that you can directly from your terminal or command prompt.  
-Ideally, using the provided `Docker <https://spark-csd.github.io/ffrprep/installation.html#docker>`_ or `Singularity <https://spark-csd.github.io/ffrprep/installation.html#singularity>`_ images as they encapsulate all dependencies and ensure a consistent environment across different systems, ensuring ease-of-use and
+As ``ffrprep`` is a `BIDS-App <https://bids-apps.neuroimaging.io>`_ , it is primarily designed as a command-line tool that you can run directly from your terminal or command prompt.
+Ideally, using the provided `Docker <https://sitek.github.io/ffrprep/installation.html#docker>`_ or `Singularity <https://sitek.github.io/ffrprep/installation.html#singularity>`_ images as they encapsulate all dependencies and ensure a consistent environment across different systems, ensuring ease-of-use and
 reproducibility.
+
+Downloading the example dataset
+===============================
+
+The ``download`` subcommand of the container fetches the example
+OSF dataset used in the
+`Tutorial <https://sitek.github.io/ffrprep/walkthrough>`_. The
+container's entrypoint dispatches ``download …`` to the
+``ffrprep-download`` console script bundled inside the image.
+
+.. code-block:: bash
+
+    # Just the EEG data (default)
+    docker run --rm \
+      -v /path/to/data:/out:rw \
+      sitek/ffrprep:latest \
+      download example --out /out
+
+    # Also fetch the stimulus audio + augment events.tsv with the
+    # BIDS stim_file column (needed for the stim-vs-response
+    # correlation in the analysis report)
+    docker run --rm \
+      -v /path/to/data:/out:rw \
+      sitek/ffrprep:latest \
+      download example --with-stimuli --out /out
+
+``--with-stimuli`` is ``BooleanOptionalAction`` (default ``False``);
+``--no-with-stimuli`` is its inverse. The download lands the EEG
+data under ``<out>/ffrprep_raw_data/`` and the stimulus files
+under ``<out>/ffrprep_raw_data/stimuli/`` per the BIDS spec, then
+augments every ``sub-*/eeg/*_events.tsv`` with the matching
+``stim_file`` column based on a ``trial_type → filename`` lookup.
 
 Command-Line Arguments
 ======================
@@ -46,29 +79,44 @@ Command-Line Arguments
 Example Call(s)
 ---------------
 
-Below you'll find two examples calls that hopefully help you to familiarize yourself with ``ffrprep`` and its options.
-We will start with the general structure of an ``ffrprep`` call and subsequently explain how to utilize it via the ``docker``
-or ``singularity`` images.
+The examples below all use Docker — the recommended path. They
+build up from the simplest call (preprocessing only, one subject)
+to per-trial-type analysis outputs with explicit difference pairs.
+Singularity users can swap the ``docker run …`` invocation for
+``singularity run --cleanenv -B <host>:<container> <image.sif>``
+keeping every flag below the image name identical.
+
+All examples assume your BIDS dataset is at
+``/local/bids_dataset`` on the host and the derivatives should
+land in ``/local/bids_dataset/derivatives``.
 
 Example 1 - Basic preprocessing
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
-    ffrprep \
-    /data/bids_dataset \
-    /data/bids_dataset/derivatives \
-    participant \
-    --participant_label 01 02 \
-    --stage preprocessing
+    docker run --rm \
+      -v /local/bids_dataset:/data:rw \
+      sitek/ffrprep:latest \
+      /data \
+      /data/derivatives \
+      participant \
+      --participant_label 01 02 \
+      --stage preprocessing
 
-Here's what's in this call:
+What's in this call:
 
-- The 1st positional argument ``/data/bids_dataset`` is the input BIDS dataset directory
-- The 2nd positional argument ``/data/bids_dataset/derivatives`` indicates the output directory for results
-- The 3rd positional argument ``participant`` specifies participant-level analysis
-- ``--participant_label 01 02`` processes only subjects sub-01 and sub-02
-- ``--stage preprocessing`` runs only the preprocessing stage
+- ``docker run --rm`` runs the container and removes it after completion.
+- ``-v /local/bids_dataset:/data:rw`` mounts the local BIDS dataset
+  read-write so derivatives can be written back to disk.
+- ``sitek/ffrprep:latest`` is the published image (see
+  :ref:`installation` for tag pinning).
+- ``/data`` (1st positional) is the BIDS dataset inside the
+  container; ``/data/derivatives`` (2nd) is the output directory;
+  ``participant`` (3rd) is the BIDS-App analysis level.
+- ``--participant_label 01 02`` processes only ``sub-01`` and
+  ``sub-02``.
+- ``--stage preprocessing`` runs only the preprocessing stage.
 
 
 Example 2 - Full analysis with custom parameters
@@ -76,104 +124,201 @@ Example 2 - Full analysis with custom parameters
 
 .. code-block:: bash
 
+    docker run --rm \
+      -v /local/bids_dataset:/data:rw \
+      sitek/ffrprep:latest \
+      /data \
+      /data/derivatives \
+      participant \
+      --stage both \
+      --high_pass 0.5 \
+      --low_pass 50.0 \
+      --ref_channels average \
+      --baseline "-0.1,0" \
+      --n_procs 4
+
+What's in this call:
+
+- ``--stage both`` runs both preprocessing and analysis stages.
+- ``--high_pass 0.5`` / ``--low_pass 50.0`` set the band-pass filter
+  in Hz.
+- ``--ref_channels average`` uses an average reference.
+- ``--baseline "-0.1,0"`` sets the baseline window to −100 ms → 0 ms.
+- ``--n_procs 4`` runs 4 per-(task, run) iterations in parallel per
+  subject (see :ref:`Parallelization <parallelization>` below).
+
+By default the analysis stage emits one evoked response per
+``trial_type`` value in ``events.tsv``
+(``_desc-evoked{Cond}.fif``), a combined evoked across all events
+(``_desc-evoked.fif``), and — for 2-trial-type datasets — an
+auto-paired difference evoked (``_desc-evokedDiff{A}Vs{B}.fif``).
+This per-trial-type split is governed by ``--split-by-trial-type``
+(default on); pass ``--no-split-by-trial-type`` to emit only the
+combined evoked. Examples 3 and 4 below show how to pick explicit
+difference pairs or restrict the output set.
+
+
+Example 3 - Per-trial-type analysis with explicit difference pairs
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For datasets with more than two ``trial_type`` values, the
+automatic difference is ambiguous; use
+``--difference-pairs A:B [C:D …]`` to specify which pairs to
+subtract. Each pair becomes one
+``_desc-evokedDiff{A}Vs{B}.fif`` file. The per-trial-type
+``_desc-evoked{Cond}.fif`` and combined ``_desc-evoked.fif``
+files are always emitted.
+
+.. code-block:: bash
+
+    docker run --rm \
+      -v /local/bids_dataset:/data:rw \
+      sitek/ffrprep:latest \
+      /data \
+      /data/derivatives \
+      participant \
+      --stage both \
+      --difference-pairs positive:negative tone1:tone2 \
+      --n_procs 4
+
+What's in this call:
+
+- ``--difference-pairs positive:negative tone1:tone2`` emits two
+  difference evokeds:
+  ``_desc-evokedDiffPositiveVsNegative.fif`` (positive − negative)
+  and ``_desc-evokedDiffTone1VsTone2.fif`` (tone1 − tone2).
+- All per-trial-type and combined evokeds for this (task, run) group
+  are also written — ``--split-by-trial-type`` is on by default, and
+  ``--difference-pairs`` requires it (the pairs are subtracted from
+  the per-trial-type evokeds, so combining it with
+  ``--no-split-by-trial-type`` would leave nothing to subtract).
+
+
+Example 4 - Restrict outputs to a subset, no split
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The trial-type split is controlled by a single boolean flag, exposed
+in both forms via ``argparse.BooleanOptionalAction``:
+
+- ``--split-by-trial-type`` (the **default**) emits the combined
+  evoked **plus** one ``_desc-evoked{Cond}.fif`` per trial type
+  **plus** the auto-paired / explicit difference evokeds. Passing
+  this flag explicitly is equivalent to omitting it.
+- ``--no-split-by-trial-type`` strips back to the combined evoked
+  only — no per-trial-type files, no differences.
+
+To keep the split on but restrict it to a subset of trial types
+(while still emitting the combined evoked), pass
+``--trial-types A B``.
+
+.. code-block:: bash
+
+    # Combined evoked only — strips per-trial-type files and
+    # any (auto-paired or explicit) difference evokeds
+    docker run --rm \
+      -v /local/bids_dataset:/data:rw \
+      sitek/ffrprep:latest \
+      /data \
+      /data/derivatives \
+      participant \
+      --stage both \
+      --no-split-by-trial-type \
+      --n_procs 4
+
+    # Only emit per-trial-type files for "positive" + the combined
+    # evoked; drop the "negative" output even though events.tsv
+    # contains both
+    docker run --rm \
+      -v /local/bids_dataset:/data:rw \
+      sitek/ffrprep:latest \
+      /data \
+      /data/derivatives \
+      participant \
+      --stage both \
+      --trial-types positive \
+      --n_procs 4
+
+
+.. _parallelization:
+
+Parallelization and cluster usage
+=================================
+
+``ffrprep`` follows the standard BIDS-App parallelism model:
+
+* **Inside one invocation** — ``--n_procs N`` runs N per-(task, run) iterations
+  concurrently for the subject(s) being processed. Each worker runs its own
+  preprocessing or analysis workflow with the Nipype ``Linear`` plugin.
+  Default: ``--n_procs 1`` (sequential). Memory footprint scales linearly
+  with N — each worker loads its own raw + epochs into memory, so dial it
+  down on small machines.
+
+* **Across invocations** — for multi-node / cluster scaling, run one
+  ``ffrprep`` invocation per subject under your scheduler (slurm job array,
+  GNU parallel, HTCondor, etc.). Both layers compose: 8 parallel slurm
+  tasks each with ``--n_procs 4`` gives 32-way effective parallelism.
+
+Single workstation
+------------------
+
+.. code-block:: bash
+
     ffrprep \
     /data/bids_dataset \
     /data/bids_dataset/derivatives \
     participant \
-    --stage both \
-    --high_pass 0.5 \
-    --low_pass 50.0 \
-    --ref_channels average \
-    --baseline "-0.1,0" \
-    --by_event_type
-
-Here's what's in this call:
-
-- The 1st positional argument ``/data/bids_dataset`` is the input BIDS dataset directory
-- The 2nd positional argument ``/data/bids_dataset/derivatives`` indicates the output directory for results
-- The 3rd positional argument ``participant`` specifies participant-level analysis
-- ``--stage both`` runs both preprocessing and analysis stages
-- ``--high_pass 0.5`` sets high-pass filter to 0.5 Hz
-- ``--low_pass 50.0`` sets low-pass filter to 50 Hz
-- ``--ref_channels average`` uses average reference
-- ``--baseline "-0.1,0"`` sets baseline from -100ms to 0ms
-- ``--by_event_type`` creates separate evoked responses for each event type 
-
-
-Example 3 - Usage through Docker
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. code-block:: bash
-
-    docker run -ti --rm \
-    -v /local/bids_dataset:/data:ro \
-    -v /local/bids_dataset/derivatives:/outputs \
-    ffrprep/ffrprep:latest \
-    /data \
-    /outputs \
-    participant \
-    --participant_label 01 \
-    --stage both \
-    --high_pass 1.0 \
-    --low_pass 40.0 \
+    --participant_label 01 02 03 \
     --n_procs 4
 
-Here's what's in this call:
+The 4 workers chew through each subject's (task, run) iterations in parallel,
+then move to the next subject.
 
-- ``docker run -ti --rm`` runs the Docker container interactively and removes it after completion
-- ``-v /local/bids_dataset:/data:ro`` mounts local BIDS data directory as read-only
-- ``-v /local/bids_dataset/derivatives:/outputs`` mounts local output directory
-- ``ffrprep/ffrprep:latest`` specifies the Docker image to use
-- ``/data`` is the BIDS dataset directory (inside container)
-- ``/outputs`` is the output directory (inside container)
-- ``participant`` specifies participant-level analysis
-- ``--participant_label 01`` processes only subject sub-01
-- ``--n_procs 4`` uses 4 processors for parallel processing 
+Cluster (slurm job array)
+-------------------------
 
-
-Example 4 - Usage through Singularity
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Run one invocation per subject via the scheduler; each job uses
+``--n_procs`` for intra-subject parallelism. Example wrapper script:
 
 .. code-block:: bash
 
-    singularity run --cleanenv \
-    -B /local/bids_dataset:/data:ro \
-    -B /local/bids_dataset/derivatives:/outputs \
-    ffrprep_latest.sif \
-    /data \
-    /outputs \
-    participant \
-    --participant_label 01 02 03 \
-    --stage preprocessing \
-    --high_pass 2.0 \
-    --ref_channels "Cz,Fz" \
-    --tmin -0.1 \
-    --tmax 0.5
+    # ffrprep_one_subject.sh
+    #!/bin/bash
+    #SBATCH --array=0-99
+    #SBATCH --cpus-per-task=4
+    #SBATCH --mem=16G
+    SUBJECTS=(sub-01 sub-02 sub-03 ...)
+    SUB=${SUBJECTS[$SLURM_ARRAY_TASK_ID]}
+    ffrprep /data /data/derivatives participant \
+        --participant_label ${SUB#sub-} \
+        --n_procs $SLURM_CPUS_PER_TASK
 
-Here's what's in this call:
+Cluster (GNU parallel on a single beefy box)
+--------------------------------------------
 
-- ``singularity run --cleanenv`` runs the Singularity container with a clean environment
-- ``-B /local/bids_dataset:/data:ro`` binds local BIDS data directory as read-only
-- ``-B /local/bids_dataset/derivatives:/outputs`` binds local output directory
-- ``ffrprep_latest.sif`` specifies the Singularity image file to use
-- ``/data`` is the BIDS dataset directory (inside container)
-- ``/outputs`` is the output directory (inside container) 
-- ``participant`` specifies participant-level analysis
-- ``--participant_label 01 02 03`` processes subjects sub-01, sub-02, and sub-03
-- ``--stage preprocessing`` runs only the preprocessing stage
-- ``--high_pass 2.0`` sets high-pass filter to 2.0 Hz
-- ``--ref_channels "Cz,Fz"`` uses Cz and Fz channels as reference
-- ``--tmin -0.1`` sets epoch start time to -100ms
-- ``--tmax 0.5`` sets epoch end time to 500ms
+.. code-block:: bash
+
+    parallel -j 8 \
+      "ffrprep /data /data/derivatives participant \
+         --participant_label {} --n_procs 4" \
+      ::: 01 02 03 04 05 06 07 08
+
+Failure handling
+----------------
+
+A failure in any (task, run) iteration aborts the run (fail-fast). The
+exception propagates up from the worker to the CLI entry point, so the
+underlying error is visible in the terminal output. Per-iteration logs
+land in ``<work_dir>/<task>-<run>.log`` so you can drill into the
+failing iteration without scanning the whole subject log.
 
 
 Support and communication
 =========================
 
-The documentation of this project is found here: https://YourGitHubHandle.github.io/ffrprep.
+The documentation of this project is found here: https://sitek.github.io/ffrprep.
 
 All bugs, concerns and enhancement requests for this software can be submitted here:
-https://github.com/YourGitHubHandle/ffrprep/issues.
+https://github.com/sitek/ffrprep/issues.
 
 If you have a problem or would like to ask a question about how to use ``ffrprep``,
 please submit a question to `NeuroStars.org <http://neurostars.org/tags/ffrprep>`_ with an ``ffrprep`` tag.

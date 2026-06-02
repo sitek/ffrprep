@@ -1,7 +1,7 @@
 import numpy as np
 from numpy import mean, sqrt, square
 import mne
-import statsmodels as sm
+from statsmodels.tsa.stattools import acf as _sm_acf
 from scipy import signal
 from scipy.stats import pearsonr
 import matplotlib.pyplot as plt
@@ -84,8 +84,8 @@ def rms_snr(evoked, response_lower=0.100, response_upper=0.200):
         RMS(response window) / RMS(baseline window)
         for the first channel in `evoked.data`.
 
-    Example
-    -------
+    Examples
+    --------
     Compute RMS SNR for a 100-200 ms response window
 
     >>> snr = rms_snr(evoked, response_lower=0.100, response_upper=0.200)
@@ -110,10 +110,29 @@ def rms_snr(evoked, response_lower=0.100, response_upper=0.200):
 
 
 def autocorrelation(evoked):
-    acf, confidence_interval = sm.tsa.stattools.acf(
-        evoked,
-        nlags=len(evoked) - 1,
-        alpha=0.05
+    """Autocorrelation function and 95% CI for the first channel of `evoked`.
+
+    Parameters
+    ----------
+    evoked : mne.Evoked
+        Evoked response. Only the first channel's time series is used.
+
+    Returns
+    -------
+    acf : ndarray of shape (n_times,)
+        Autocorrelation values from lag 0 up to ``n_times - 1``.
+    confidence_interval : ndarray of shape (n_times, 2)
+        Lower and upper bounds of the 95% confidence interval at each
+        lag, as returned by :func:`statsmodels.tsa.stattools.acf` with
+        ``alpha=0.05``.
+    """
+    # statsmodels.acf needs a 1-D sequence. Match compute_pitch_and_conf
+    # by taking the first channel's time series.
+    signal = evoked.data[0]
+    acf, confidence_interval = _sm_acf(
+        signal,
+        nlags=len(signal) - 1,
+        alpha=0.05,
     )
 
     return acf, confidence_interval
@@ -151,21 +170,19 @@ def compute_pitch_and_conf(evoked,
     -------
     dict
         A dictionary with the following keys:
-        - 'times':
-            Array of time points corresponding to the center of each window.
-        - 'pitch_hz':
-            Array of pitch estimates (in Hz) for each window.
-        - 'pitch_hz_smooth':
-            Smoothed pitch estimates (in Hz) for each window.
-        - 'peak_strength':
-            Array of normalized autocorrelation strengths for each window.
-        - 'conf_rmax':
-            Array of maximum normalized autocorrelation values for each window.
-        - 'conf_pnr':
-            Array of pitch-to-noise ratios for each window.
-        - 'conf_z':
-            Array of z-scores for the maximum autocorrelation values
-            for each window.
+
+        - ``'times'`` — array of time points corresponding to the center of
+          each window.
+        - ``'pitch_hz'`` — array of pitch estimates (in Hz) for each window.
+        - ``'pitch_hz_smooth'`` — smoothed pitch estimates (in Hz) for each
+          window.
+        - ``'peak_strength'`` — array of normalized autocorrelation strengths
+          for each window.
+        - ``'conf_rmax'`` — array of maximum normalized autocorrelation values
+          for each window.
+        - ``'conf_pnr'`` — array of pitch-to-noise ratios for each window.
+        - ``'conf_z'`` — array of z-scores for the maximum autocorrelation
+          values for each window.
 
     Examples
     --------
@@ -278,8 +295,10 @@ def compute_pitch_and_conf(evoked,
     pitch_hz = np.array(pitch_hz)
     peak_strength = np.array(peak_strength)
 
-    # smoothing that ignores NaNs
     def moving_avg_ignore_nan(x, k=3):
+        """Centered moving average of `x` over a window of `k` samples,
+        ignoring NaN entries. Output positions where the window covers
+        only NaNs become NaN themselves."""
         mask = ~np.isnan(x)
         x0 = np.where(mask, x, 0.0)
         num = np.convolve(x0, np.ones(k), mode='same')
@@ -320,24 +339,25 @@ def plot_pitch_and_conf(results):
     results : dict
         Dictionary as returned by compute_pitch_and_conf(). The dictionary must
         contain at least the following keys:
-          - 'times' : array-like
-              1-D array of time stamps in seconds for the pitch track.
-          - 'pitch_hz_smooth' : array-like
-              1-D array of smoothed pitch values in Hz.
-              Use NaN for unvoiced frames.
+
+        - ``'times'`` (array-like) — 1-D array of time stamps in seconds for
+          the pitch track.
+        - ``'pitch_hz_smooth'`` (array-like) — 1-D array of smoothed pitch
+          values in Hz. Use NaN for unvoiced frames.
+
         The dictionary may also include the following optional entries:
-          - 'peak_strength' : array-like or None
-              Per-frame peak strength values that can be used as an alternate
-              confidence measure for coloring the pitch scatter.
-          - 'conf_rmax' : array-like or None
-              Preferred confidence metric (e.g., correlation maximum).
-              If present and aligned with the pitch/times vector,
-              it will be used to color the
-              pitch points and plotted in the bottom panel.
-          - 'conf_z' : array-like or None
-              Z-score confidence values (plotted in bottom panel when present).
-          - 'conf_pnr' : array-like or None
-              PNR (pitch-to-noise ratio) confidence values (plotted in bottom).
+
+        - ``'peak_strength'`` (array-like or None) — per-frame peak strength
+          values that can be used as an alternate confidence measure for
+          coloring the pitch scatter.
+        - ``'conf_rmax'`` (array-like or None) — preferred confidence metric
+          (e.g., correlation maximum). If present and aligned with the
+          pitch/times vector, it will be used to color the pitch points and
+          plotted in the bottom panel.
+        - ``'conf_z'`` (array-like or None) — z-score confidence values
+          (plotted in bottom panel when present).
+        - ``'conf_pnr'`` (array-like or None) — PNR (pitch-to-noise ratio)
+          confidence values (plotted in bottom).
 
     Returns
     -------
@@ -366,13 +386,15 @@ def plot_pitch_and_conf(results):
     - Requires matplotlib.pyplot (imported as plt in the function)
       and numpy (np) to be available in the module scope.
 
-    Example
-    -------
-    # Assuming compute_pitch_and_conf() returns the expected dict:
-    results = compute_pitch_and_conf(audio_chunk)
-    plot_pitch_and_conf(results)
+    Examples
+    --------
+    Assuming ``compute_pitch_and_conf()`` returns the expected dict::
+
+        results = compute_pitch_and_conf(audio_chunk)
+        plot_pitch_and_conf(results)
     """
     import matplotlib.pyplot as plt
+    from mpl_toolkits.axes_grid1 import make_axes_locatable
 
     # basic validation:
     # expect a dict like the output of compute_pitch_and_conf()
@@ -404,6 +426,7 @@ def plot_pitch_and_conf(results):
     mask = (~np.isnan(pitch_smooth))
 
     fig, (ax_top, ax_bot) = plt.subplots(2, 1, figsize=(10, 6),
+                                         sharex=True,
                                          gridspec_kw={'height_ratios': [3, 1]})
 
     # top: pitch track colored by confidence
@@ -417,12 +440,9 @@ def plot_pitch_and_conf(results):
     if (conf_rmax is not None and
             (conf_rmax.size == mask.sum() or
              conf_rmax.size == len(times))):
-        # try align lengths (conf arrays are usually same length as times)
-        try:
-            color_vals = conf_rmax
-            color_label = 'conf_rmax'
-        except Exception:
-            color_vals = None
+        # Align lengths (conf arrays are usually same length as times)
+        color_vals = conf_rmax
+        color_label = 'conf_rmax'
 
     if color_vals is None and peak_strength is not None:
         color_vals = peak_strength
@@ -438,8 +458,14 @@ def plot_pitch_and_conf(results):
             c = color_vals
         sc = ax_top.scatter(times[mask], pitch_smooth[mask], c=c,
                             cmap='viridis', s=40, edgecolor='k', lw=0.3)
-        cbar = fig.colorbar(sc, ax=ax_top, pad=0.01)
+        # Place the colorbar in a divider axis so ax_top's plot width
+        # is unchanged. Mirror the divider on ax_bot with an invisible
+        # gutter so both panels have identical x-extents.
+        cax = make_axes_locatable(ax_top).append_axes("right", size="2%", pad=0.1)
+        cbar = fig.colorbar(sc, cax=cax)
         cbar.set_label(color_label)
+        cax_bot = make_axes_locatable(ax_bot).append_axes("right", size="2%", pad=0.1)
+        cax_bot.axis("off")
     else:
         ax_top.plot(times[mask], pitch_smooth[mask], '-o', markersize=4)
 
@@ -470,6 +496,7 @@ def plot_pitch_and_conf(results):
     fig.tight_layout()
     plt.show()
 
+
 def compute_phase_consistency(
     epochs_A,
     epochs_B,
@@ -479,13 +506,13 @@ def compute_phase_consistency(
 ):
     """
     Compute phase consistency from FFR epochs.
-    
+
     The function computes phase consistency for:
     - Polarity A (from epochs_A)
-    - Polarity B (from epochs_B)  
+    - Polarity B (from epochs_B)
     - ADD polarity: (A + B) / 2 (computed from phase vectors)
     - SUB polarity: (A - B) / 2 (computed from phase vectors)
-    
+
     Parameters
     ----------
     epochs_A : mne.Epochs
@@ -498,7 +525,7 @@ def compute_phase_consistency(
         Window overlap in seconds (default: 0.036 = 36 ms, gives ~4 ms step)
     freqcap : int
         Maximum frequency in Hz (default: 2000)
-        
+
     Returns
     -------
     phasecon : dict
@@ -509,33 +536,33 @@ def compute_phase_consistency(
         Frequency axis in Hz
     numsweeps : int
         Number of sweeps used (minimum of A and B)
-    
+
     Examples
     --------
     >>> phasecon, xaxis, yaxis, numsweeps = compute_phase_consistency_minimal(
     ...     epochs_A, epochs_B, chunksize=0.04, overlap=0.036
     ... )
-    >>> 
+    >>>
     >>> # Plot
     >>> plot_phase_consistency(phasecon, xaxis, yaxis)
     """
-    
+
     # Get sampling info from epochs
     sfreq = epochs_A.info['sfreq']
     tmin = epochs_A.times[0]
     tmax = epochs_A.times[-1]
-    
+
     # Convert parameters to samples
     chunksizepts = int(np.round(chunksize * sfreq))
     overlappts = int(np.round(overlap * sfreq))
-    
+
     # Create Hann window
     ramp = signal.windows.hann(chunksizepts)
-    
+
     # Get epoch data for A and B
     data_A = epochs_A.get_data(picks='eeg')
     data_B = epochs_B.get_data(picks='eeg')
-    
+
     # Average across channels if multiple
     if data_A.shape[1] > 1:
         print(f"Averaging across {data_A.shape[1]} channels")
@@ -544,65 +571,65 @@ def compute_phase_consistency(
     else:
         data_A = data_A[:, 0, :]
         data_B = data_B[:, 0, :]
-    
+
     # Determine minimum number of sweeps
     numsweeps = min(len(epochs_A), len(epochs_B))
     data_A = data_A[:numsweeps, :]
     data_B = data_B[:numsweeps, :]
-    
+
     n_epochs, n_samples = data_A.shape
-    
+
     # Calculate sliding window positions
     segstart = np.arange(0, n_samples - chunksizepts, chunksizepts - overlappts)
     segstop = segstart + chunksizepts
-    
+
     # Tile the window for all epochs
     bigramp = np.tile(ramp[:, np.newaxis], (1, n_epochs))
-    
+
     # Initialize phase info for A and B: (freq, epochs, time_windows)
     phaseinfo_A = np.zeros((freqcap + 1, n_epochs, len(segstart)), dtype=complex)
     phaseinfo_B = np.zeros((freqcap + 1, n_epochs, len(segstart)), dtype=complex)
-    
+
     # Process each time window
     print(f"Processing {len(segstart)} time windows, {n_epochs} epochs each for A and B")
     for s in range(len(segstart)):
         if s % 20 == 0:
             print(f"  Window {s+1}/{len(segstart)}")
-        
+
         # Extract segments from all epochs
         segment_A = data_A[:, segstart[s]:segstop[s]].T  # Shape: (time, epochs)
         segment_B = data_B[:, segstart[s]:segstop[s]].T
-        
+
         # Detrend (baseline to 0)
         segment_A_detr = signal.detrend(segment_A, axis=0, type='constant')
         segment_B_detr = signal.detrend(segment_B, axis=0, type='constant')
-        
+
         # Apply Hann window
         segment_A_windowed = segment_A_detr * bigramp
         segment_B_windowed = segment_B_detr * bigramp
-        
+
         # Compute FFT with 1 Hz resolution
         fft_A = np.fft.fft(segment_A_windowed, n=int(sfreq), axis=0)
         fft_B = np.fft.fft(segment_B_windowed, n=int(sfreq), axis=0)
-        
+
         # Keep only frequencies up to freqcap
         fft_A = fft_A[:freqcap + 1, :]
         fft_B = fft_B[:freqcap + 1, :]
-        
+
         # Normalize to get phase only (discard amplitude)
         fft_mag_A = np.abs(fft_A)
         fft_mag_B = np.abs(fft_B)
         phaseinfo_A[:, :, s] = fft_A / (fft_mag_A + 1e-10)
         phaseinfo_B[:, :, s] = fft_B / (fft_mag_B + 1e-10)
-    
+
     # Average across epochs (complex average) for A and B
     phase_avg_A = np.mean(phaseinfo_A, axis=1)  # Shape: (freq, time_windows)
     phase_avg_B = np.mean(phaseinfo_B, axis=1)
-    
+
     # Compute ADD and SUB from the averaged phase vectors
     phase_avg_add = (phase_avg_A + phase_avg_B) / 2
     phase_avg_sub = (phase_avg_A - phase_avg_B) / 2
-    
+
     # Phase consistency is the absolute value
     phasecon = {
         'A': np.abs(phase_avg_A),
@@ -610,7 +637,7 @@ def compute_phase_consistency(
         'add': np.abs(phase_avg_add),
         'sub': np.abs(phase_avg_sub)
     }
-    
+
     # Create axes
     xaxis = 1000 * np.linspace(
         tmin + (chunksize / 2),
@@ -618,13 +645,13 @@ def compute_phase_consistency(
         len(segstart)
     )
     yaxis = np.arange(0, freqcap + 1)
-    
-    print(f"\nPhase consistency computed!")
-    print(f"  Polarities: A, B, add, sub")
+
+    print("\nPhase consistency computed!")
+    print("  Polarities: A, B, add, sub")
     print(f"  Number of sweeps: {numsweeps}")
     print(f"  Time axis: {xaxis[0]:.1f} to {xaxis[-1]:.1f} ms ({len(xaxis)} points)")
     print(f"  Freq axis: {yaxis[0]} to {yaxis[-1]} Hz ({len(yaxis)} points)")
-    
+
     return phasecon, xaxis, yaxis, numsweeps
 
 
@@ -640,7 +667,7 @@ def plot_phase_consistency(
 ):
     """
     Plot phase consistency matrices.
-    
+
     Parameters
     ----------
     phasecon : dict
@@ -659,17 +686,17 @@ def plot_phase_consistency(
         Figure size (default: (12, 8))
     cmap : str
         Colormap name (default: 'viridis')
-    
+
     Returns
     -------
     fig : matplotlib.figure.Figure
     """
-    
+
     if pol_names is None:
         pol_names = list(phasecon.keys())
-    
+
     n_pols = len(pol_names)
-    
+
     # Determine subplot layout
     if n_pols <= 2:
         nrows, ncols = 1, n_pols
@@ -678,19 +705,19 @@ def plot_phase_consistency(
     else:
         nrows = int(np.ceil(n_pols / 3))
         ncols = 3
-    
+
     fig, axes = plt.subplots(nrows, ncols, figsize=figsize)
     if n_pols == 1:
         axes = [axes]
     else:
         axes = axes.flatten()
-    
+
     for idx, pol_name in enumerate(pol_names):
         if pol_name not in phasecon:
             continue
-        
+
         ax = axes[idx]
-        
+
         im = ax.imshow(
             phasecon[pol_name],
             aspect='auto',
@@ -700,20 +727,20 @@ def plot_phase_consistency(
             vmax=vmax,
             cmap=cmap
         )
-        
+
         if ylim is not None:
             ax.set_ylim(ylim)
-        
+
         ax.set_title(pol_name, fontsize=14, fontweight='bold')
         ax.set_xlabel('Time (ms)', fontsize=12)
         ax.set_ylabel('Frequency (Hz)', fontsize=12)
-        
+
         plt.colorbar(im, ax=ax, label='Phase Consistency')
-    
+
     # Hide extra subplots
     for idx in range(len(pol_names), len(axes)):
         axes[idx].set_visible(False)
-    
+
     plt.tight_layout()
     return fig
 
@@ -727,11 +754,12 @@ def plot_phase_consistency_masked(
     pol_names=None,
     vmax=0.14,
     ylim=None,
-    figsize=(12, 8)
+    figsize=(12, 8),
+    cmap="viridis",
 ):
     """
     Plot phase consistency with significance masking.
-    
+
     Parameters
     ----------
     phasecon : dict
@@ -752,36 +780,39 @@ def plot_phase_consistency_masked(
         Frequency limits
     figsize : tuple
         Figure size
-        
+    cmap : str or matplotlib colormap, default "viridis"
+        Colormap used for the per-cell values. Below-threshold cells
+        are coloured black via ``set_under``.
+
     Returns
     -------
     fig : matplotlib.figure.Figure
     """
-    
+
     if pol_names is None:
         pol_names = list(phasecon.keys())
-    
+
     # Calculate cutoff (same for all polarities)
     cutoff = np.sqrt(-np.log(alpha) / numsweeps)
     print(f"Significance cutoff (α={alpha}, n={numsweeps}): {cutoff:.4f}")
-    
+
     # Create masked version
     maskedphasecon = {}
     for pol_name in pol_names:
         if pol_name not in phasecon:
             continue
-        
+
         # Mask
         masked = phasecon[pol_name].copy()
         masked[masked < cutoff] = 0
         maskedphasecon[pol_name] = masked
-    
-    # Create colormap with black for zero
-    cmap = plt.cm.viridis.copy()
+
+    # Resolve cmap from str / Colormap and reserve black for below-cutoff
+    cmap = plt.get_cmap(cmap).copy()
     cmap.set_under('black')
-    
+
     n_pols = len(pol_names)
-    
+
     # Determine subplot layout
     if n_pols <= 2:
         nrows, ncols = 1, n_pols
@@ -790,19 +821,19 @@ def plot_phase_consistency_masked(
     else:
         nrows = int(np.ceil(n_pols / 3))
         ncols = 3
-    
+
     fig, axes = plt.subplots(nrows, ncols, figsize=figsize)
     if n_pols == 1:
         axes = [axes]
     else:
         axes = axes.flatten()
-    
+
     for idx, pol_name in enumerate(pol_names):
         if pol_name not in maskedphasecon:
             continue
-        
+
         ax = axes[idx]
-        
+
         im = ax.imshow(
             maskedphasecon[pol_name],
             aspect='auto',
@@ -812,22 +843,58 @@ def plot_phase_consistency_masked(
             vmax=vmax,
             cmap=cmap
         )
-        
+
         if ylim is not None:
             ax.set_ylim(ylim)
-        
+
         ax.set_title(f"{pol_name} (p < {alpha})", fontsize=14, fontweight='bold')
         ax.set_xlabel('Time (ms)', fontsize=12)
         ax.set_ylabel('Frequency (Hz)', fontsize=12)
-        
+
         plt.colorbar(im, ax=ax, label='Phase Consistency')
-    
+
     # Hide extra subplots
     for idx in range(len(pol_names), len(axes)):
         axes[idx].set_visible(False)
-    
+
     plt.tight_layout()
     return fig
+
+
+def _xcorr_normalized(a, b, sfreq):
+    """Normalized cross-correlation of two 1-D signals.
+
+    Truncates both inputs to the shorter length, computes
+    ``scipy.signal.correlate(b, a, mode="full")``, and normalises by
+    ``std(a) * std(b) * len(a)`` so the result lies in [-1, 1] for
+    matching-amplitude inputs.
+
+    Parameters
+    ----------
+    a, b : array-like
+        Two 1-D time-series sampled at ``sfreq``. Multi-dimensional
+        inputs are squeezed.
+    sfreq : float
+        Sampling rate (Hz). Used to convert lag indices to ms.
+
+    Returns
+    -------
+    corrs : ndarray
+        Full cross-correlation, length ``2 * min(len(a), len(b)) - 1``.
+    lag_ms : ndarray
+        Lag axis in milliseconds, same length as ``corrs``, monotonic
+        and centred on 0 for equal-length inputs.
+    """
+    a = np.asarray(a).squeeze()
+    b = np.asarray(b).squeeze()
+    n = min(len(a), len(b))
+    a = a[:n]
+    b = b[:n]
+    corrs = signal.correlate(b, a, mode="full")
+    corrs = corrs / (np.std(a) * np.std(b) * len(a))
+    lag = np.arange(-len(a) + 1, len(b))
+    lag_ms = lag / sfreq * 1000
+    return corrs, lag_ms
 
 
 def corr_stim_to_resp(stim, resp, sfreq):
@@ -854,24 +921,9 @@ def corr_stim_to_resp(stim, resp, sfreq):
     peak_lag : float
         The lag at which the maximum correlation occurs.
     """
-
-    stim = np.asarray(stim).squeeze()
-    resp = np.asarray(resp).squeeze()
-
-    minimum_length = min(len(stim), len(resp))
-    stim = stim[:minimum_length]
-    resp = resp[:minimum_length]
-
-    corrs = signal.correlate(resp, stim, mode="full")
-    corrs = corrs / (np.std(stim) * np.std(resp) * len(stim))
-
-    lag = np.arange(-len(stim) + 1, len(resp))
-    lag_milliseconds = lag / sfreq * 1000
+    corrs, lag_ms = _xcorr_normalized(stim, resp, sfreq)
     peak_n = np.argmax(corrs)
-    peak_corr = corrs[peak_n]
-    peak_lag = lag_milliseconds[peak_n]
-
-    return peak_corr, peak_lag
+    return corrs[peak_n], lag_ms[peak_n]
 
 
 def corr_resp_to_resp(resp1, resp2, sfreq):
@@ -898,24 +950,13 @@ def corr_resp_to_resp(resp1, resp2, sfreq):
     peak_lag : float
         The lag at which the maximum correlation occurs.
     """
-    resp1 = np.asarray(resp1).squeeze()
-    resp2 = np.asarray(resp2).squeeze()
-
-    minimum_length = min(len(resp1), len(resp2))
-    resp1 = resp1[:minimum_length]
-    resp2 = resp2[:minimum_length]
-
-    corrs = signal.correlate(resp2, resp1, mode="full")
-    corrs = corrs / (np.std(resp1) * np.std(resp2) * len(resp1))
-
-    lag = np.arange(-len(resp1) + 1, len(resp2))
-    lag_milliseconds = lag / sfreq * 1000
-
+    corrs, lag_ms = _xcorr_normalized(resp1, resp2, sfreq)
     peak_n = np.argmax(corrs)
     peak_corr = corrs[peak_n]
-    peak_lag = lag_milliseconds[peak_n]
+    peak_lag = lag_ms[peak_n]
 
     return peak_corr, peak_lag
+
 
 def response_consistency(epochs, tmin=None, tmax=None, picks="eeg"):
     """
@@ -1020,22 +1061,3 @@ def compute_fft(signal_data, sfreq, fmin=None, fmax=None):
         amplitude = amplitude[mask]
 
     return freqs, amplitude
-
-if __name__ == "__main__":
-    import numpy as np
-
-    # test signals
-    resp = np.random.randn(1000)
-    stim = np.random.randn(1000)
-    sfreq = 1000
-
-    peak_corr, peak_lag = corr_stim_to_resp(stim, resp, sfreq)
-
-    print("Peak corr:", peak_corr)
-    print("Peak lag:", peak_lag)
-
-    pos_mean_r, pos_r_vals = response_consistency(sub_epochs["1"], tmin=0.05, tmax=0.20, picks=["Cz"])
-    neg_mean_r, neg_r_vals = response_consistency(sub_epochs["2"], tmin=0.05, tmax=0.20, picks=["Cz"])
-
-    print("Positive consistency:", pos_mean_r)
-    print("Negative consistency:", neg_mean_r)

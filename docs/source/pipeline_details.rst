@@ -4,7 +4,10 @@
 Pipeline details
 ================
 
-This section provides a comprehensive overview of the ``ffrprep`` processing pipeline, detailing each stage from BIDS validation through preprocessing to analysis. Understanding these steps will help you interpret results and customize processing for your specific research needs.
+This section walks through each stage of the ``ffrprep`` pipeline
+— BIDS validation, preprocessing, and analysis — covering the
+nodes that make up each Nipype workflow and the file layout each
+stage writes to disk.
 
 Pipeline Overview
 =================
@@ -15,7 +18,11 @@ The ``ffrprep`` pipeline consists of three main stages:
 2. **Preprocessing** - Filters, re-references, and epochs the EEG data  
 3. **Analysis** - Computes evoked responses, time-frequency representations, and FFR metrics
 
-Each stage is implemented as a modular workflow using Nipype, allowing for parallel processing and robust error handling.
+Each stage is implemented as a modular Nipype workflow. The CLI parallelizes
+across (task, run) iterations within a subject via a ``ProcessPoolExecutor``
+sized by ``--n_procs``; for cross-subject scaling on clusters, run one CLI
+invocation per subject (e.g. via slurm job arrays). See the
+:ref:`Parallelization <parallelization>` section under *Usage* for details.
 
 
 
@@ -31,7 +38,7 @@ Verify dataset structure, file naming conventions, and required metadata files b
 The validation uses the ``bids-validator`` tool with a custom configuration that ignores warnings not relevant to EEG/FFR data.
 
 **Key Functions:**
-- `validate_input_dir() <https://spark-csd.github.io/ffrprep/generated/ffrprep.utils.validate_input_dir.html#ffrprep.utils.validate_input_dir>`_ - Main validation function
+- `validate_input_dir() <https://sitek.github.io/ffrprep/generated/ffrprep.utils.validate_input_dir.html#ffrprep.utils.validate_input_dir>`_ - Main validation function
 - Custom validator configuration for EEG-specific requirements
 
 **Validation Steps:**
@@ -70,14 +77,14 @@ The preprocessing stage converts raw EEG data into clean, epoched data suitable 
 Transform raw continuous EEG into clean, filtered, and epoched data while preserving FFR-relevant neural signals.
 
 **Implementation:**
-Implemented as a Nipype workflow (`create_preprocessing_workflow() <https://spark-csd.github.io/ffrprep/generated/ffrprep.preproc.create_preprocessing_workflow.html#ffrprep.preproc.create_preprocessing_workflow>`_) with the following nodes:
+Implemented as a Nipype workflow (`create_preprocessing_workflow() <https://sitek.github.io/ffrprep/generated/ffrprep.preproc.create_preprocessing_workflow.html#ffrprep.preproc.create_preprocessing_workflow>`_) with the following nodes:
 
 Preprocessing Workflow Nodes
 ----------------------------
 
 **1. Data Loading Node**
 
-*Function:* `load_data() <https://spark-csd.github.io/ffrprep/generated/ffrprep.preproc.load_data.html#ffrprep.preproc.load_data>`_
+*Function:* `load_data() <https://sitek.github.io/ffrprep/generated/ffrprep.preproc.load_data.html#ffrprep.preproc.load_data>`_
 
 *Purpose:* Robustly load EEG data from BIDS datasets using pybids and MNE-BIDS.
 
@@ -93,7 +100,7 @@ Preprocessing Workflow Nodes
 
 **2. Re-referencing Node**
 
-*Function:* `reference_data() <https://spark-csd.github.io/ffrprep/generated/ffrprep.preproc.reference_data.html#ffrprep.preproc.reference_data>`_
+*Function:* `reference_data() <https://sitek.github.io/ffrprep/generated/ffrprep.preproc.reference_data.html#ffrprep.preproc.reference_data>`_
 
 *Purpose:* Apply appropriate reference scheme to reduce common-mode noise and artifacts.
 
@@ -112,7 +119,7 @@ Preprocessing Workflow Nodes
 
 **3. Filtering Node**
 
-*Function:* `filter_data() <https://spark-csd.github.io/ffrprep/generated/ffrprep.preproc.filter_data.html#ffrprep.preproc.filter_data>`_
+*Function:* `filter_data() <https://sitek.github.io/ffrprep/generated/ffrprep.preproc.filter_data.html#ffrprep.preproc.filter_data>`_
 
 *Purpose:* Apply temporal filtering to remove noise while preserving FFR signals.
 
@@ -131,278 +138,298 @@ Preprocessing Workflow Nodes
 
 **4. Epoching Node**
 
-*Function:* `create_epochs() <https://spark-csd.github.io/ffrprep/generated/ffrprep.preproc.create_epochs.html#ffrprep.preproc.create_epochs>`_
+*Function:* `epoch_data() <https://sitek.github.io/ffrprep/generated/ffrprep.preproc.epoch_data.html#ffrprep.preproc.epoch_data>`_
 
-*Purpose:* Segment continuous data into time-locked epochs around stimulus events.
-
-*Sub-steps:*
-   - Load event information from BIDS events file
-   - Identify relevant event codes/triggers
-   - Extract epochs from ``tmin`` to ``tmax`` around events
-   - Apply baseline correction
-   - Reject epochs with excessive artifacts
-   - Compute and log epoch statistics
-
-*Default Parameters:*
-   - **Epoch window:** -0.2 to 0.6 seconds around stimulus onset
-   - **Baseline:** -0.2 to 0.0 seconds (pre-stimulus period)
-   - **Rejection:** Automatic based on amplitude thresholds
-
-*Artifact Rejection:*
-   - Peak-to-peak amplitude thresholds per channel type
-   - Automatic bad channel detection
-   - Statistical outlier rejection
-   - Manual inspection options
-
-*Outputs:* Epoched EEG data, artifact rejection statistics
-
-**5. Quality Control Node**
-
-*Function:* `generate_preprocessing_report() <https://spark-csd.github.io/ffrprep/generated/ffrprep.preproc.generate_preprocessing_report.html#ffrprep.preproc.generate_preprocessing_report>`_
-
-*Purpose:* Create comprehensive quality control reports for preprocessing steps.
+*Purpose:* Segment the continuously-filtered EEG into time-locked
+epochs around stimulus events, applying baseline correction and
+amplitude-based rejection.
 
 *Sub-steps:*
-   - Generate raw data quality plots (PSD, channel variance)
-   - Visualize filter responses and effects
-   - Plot epoch rejection statistics
-   - Create event-related potential previews
-   - Generate summary statistics and tables
-   - Compile HTML report with interactive plots
+   - Load events from the BIDS ``*_events.tsv`` (or use annotations
+     embedded in the raw recording when no sidecar is present)
+   - Build ``mne.Epochs`` with the requested ``tmin`` / ``tmax``,
+     baseline window, picks, and ``reject`` thresholds
+   - Apply ``epochs.drop_bad()`` to materialize amplitude-based
+     rejection; keep the resulting Epochs object as the workflow
+     output
 
-*Report Contents:*
-   - Data loading summary and file information
-   - Channel locations and reference scheme
-   - Filter responses and spectral effects  
-   - Epoching statistics and rejection rates
-   - Data quality metrics and recommendations
+*Default Parameters (FFR-typical, all overridable from the CLI):*
+   - **Epoch window:** ``--tmin -0.2`` to ``--tmax 0.6`` seconds
+     around stimulus onset
+   - **Baseline:** ``--baseline -0.2 0`` seconds (pre-stimulus)
+   - **Rejection:** ``--reject-eeg 75e-6`` (75 µV peak-to-peak); pass
+     ``--no-auto-reject`` to disable
 
-*Outputs:* HTML report, preprocessing statistics
+*Outputs:* Epoched EEG data and the post-rejection drop log.
 
-**6. Save Preprocessing Node**
+**5. Save Preprocessing Outputs Node**
 
-*Function:* `save_preprocessing() <https://spark-csd.github.io/ffrprep/generated/ffrprep.preproc.save_preprocessing.html#ffrprep.preproc.save_preprocessing>`_
+*Function:* `save_preprocessing_outputs() <https://sitek.github.io/ffrprep/generated/ffrprep.preproc.save_preprocessing_outputs.html#ffrprep.preproc.save_preprocessing_outputs>`_
+(invoked through the internal ``save_preprocessing_node`` wrapper,
+which fans the Epochs out by trial type before calling it).
 
-*Purpose:* Save preprocessed data and metadata in BIDS-compatible format.
+*Purpose:* Persist the epoched data plus a self-describing BIDS
+sidecar — one file per trial type by default, or a single
+combined file under ``--no-split-by-trial-type``.
 
 *Sub-steps:*
-   - Create derivatives directory structure
-   - Save epoched data in MNE format (``.fif`` files)
-   - Generate BIDS-compatible metadata (JSON sidecars)
-   - Create processing provenance records
-   - Save quality control metrics
+   - When ``--split-by-trial-type`` is on (the default), partition
+     the input Epochs by ``event_id`` and write one
+     ``_desc-preproc{Cond}_epo.fif`` per trial type with a matching
+     sidecar carrying a ``Condition`` field. Under
+     ``--no-split-by-trial-type``, write a single bare
+     ``_desc-preproc_epo.fif`` instead.
+   - Reconstruct a fresh ``EpochsArray`` from the data + events +
+     ``event_id`` so trial-type metadata survives the save / load
+     round-trip (and the upstream Epochs object's internal state
+     doesn't leak through ``.save()``).
+   - Write each sibling ``.json`` sidecar with ``EpochCount`` /
+     ``EpochCountTotal`` / ``EpochCountRejected`` /
+     ``RejectionThresholds`` / ``Filtering`` / ``SamplingFrequency``
+     / ``EpochTmin`` / ``EpochTmax`` / ``Channels`` plus run /
+     session / ``ConcatenatedRuns`` / ``Condition`` provenance.
+   - Initialize the per-derivatives ``dataset_description.json`` if
+     missing.
 
-*Output Structure:* ::
+*Reporting* runs **after** the workflow drains, in the CLI rather
+than as a workflow node — see :ref:`reporting <reporting>` below.
+
+*Output Structure (default split-by-trial-type):* ::
 
     derivatives/ffrprep-preprocessing/
     ├── sub-XX/
-    │   ├── sub-XX_task-YY_run-ZZ_epo.fif
-    │   ├── sub-XX_task-YY_run-ZZ_epo.json
-    │   ├── sub-XX_preprocessing_report.html
-    │   └── sub-XX_preprocessing_metrics.json
+    │   └── eeg/
+    │       ├── sub-XX_task-YY_run-ZZ_desc-preprocPositive_epo.fif
+    │       ├── sub-XX_task-YY_run-ZZ_desc-preprocPositive_epo.json
+    │       ├── sub-XX_task-YY_run-ZZ_desc-preprocNegative_epo.fif
+    │       ├── sub-XX_task-YY_run-ZZ_desc-preprocNegative_epo.json
+    │       ├── sub-XX_preprocessing_report.html
+    │       └── sub-XX_preprocessing.log
 
-*Outputs:* File paths, processing metadata
+Under ``--no-split-by-trial-type`` the per-trial-type files are
+replaced by a single ``_desc-preproc_epo.fif`` + its sidecar.
+
+The sidecar JSON carries provenance, ``EpochCount`` /
+``EpochCountTotal`` / ``EpochCountRejected``, ``RejectionThresholds``,
+``Filtering`` (high-pass and low-pass cut-offs), sampling frequency,
+run / session identifiers, and ``Condition`` (for per-trial-type
+files only).
+
+*Outputs:* File paths, processing metadata.
 
 Stage 3: Analysis
 =================
 
-The analysis stage computes evoked responses, time-frequency representations, and FFR-specific metrics from the preprocessed epoched data.
+The analysis stage averages each preprocessed epochs group into a
+structured set of evoked responses (per-trial-type + combined +
+optional difference) and saves them to BIDS-derivatives.
 
 **Purpose:**
-Extract meaningful neural measures that characterize the frequency-following response and provide quantitative metrics for statistical analysis.
+Produce per-(task, run) evoked responses suitable for downstream
+statistical analysis or visualization, persisted in MNE-readable
+format with self-describing BIDS sidecars.
 
 **Implementation:**
-Implemented as a Nipype workflow (`create_analysis_workflow() <https://spark-csd.github.io/ffrprep/generated/ffrprep.preproc.create_analysis_workflow.html#ffrprep.preproc.create_analysis_workflow>`_) with the following nodes:
+Implemented as a Nipype workflow (`create_analysis_workflow() <https://sitek.github.io/ffrprep/generated/ffrprep.preproc.create_analysis_workflow.html#ffrprep.preproc.create_analysis_workflow>`_)
+with two nodes. The CLI worker collects all per-trial-type
+``_desc-preproc{Cond}_epo.fif`` files for one (task, run) group
+via ``_collect_analysis_groups``, stitches them back together with
+``mne.concatenate_epochs`` (which preserves ``event_id``), and
+passes the resulting ``Epochs`` directly into the workflow's
+``inputnode``. The per-(task, run) granularity means each group
+runs the workflow once regardless of how many trial types it
+holds.
 
 Analysis Workflow Nodes
 -----------------------
 
-**1. Load Preprocessed Data Node**
+**1. Build Analysis Payload Node**
 
-*Function:* `load_epochs() <https://spark-csd.github.io/ffrprep/generated/ffrprep.preproc.load_epochs.html#ffrprep.preproc.load_epochs>`_
+*Function:* `build_analysis_payload() <https://sitek.github.io/ffrprep/generated/ffrprep.preproc.build_analysis_payload.html#ffrprep.preproc.build_analysis_payload>`_
 
-*Purpose:* Load preprocessed epoched data from the preprocessing stage.
-
-*Sub-steps:*
-   - Locate preprocessed epoch files in derivatives
-   - Load epoched data using MNE
-   - Validate data integrity and metadata
-   - Extract processing parameters from provenance
-
-*Error Handling:*
-   - Checks for preprocessing completion
-   - Validates file integrity
-   - Reports missing or corrupted files
-
-*Outputs:* Epoched EEG data, preprocessing metadata
-
-**2. Evoked Response Node**
-
-*Function:* `make_evoked() <https://spark-csd.github.io/ffrprep/generated/ffrprep.preproc.make_evoked.html#ffrprep.preproc.make_evoked>`_
-
-*Purpose:* Compute evoked responses by averaging across trials.
+*Purpose:* From a single Epochs object, produce a structured
+``{by_type, combined, diff}`` payload covering every evoked the
+analysis stage emits.
 
 *Sub-steps:*
-   - Average epochs across trials to compute evoked responses
-   - Handle different event types separately if ``--by_event_type`` is specified
-   - Compute standard error and confidence intervals
-   - Calculate signal-to-noise ratios
-   - Generate evoked response statistics
+   - Average all events into a single combined Evoked via
+     ``make_combined_evoked`` (always emitted).
+   - When ``split_by_trial_type`` is True (the default), partition
+     by ``event_id`` via ``make_evoked(by_event_type=True)`` into a
+     per-trial-type dict.
+   - When at least two trial types are present and either
+     (a) there are exactly two types (auto-paired) or
+     (b) the user passed ``--difference-pairs A:B [C:D …]``,
+     compute one difference Evoked per pair via
+     ``make_difference_evokeds`` (which wraps
+     ``mne.combine_evoked([A, B], weights=[1, -1])``).
 
-*Event Type Handling:*
-   - **Combined:** Average all epochs together (default)
-   - **Separate:** Create separate evoked for each event type/condition
-   - **Validation:** Ensure sufficient trials per condition
+*Outputs:* dict with keys ``"by_type"`` (dict trial_type → Evoked),
+``"combined"`` (Evoked), and optionally ``"diff"`` (dict (A, B) →
+Evoked).
 
-*Statistical Measures:*
-   - Trial counts per condition
-   - Signal-to-noise ratios
-   - Standard error of the mean
-   - Confidence intervals
+**2. Save Analysis Node**
 
-*Outputs:* Evoked response objects, statistical metadata
+*Function:* `save_analysis_outputs() <https://sitek.github.io/ffrprep/generated/ffrprep.preproc.save_analysis_outputs.html#ffrprep.preproc.save_analysis_outputs>`_
 
-**3. Time-Frequency Analysis Node**
-
-*Function:* `compute_tfr() <https://spark-csd.github.io/ffrprep/generated/ffrprep.preproc.compute_tfr.html#ffrprep.preproc.compute_tfr>`_
-
-*Purpose:* Compute time-frequency representations to analyze spectral dynamics.
+*Purpose:* Persist every Evoked in the payload plus a
+self-describing sidecar per file.
 
 *Sub-steps:*
-   - Apply time-frequency decomposition (e.g., Morlet wavelets)
-   - Compute power spectral density over time
-   - Calculate phase-locking values
-   - Generate time-frequency statistics
-   - Apply baseline correction in frequency domain
+   - For each entry in ``by_type``: write
+     ``_desc-evoked{Cond}.fif`` + matching sidecar with
+     ``Condition: <cond>``.
+   - For ``combined``: write the bare ``_desc-evoked.fif`` + sidecar
+     (no ``Condition`` field).
+   - For each entry in ``diff``: write
+     ``_desc-evokedDiff{A}Vs{B}.fif`` + sidecar carrying
+     ``DifferenceOf: [A, B]``.
+   - Every sidecar also carries ``AverageCount`` / ``Baseline`` /
+     ``SamplingFrequency`` / ``Tmin`` / ``Tmax`` / ``Channels`` /
+     ``TaskName`` / ``AnalysisType`` plus run / session /
+     ``ConcatenatedRuns`` provenance.
+   - Initialize the per-derivatives ``dataset_description.json`` if
+     missing.
 
-*Methods:*
-   - **Morlet wavelets:** Good time-frequency resolution
-   - **Multitaper:** Better frequency resolution
-   - **Stockwell transform:** Optimal for FFR analysis
-
-*Frequency Bands:*
-   - **FFR range:** Typically 80-1000 Hz for speech stimuli
-   - **Custom ranges:** Configurable based on stimulus
-   - **Harmonics:** Analysis of fundamental and harmonic frequencies
-
-*Outputs:* Time-frequency power, phase-locking values, spectral statistics
-
-**4. FFR Metrics Node**
-
-*Function:* `compute_ffr_metrics() <https://spark-csd.github.io/ffrprep/generated/ffrprep.preproc.compute_ffr_metrics.html#ffrprep.preproc.compute_ffr_metrics>`_
-
-*Purpose:* Calculate quantitative measures specific to frequency-following responses.
-
-*Sub-steps:*
-   - Compute stimulus-to-response correlations
-   - Calculate phase-locking values at stimulus frequencies
-   - Measure response amplitude and latency
-   - Compute spectral harmonics analysis
-   - Generate summary statistics
-
-*FFR-Specific Metrics:*
-   - **Response amplitude:** RMS amplitude in FFR frequency range
-   - **Phase-locking:** Consistency of neural phase to stimulus
-   - **Spectral correlations:** Stimulus-response spectral similarity
-   - **Harmonic analysis:** Fundamental and harmonic component strength
-   - **Onset/offset responses:** Transient response characteristics
-
-*Statistical Measures:*
-   - Confidence intervals for all metrics
-   - Significance testing against noise floor
-   - Effect size calculations
-   - Multiple comparison corrections
-
-*Outputs:* Quantitative FFR metrics, statistical summaries
-
-**5. Analysis Report Node**
-
-*Function:* `generate_analysis_report() <https://spark-csd.github.io/ffrprep/generated/ffrprep.preproc.generate_analysis_report.html#ffrprep.preproc.generate_analysis_report>`_
-
-*Purpose:* Create comprehensive analysis reports with visualizations.
-
-*Sub-steps:*
-   - Generate evoked response plots (waveforms, topographies)
-   - Create time-frequency visualizations
-   - Plot FFR metrics and statistical summaries
-   - Generate comparison plots across conditions
-   - Compile interactive HTML report
-
-*Visualizations:*
-   - **Evoked waveforms:** Time-domain responses with confidence intervals
-   - **Scalp topographies:** Spatial distribution of responses
-   - **Time-frequency plots:** Spectrograms and phase-locking maps
-   - **FFR metrics plots:** Quantitative measure summaries
-   - **Statistical plots:** Significance testing results
-
-*Report Features:*
-   - Interactive plots with zooming/panning
-   - Downloadable high-resolution figures
-   - Statistical tables and summaries
-   - Processing parameter documentation
-
-*Outputs:* HTML analysis report, figure files
-
-**6. Save Analysis Node**
-
-*Function:* `save_analysis() <https://spark-csd.github.io/ffrprep/generated/ffrprep.preproc.save_analysis.html#ffrprep.preproc.save_analysis>`_
-
-*Purpose:* Save analysis results in standard formats for further analysis.
-
-*Sub-steps:*
-   - Save evoked responses in MNE format
-   - Export time-frequency data
-   - Save FFR metrics as structured data
-   - Create BIDS-compatible metadata
-   - Generate analysis provenance
-
-*Output Structure:* ::
+*Output Structure (default split-by-trial-type, 2-trial-type
+dataset):* ::
 
     derivatives/ffrprep-analysis/
     ├── sub-XX/
-    │   ├── sub-XX_task-YY_run-ZZ_evoked.fif
-    │   ├── sub-XX_task-YY_run-ZZ_tfr.h5
-    │   ├── sub-XX_task-YY_run-ZZ_metrics.json
+    │   ├── sub-XX_task-YY_run-ZZ_desc-evokedPositive.fif
+    │   ├── sub-XX_task-YY_run-ZZ_desc-evokedPositive.json
+    │   ├── sub-XX_task-YY_run-ZZ_desc-evokedNegative.fif
+    │   ├── sub-XX_task-YY_run-ZZ_desc-evokedNegative.json
+    │   ├── sub-XX_task-YY_run-ZZ_desc-evoked.fif
+    │   ├── sub-XX_task-YY_run-ZZ_desc-evoked.json
+    │   ├── sub-XX_task-YY_run-ZZ_desc-evokedDiffPositiveVsNegative.fif
+    │   ├── sub-XX_task-YY_run-ZZ_desc-evokedDiffPositiveVsNegative.json
     │   ├── sub-XX_analysis_report.html
-    │   └── figures/
-    │       ├── sub-XX_evoked.png
-    │       ├── sub-XX_tfr.png
-    │       └── sub-XX_topography.png
+    │   └── sub-XX_analysis.log
+
+Under ``--no-split-by-trial-type``, only the combined
+``_desc-evoked.fif`` + sidecar are emitted per (task, run).
+
+*Outputs:* Saved file paths.
+
+.. _reporting:
+
+Reporting (post-workflow)
+-------------------------
+
+The single-file HTML reports are built **in the CLI** after the
+workflow drains, not as a workflow node. The CLI's
+``_build_preproc_report`` and ``_build_analysis_report`` glob the
+saved ``_desc-preproc*_epo.fif`` and ``_desc-evoked*.fif`` files
+via ``_collect_analysis_groups`` / ``_collect_evoked_groups``,
+group them by (task, run), and build sections via the
+:py:mod:`ffrprep.reports` builders (``build_raw_section`` /
+``build_epoch_section`` / ``build_evoked_section`` /
+``build_phase_consistency_section`` / ``make_group``); the
+subject-level HTML is rendered via ``build_subject_report`` /
+``build_analysis_report``.
+
+**Per (task, run) group layout in the analysis report:**
+
+- one **Evoked section per per-trial-type file** (e.g. Positive,
+  Negative). Each carries:
+
+  - waveform / PSD / TFR / autocorrelation / pitch-track figures
+    (via :py:func:`ffrprep.reports.evoked_qa`);
+  - scalar metrics: ``RMS SNR (100-200 ms)``, ``Mean power 90-110 Hz,
+    100-200 ms``;
+  - when the BIDS ``stim_file`` column is populated in
+    ``events.tsv``, a ``Stim correlation (peak r)`` +
+    ``Stim correlation (lag, ms)`` row plus a stim ↔ response
+    cross-correlation lag plot (computed by
+    ``_stim_correlation_data`` in ``ffrprep_cli.py``).
+
+- one **combined Evoked section** (the across-events average) with
+  the same plots + scalars, plus a **second** pair of rows / plot
+  for the **envelope** correlation (combined ≈ ENV proxy in FFR,
+  so ``|hilbert(stim)|`` is the natural reference).
+
+- one **difference Evoked section** per ``(A, B)`` pair (auto for
+  the 2-trial-type case; opt-in via ``--difference-pairs``) with
+  the standard plots + a single raw-waveform stim correlation row
+  + plot (diff ≈ TFS proxy).
+
+- when exactly two per-condition preproc files exist for the
+  group, one **Phase Consistency section** combining
+  :py:func:`ffrprep.analysis.compute_phase_consistency` with
+  :py:func:`ffrprep.analysis.plot_phase_consistency` (or, when the
+  caller passes ``mask=True``, the masked variant). Single-subject
+  reports default to unmasked; group-level builders pass
+  ``mask=True``. Uses seaborn's ``flare_r`` colormap; subplot
+  titles surface the trial-type names plus auto-derived
+  ``A + B`` / ``A − B`` for the sum and difference panels.
+
+**Per (task, run) group layout in the preprocessing report:**
+
+- one **Raw section** loaded from the original BIDS recording
+  (with run concatenation when the preproc output sourced multiple
+  runs).
+- one **Epoched section per per-trial-type file** — each carries
+  the standard epoch metadata plus a ``Mean trial-to-trial r`` row
+  (via :py:func:`ffrprep.analysis.response_consistency`) when there
+  are at least 10 trials.
+
+Figures and scalar metrics are **computed at report time** from
+the loaded ``Epochs`` / ``Evoked`` objects — they are not
+separately persisted to disk. To recompute them yourself, see the
+*Working with Outputs in Python* section of the
+:ref:`walkthrough`.
+
+The single-file ``*_report.html`` embeds all figures as inline
+base64 PNGs — there is no sibling ``figures/`` directory.
 
 *File Formats:*
-   - **MNE format (.fif):** For evoked responses (can be loaded in MNE-Python)
-   - **HDF5 (.h5):** For time-frequency data (efficient storage)
-   - **JSON:** For metrics and metadata (human-readable, machine-parseable)
-   - **PNG/SVG:** For publication-ready figures
-
-*Outputs:* Analysis file paths, processing metadata
+   - **MNE format (.fif):** Epoched / Evoked data, loadable in
+     MNE-Python.
+   - **WAV (under** ``<dataset>/stimuli/`` **):** stimulus audio
+     referenced by ``events.tsv``'s ``stim_file`` column. Fetched
+     via ``ffrprep-download example --with-stimuli``.
+   - **JSON:** BIDS sidecar (human-readable, machine-parseable).
+   - **HTML:** Self-contained single-file per-subject report.
 
 Pipeline Integration and Quality Control
 ========================================
 
 **Workflow Management:**
-- Each stage implemented as Nipype workflow for reproducibility
-- Automatic dependency tracking and parallel execution
-- Robust error handling and logging
-- Resumable processing after failures
+
+- Each stage implemented as a Nipype workflow for per-iteration
+  dependency tracking
+- Outer-loop parallelism: the CLI dispatches per-(task, run)
+  iterations to a ``ProcessPoolExecutor`` sized by ``--n_procs``
+- Fail-fast on any iteration error; the exception propagates to the
+  CLI entry point
+- nipype caches per-iteration intermediates under ``work/`` so
+  re-runs that already have a saved ``_desc-preproc_epo.fif`` skip
+  the workflow re-execution
 
 **Quality Control Checkpoints:**
+
 - BIDS validation before processing
 - Data quality assessment after loading
 - Preprocessing quality metrics and reports
 - Analysis validation and statistical checks
 
 **Output Organization:**
+
 - BIDS-compatible directory structure
-- Comprehensive metadata and provenance tracking
+- Per-file BIDS sidecars with run / session / condition provenance
 - Standardized file formats for interoperability
 - Version-controlled processing parameters
 
-**Customization Options:**
-- Flexible parameter configuration
-- Modular workflow components
-- Plugin architecture for custom analyses
-- Integration with external tools and pipelines
+**Customization:**
 
-This pipeline design ensures robust, reproducible FFR analysis while maintaining flexibility for diverse research applications.
+- All preprocessing and analysis parameters are exposed as CLI
+  flags (see :ref:`usage`).
+- The Nipype workflows can be imported and reused programmatically
+  from ``ffrprep.preproc`` (``create_preprocessing_workflow`` /
+  ``create_analysis_workflow``).
+- Section builders in ``ffrprep.reports`` accept ``extra_summary``
+  and ``extra_figures`` kwargs so downstream code can fold
+  caller-computed scalars or figures into a section's table or
+  figure gallery.
 

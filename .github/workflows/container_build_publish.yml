@@ -62,8 +62,8 @@ jobs:
           context: ./
           # Note: tags has to be all lower-case
           tags: |
-            sparkcsd/ffrprep:latest 
-            ghcr.io/spark-csd/ffrprep:latest
+            sitek/ffrprep:latest 
+            ghcr.io/sitek/ffrprep:latest
           # build on feature branches, push only on main branch
           push: ${{ github.ref == 'refs/heads/main' }}
 

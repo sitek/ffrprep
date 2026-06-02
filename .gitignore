@@ -3,6 +3,10 @@
 
 
 docs/build/*
+docs/source/.DS_Store
+docs/source/auto_examples/*
+docs/source/generated/*
+docs/source/gen_modules/*
 docs/.DS_Store
 
 __pycache__/*.pyc
@@ -12,3 +16,21 @@ ffrprep.egg-info/*
 ffrprep/__pycache__/*
 
 build/*
+
+tests/__pycache__/*
+
+.pytest_cache__/*
+
+ffrprep/tests/__pycache__/*
+
+__pycache__/*
+
+
+# IDE / user-local
+*.code-workspace
+
+# nipype crash dumps
+crash-*.pklz
+
+# prevent silent AI rules/guidelines
+CLAUDE.md

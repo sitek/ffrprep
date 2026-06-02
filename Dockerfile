@@ -27,49 +27,29 @@ RUN export ND_ENTRYPOINT="/neurodocker/startup.sh" \
     fi \
     && chmod -R 777 /neurodocker && chmod a+s /neurodocker
 ARG DEBIAN_FRONTEND=noninteractive
-COPY [".", \
-      "/home/ffrprep"]
-ENV CONDA_DIR="/opt/miniconda-latest" \
-    PATH="/opt/miniconda-latest/bin:$PATH"
 RUN apt-get update -qq \
-    && apt-get install -y -q --no-install-recommends \
-           bzip2 \
-           ca-certificates \
-           curl \
-    && rm -rf /var/lib/apt/lists/* \
-    # Install dependencies.
-    && export PATH="/opt/miniconda-latest/bin:$PATH" \
-    && echo "Downloading Miniconda installer ..." \
-    && conda_installer="/tmp/miniconda.sh" \
-    && curl -fsSL -o "$conda_installer" https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh \
-    && bash "$conda_installer" -b -p /opt/miniconda-latest \
-    && rm -f "$conda_installer" \
-    && conda tos accept \
-    && conda update -yq -nbase conda \
-    # Prefer packages in conda-forge
-    && conda config --system --prepend channels conda-forge \
-    # Packages in lower-priority channels not considered if a package with the same
-    # name exists in a higher priority channel. Can dramatically speed up installations.
-    # Conda recommends this as a default
-    # https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-channels.html
-    && conda config --set channel_priority strict \
-    && conda config --system --set auto_update_conda false \
-    && conda config --system --set show_channel_urls true \
-    # Enable `conda activate`
-    && conda init bash \
-    && conda env create  --name ffrprep --file /home/ffrprep/environment.yml \
-    && conda install -y  --name ffrprep \
-           "python=3.11" \
-    # Clean up
-    && sync && conda clean --all --yes && sync \
-    && rm -rf ~/.cache/pip/*
+           && apt-get install -y -q --no-install-recommends \
+                  ca-certificates \
+                  curl \
+                  git \
+                  unzip \
+           && rm -rf /var/lib/apt/lists/*
+RUN curl -fsSL https://deno.land/install.sh | env DENO_INSTALL=/usr/local sh -s -- --no-modify-path
+RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin INSTALLER_NO_MODIFY_PATH=1 sh
+ENV UV_LINK_MODE="copy"
+ENV UV_PYTHON_INSTALL_DIR="/opt/uv-python"
+ENV UV_PROJECT_ENVIRONMENT="/home/ffrprep/.venv"
+ENV PYTHONDONTWRITEBYTECODE="1"
 COPY [".", \
       "/home/ffrprep"]
-RUN bash -c 'source activate ffrprep && cd /home/ffrprep && pip install -r requirements.txt'
-RUN bash -c 'source activate ffrprep && cd /home/ffrprep && pip install -e .'
+WORKDIR /home/ffrprep
+RUN uv sync --frozen --no-dev
+RUN chmod +x /home/ffrprep/ffrprep-entrypoint.sh
+RUN chmod -R a+rX /opt/uv-python /home/ffrprep/.venv
+RUN chmod -R a+rwX /home/ffrprep
 ENV IS_DOCKER="1"
-WORKDIR /tmp/
-ENTRYPOINT ["/neurodocker/startup.sh", "ffrprep"]
+WORKDIR /tmp
+ENTRYPOINT ["/home/ffrprep/ffrprep-entrypoint.sh"]
 
 # Save specification to JSON.
 RUN printf '{ \
@@ -106,26 +86,57 @@ RUN printf '{ \
       } \
     }, \
     { \
-      "name": "copy", \
+      "name": "install", \
       "kwds": { \
-        "source": [ \
-          ".", \
-          "/home/ffrprep" \
+        "pkgs": [ \
+          "ca-certificates", \
+          "curl", \
+          "unzip", \
+          "git" \
         ], \
-        "destination": "/home/ffrprep" \
+        "opts": null \
+      } \
+    }, \
+    { \
+      "name": "run", \
+      "kwds": { \
+        "command": "apt-get update -qq \\\\\\n    && apt-get install -y -q --no-install-recommends \\\\\\n           ca-certificates \\\\\\n           curl \\\\\\n           git \\\\\\n           unzip \\\\\\n    && rm -rf /var/lib/apt/lists/*" \
+      } \
+    }, \
+    { \
+      "name": "run", \
+      "kwds": { \
+        "command": "curl -fsSL https://deno.land/install.sh | env DENO_INSTALL=/usr/local sh -s -- --no-modify-path" \
+      } \
+    }, \
+    { \
+      "name": "run", \
+      "kwds": { \
+        "command": "curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin INSTALLER_NO_MODIFY_PATH=1 sh" \
       } \
     }, \
     { \
       "name": "env", \
       "kwds": { \
-        "CONDA_DIR": "/opt/miniconda-latest", \
-        "PATH": "/opt/miniconda-latest/bin:$PATH" \
+        "UV_LINK_MODE": "copy" \
       } \
     }, \
     { \
-      "name": "run", \
+      "name": "env", \
       "kwds": { \
-        "command": "apt-get update -qq\\napt-get install -y -q --no-install-recommends \\\\\\n    bzip2 \\\\\\n    ca-certificates \\\\\\n    curl\\nrm -rf /var/lib/apt/lists/*\\n# Install dependencies.\\nexport PATH=\\"/opt/miniconda-latest/bin:$PATH\\"\\necho \\"Downloading Miniconda installer ...\\"\\nconda_installer=\\"/tmp/miniconda.sh\\"\\ncurl -fsSL -o \\"$conda_installer\\" https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh\\nbash \\"$conda_installer\\" -b -p /opt/miniconda-latest\\nrm -f \\"$conda_installer\\"\\nconda tos accept\\nconda update -yq -nbase conda\\n# Prefer packages in conda-forge\\nconda config --system --prepend channels conda-forge\\n# Packages in lower-priority channels not considered if a package with the same\\n# name exists in a higher priority channel. Can dramatically speed up installations.\\n# Conda recommends this as a default\\n# https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-channels.html\\nconda config --set channel_priority strict\\nconda config --system --set auto_update_conda false\\nconda config --system --set show_channel_urls true\\n# Enable `conda activate`\\nconda init bash\\nconda env create  --name ffrprep --file /home/ffrprep/environment.yml\\nconda install -y  --name ffrprep \\\\\\n    \\"python=3.11\\"\\n# Clean up\\nsync && conda clean --all --yes && sync\\nrm -rf ~/.cache/pip/*" \
+        "UV_PYTHON_INSTALL_DIR": "/opt/uv-python" \
+      } \
+    }, \
+    { \
+      "name": "env", \
+      "kwds": { \
+        "UV_PROJECT_ENVIRONMENT": "/home/ffrprep/.venv" \
+      } \
+    }, \
+    { \
+      "name": "env", \
+      "kwds": { \
+        "PYTHONDONTWRITEBYTECODE": "1" \
       } \
     }, \
     { \
@@ -139,15 +150,33 @@ RUN printf '{ \
       } \
     }, \
     { \
-      "name": "run", \
+      "name": "workdir", \
       "kwds": { \
-        "command": "bash -c '"'"'source activate ffrprep && cd /home/ffrprep && pip install -r requirements.txt'"'"'" \
+        "path": "/home/ffrprep" \
       } \
     }, \
     { \
       "name": "run", \
       "kwds": { \
-        "command": "bash -c '"'"'source activate ffrprep && cd /home/ffrprep && pip install -e .'"'"'" \
+        "command": "uv sync --frozen --no-dev" \
+      } \
+    }, \
+    { \
+      "name": "run", \
+      "kwds": { \
+        "command": "chmod +x /home/ffrprep/ffrprep-entrypoint.sh" \
+      } \
+    }, \
+    { \
+      "name": "run", \
+      "kwds": { \
+        "command": "chmod -R a+rX /opt/uv-python /home/ffrprep/.venv" \
+      } \
+    }, \
+    { \
+      "name": "run", \
+      "kwds": { \
+        "command": "chmod -R a+rwX /home/ffrprep" \
       } \
     }, \
     { \
@@ -159,15 +188,14 @@ RUN printf '{ \
     { \
       "name": "workdir", \
       "kwds": { \
-        "path": "/tmp/" \
+        "path": "/tmp" \
       } \
     }, \
     { \
       "name": "entrypoint", \
       "kwds": { \
         "args": [ \
-          "/neurodocker/startup.sh", \
-          "ffrprep" \
+          "/home/ffrprep/ffrprep-entrypoint.sh" \
         ] \
       } \
     } \

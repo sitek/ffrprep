@@ -6,7 +6,7 @@ import zipfile
 from tqdm import tqdm
 
 
-def _download_single_file(osf_url, output_path):
+def _download_single_file(osf_url, output_path, save_name=None):
     """
     Helper function to download a single file from OSF.
 
@@ -16,14 +16,22 @@ def _download_single_file(osf_url, output_path):
         The URL of the OSF file to download.
     output_path : Path
         Path where the file will be saved.
+    save_name : str or None
+        Optional filename to save the downloaded file as. If None, the
+        filename will be inferred from the URL (which may be an OSF id).
 
     Returns
     -------
     Path
         Path to the downloaded file.
     """
-    # Get the file name from the URL
-    file_name = osf_url.split("/")[-1]
+    # Determine the file name to save as
+    if save_name:
+        file_name = save_name
+    else:
+        # Fallback: get the file name from the URL (may be an OSF id)
+        file_name = osf_url.split("/")[-1]
+
     file_path = output_path / file_name
 
     # if the file does not already exist, download it from osf
@@ -38,8 +46,7 @@ def _download_single_file(osf_url, output_path):
 
             # implement progress bar via tqdm
             desc = f"Downloading {file_name}"
-            with tqdm.wrapattr(file.raw, "read", total=file_size,
-                               desc=desc) as raw:
+            with tqdm.wrapattr(file.raw, "read", total=file_size, desc=desc) as raw:
                 # save the output to the file specified before
                 with open(file_path, "wb") as output:
                     shutil.copyfileobj(raw, output)
@@ -49,7 +56,7 @@ def _download_single_file(osf_url, output_path):
     return file_path
 
 
-def download_example_data(dataset_path=None):
+def download_example_data(dataset_path=None, with_stimuli=False):
     """
     Download example EEG data (1 subject) for testing and tutorials.
 
@@ -58,6 +65,10 @@ def download_example_data(dataset_path=None):
     dataset_path : string
         Path where the files will be saved. If None, the files will be saved
         in the current working directory. Default = None.
+    with_stimuli : bool
+        When True, additionally download the BIDS ``/stimuli/`` directory
+        used by stimulus-aware analyses (e.g. corr_stim_to_resp). When
+        False (default), only the EEG data is fetched.
 
     Returns
     -------
@@ -75,10 +86,13 @@ def download_example_data(dataset_path=None):
     >>> download_example_data(dataset_path='/home/user/Desktop')
     """
     # Download 1 subject as example data
-    return download_raw_data(subjects=1, dataset_path=dataset_path)
+    path = download_raw_data(subjects=1, dataset_path=dataset_path)
+    if with_stimuli:
+        download_stimuli(dataset_path=dataset_path)
+    return path
 
 
-def download_raw_data(subjects=1, dataset_path=None):
+def download_raw_data(subjects=1, dataset_path=None, with_stimuli=False):
     """
     Download raw EEG data for specified subjects from OSF.
 
@@ -91,6 +105,10 @@ def download_raw_data(subjects=1, dataset_path=None):
     dataset_path : string
         Path where the files will be saved. If None, the files will be saved
         in the current working directory. Default = None.
+    with_stimuli : bool
+        When True, additionally download the BIDS ``/stimuli/`` directory
+        used by stimulus-aware analyses (e.g. corr_stim_to_resp). When
+        False (default), only the EEG data is fetched.
 
     Returns
     -------
@@ -132,8 +150,7 @@ def download_raw_data(subjects=1, dataset_path=None):
         invalid_subjects = [s for s in subjects if s not in available_subjects]
         if invalid_subjects:
             warning_msg = (
-                f"Warning: Subjects {invalid_subjects} not "
-                f"available. Available: {available_subjects}"
+                f"Warning: Subjects {invalid_subjects} not " f"available. Available: {available_subjects}"
             )
             print(warning_msg)
         subjects_to_download = [s for s in subjects if s in available_subjects]
@@ -166,7 +183,8 @@ def download_raw_data(subjects=1, dataset_path=None):
     for filename, osf_id in metadata_files.items():
         if osf_id != "participants_json_id":  # Skip placeholder IDs
             osf_url = f"{base_url}{osf_id}"
-            _download_single_file(osf_url, path)
+            # Save the metadata file using the intended filename (the dict key)
+            _download_single_file(osf_url, path, save_name=filename)
 
     # Download subject data
     subject_urls = {
@@ -188,8 +206,7 @@ def download_raw_data(subjects=1, dataset_path=None):
     for subject in subjects_to_download:
         placeholder_id = f"sub{subject}_osf_id"
         # Skip placeholders
-        if (subject in subject_urls and
-                subject_urls[subject] != placeholder_id):
+        if subject in subject_urls and subject_urls[subject] != placeholder_id:
             osf_url = f"{base_url}{subject_urls[subject]}"
             zip_path = _download_single_file(osf_url, path)
 
@@ -205,7 +222,107 @@ def download_raw_data(subjects=1, dataset_path=None):
     if macosx_path.exists():
         shutil.rmtree(macosx_path, ignore_errors=True)
 
+    if with_stimuli:
+        download_stimuli(dataset_path=dataset_path)
+
     return path
+
+
+# Module-level mapping of stimulus filename -> OSF download ID.
+# Lifted to module scope so tests can monkeypatch it without a
+# special seam. Filenames match what the OSF "stimuli" folder ships.
+STIM_URLS = {
+    "Da_Stimulus_44100Hz_pol1.wav": "nqex7",
+    "Da_Stimulus_44100Hz_pol2.wav": "6a0c8b8a63bed96a1ea06735",
+}
+
+
+# Mapping from BIDS events.tsv ``trial_type`` value to the
+# ``stim_file`` path (relative to the dataset root, per BIDS spec).
+# Inferred from the example dataset: trial value 1 -> pol1.wav,
+# value 2 -> pol2.wav, so trial_type=positive aligns with pol1 and
+# trial_type=negative with pol2. If the dataset maintainer used the
+# opposite polarity convention, flip the two entries here.
+STIM_FILE_MAP = {
+    "positive": "stimuli/Da_Stimulus_44100Hz_pol1.wav",
+    "negative": "stimuli/Da_Stimulus_44100Hz_pol2.wav",
+}
+
+
+def _augment_events_with_stim_file(bids_root, mapping=None):
+    """Insert a ``stim_file`` column into every events.tsv under ``bids_root``.
+
+    Walks ``<bids_root>/sub-*/eeg/*_events.tsv`` and adds a
+    ``stim_file`` column populated from ``mapping[trial_type]``
+    (defaults to the example-dataset :data:`STIM_FILE_MAP`).
+    Files already carrying a ``stim_file`` column are left untouched
+    so user-supplied values are preserved (idempotent on re-run).
+    Trial types absent from ``mapping`` get the BIDS ``n/a`` sentinel.
+
+    Parameters
+    ----------
+    bids_root : str or pathlib.Path
+        BIDS dataset root (the folder that contains ``sub-*``).
+    mapping : dict[str, str], optional
+        ``trial_type -> stim_file`` lookup. Defaults to
+        :data:`STIM_FILE_MAP`.
+    """
+    import pandas as pd
+
+    if mapping is None:
+        mapping = STIM_FILE_MAP
+
+    bids_root = Path(bids_root)
+    for tsv_path in sorted(bids_root.glob("sub-*/eeg/*_events.tsv")):
+        df = pd.read_csv(tsv_path, sep="\t")
+        if "stim_file" in df.columns:
+            continue
+        if "trial_type" not in df.columns:
+            continue
+        df["stim_file"] = df["trial_type"].map(
+            lambda t: mapping.get(str(t), "n/a")
+        )
+        df.to_csv(tsv_path, sep="\t", index=False, na_rep="n/a")
+
+
+def download_stimuli(dataset_path=None):
+    """
+    Download FFR stimulus files into a BIDS-compliant ``stimuli/`` directory.
+
+    Stimulus files are referenced by the ``stim_file`` column of each
+    BIDS ``events.tsv`` and consumed by stimulus-aware analyses (e.g.
+    :func:`ffrprep.analysis.corr_stim_to_resp`). They are shared across
+    subjects, so they land at ``<dataset>/ffrprep_raw_data/stimuli/``
+    per the BIDS specification. After downloading, every
+    ``sub-*/eeg/*_events.tsv`` is augmented with a ``stim_file``
+    column based on :data:`STIM_FILE_MAP` so the downstream analysis
+    has the linkage to operate on.
+
+    Parameters
+    ----------
+    dataset_path : string, optional
+        Path where the files will be saved. If None, the files will be
+        saved in the current working directory.
+
+    Returns
+    -------
+    stim_dir : Path
+        Path to the ``stimuli/`` directory under the dataset root.
+    """
+    if dataset_path is None:
+        base = Path(os.curdir) / "ffrprep_raw_data"
+    else:
+        base = Path(dataset_path) / "ffrprep_raw_data"
+    stim_dir = base / "stimuli"
+    stim_dir.mkdir(parents=True, exist_ok=True)
+
+    base_url = "https://osf.io/download/"
+    for filename, osf_id in STIM_URLS.items():
+        osf_url = f"{base_url}{osf_id}"
+        _download_single_file(osf_url, stim_dir, save_name=filename)
+
+    _augment_events_with_stim_file(base)
+    return stim_dir
 
 
 def download_epoch_data(subjects=1, dataset_path=None):
@@ -265,8 +382,7 @@ def download_epoch_data(subjects=1, dataset_path=None):
         invalid_subjects = [s for s in subjects if s not in available_subjects]
         if invalid_subjects:
             warning_msg = (
-                f"Warning: Subjects {invalid_subjects} not "
-                f"available. Available: {available_subjects}"
+                f"Warning: Subjects {invalid_subjects} not " f"available. Available: {available_subjects}"
             )
             print(warning_msg)
         subjects_to_download = [s for s in subjects if s in available_subjects]
@@ -318,8 +434,7 @@ def download_epoch_data(subjects=1, dataset_path=None):
                     continue
 
                 osf_url = f"{base_url}{osf_id}"
-                filename = (f"sub-{subject}_task-{task}_run-all_"
-                            f"event-stimtrack_epochs.fif")
+                filename = f"sub-{subject}_task-{task}_run-all_" f"event-stimtrack_epochs.fif"
                 file_path = eeg_dir / filename
 
                 # Download the file directly to the BIDS structure
@@ -328,8 +443,7 @@ def download_epoch_data(subjects=1, dataset_path=None):
                     with requests.get(osf_url, stream=True) as file:
                         file_size = int(file.headers.get("Content-Length", 0))
                         desc = f"Downloading {filename}"
-                        with tqdm.wrapattr(file.raw, "read", total=file_size,
-                                           desc=desc) as raw:
+                        with tqdm.wrapattr(file.raw, "read", total=file_size, desc=desc) as raw:
                             with open(file_path, "wb") as output:
                                 shutil.copyfileobj(raw, output)
                 else:
