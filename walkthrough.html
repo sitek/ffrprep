@@ -46,13 +46,13 @@
   
   
   
-    <title>Tutorial walkthrough &#8212; ffrprep 0.1.dev1+gdcaa2e2dc documentation</title>
+    <title>Tutorial walkthrough &#8212; ffrprep 0.1.dev1+ga9bf75dc8 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
     <link rel="stylesheet" type="text/css" href="_static/material.css?v=79c92029" />
     <link rel="stylesheet" type="text/css" href="_static/plot_directive.css" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <script src="_static/documentation_options.js?v=6d5b5d3f"></script>
+    <script src="_static/documentation_options.js?v=419a05ea"></script>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -85,7 +85,7 @@
   <nav class="md-header-nav md-grid">
     <div class="md-flex navheader">
       <div class="md-flex__cell md-flex__cell--shrink">
-        <a href="index.html" title="ffrprep 0.1.dev1+gdcaa2e2dc documentation"
+        <a href="index.html" title="ffrprep 0.1.dev1+ga9bf75dc8 documentation"
            class="md-header-nav__button md-logo">
           
             &nbsp;
@@ -171,7 +171,7 @@
   <nav class="md-tabs" data-md-component="tabs">
     <div class="md-tabs__inner md-grid">
       <ul class="md-tabs__list">
-          <li class="md-tabs__item"><a href="index.html" class="md-tabs__link">ffrprep 0.1.dev1+gdcaa2e2dc documentation</a></li>
+          <li class="md-tabs__item"><a href="index.html" class="md-tabs__link">ffrprep 0.1.dev1+ga9bf75dc8 documentation</a></li>
       </ul>
     </div>
   </nav>
@@ -183,13 +183,13 @@
               <div class="md-sidebar__inner">
                 <nav class="md-nav md-nav--primary" data-md-level="0">
   <label class="md-nav__title md-nav__title--site" for="__drawer">
-    <a href="index.html" title="ffrprep 0.1.dev1+gdcaa2e2dc documentation" class="md-nav__button md-logo">
+    <a href="index.html" title="ffrprep 0.1.dev1+ga9bf75dc8 documentation" class="md-nav__button md-logo">
       
         <img src="_static/" alt=" logo" width="48" height="48">
       
     </a>
     <a href="index.html"
-       title="ffrprep 0.1.dev1+gdcaa2e2dc documentation">ffrprep</a>
+       title="ffrprep 0.1.dev1+ga9bf75dc8 documentation">ffrprep</a>
   </label>
     <div class="md-nav__source">
       <a href="https://github.com/sitek/ffrprep" title="Go to repository" class="md-source" data-md-source="github">
@@ -380,7 +380,7 @@ the <code class="docutils literal notranslate"><span class="pre">ffrprep-downloa
 <span class="c1"># to skip the stimulus download.</span>
 docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-v<span class="w"> </span>~/ffrprep_tutorial:/out:rw<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>sitek/ffrprep:latest<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>ksitek/ffrprep:latest<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>download<span class="w"> </span>example<span class="w"> </span>--with-stimuli<span class="w"> </span>--out<span class="w"> </span>/out
 </pre></div>
 </div>
@@ -413,7 +413,7 @@ column populated when <code class="docutils literal notranslate"><span class="pr
 <p>Next, obtain the <code class="docutils literal notranslate"><span class="pre">ffrprep</span></code> container image. Choose either Docker or Singularity:</p>
 <p><strong>Option A: Docker</strong></p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Pull the latest ffrprep Docker image</span>
-docker<span class="w"> </span>pull<span class="w"> </span>sitek/ffrprep:latest
+docker<span class="w"> </span>pull<span class="w"> </span>ksitek/ffrprep:latest
 
 <span class="c1"># Verify the image was downloaded</span>
 docker<span class="w"> </span>images<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>ffrprep
@@ -421,7 +421,7 @@ docker<span class="w"> </span>images<span class="w"> </span><span class="p">|</s
 </div>
 <p><strong>Option B: Singularity</strong></p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Build Singularity image from Docker Hub</span>
-singularity<span class="w"> </span>build<span class="w"> </span>ffrprep_latest.sif<span class="w"> </span>docker://sitek/ffrprep:latest
+singularity<span class="w"> </span>build<span class="w"> </span>ffrprep_latest.sif<span class="w"> </span>docker://ksitek/ffrprep:latest
 
 <span class="c1"># Verify the image was created</span>
 ls<span class="w"> </span>-lh<span class="w"> </span>ffrprep_latest.sif
@@ -438,7 +438,7 @@ ls<span class="w"> </span>-lh<span class="w"> </span>ffrprep_latest.sif
 <span class="c1"># Run preprocessing with Docker</span>
 docker<span class="w"> </span>run<span class="w"> </span>-ti<span class="w"> </span>--rm<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>-v<span class="w"> </span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span>:/data<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>sitek/ffrprep:latest<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>ksitek/ffrprep:latest<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>/data/bids_dataset<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>/data/bids_dataset/derivatives<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>participant<span class="w"> </span><span class="se">\</span>
@@ -520,7 +520,7 @@ xdg-open<span class="w"> </span>sub-*/eeg/sub-*_preprocessing_report.html<span c
 
 docker<span class="w"> </span>run<span class="w"> </span>-ti<span class="w"> </span>--rm<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>-v<span class="w"> </span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span>:/data<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>sitek/ffrprep:latest<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>ksitek/ffrprep:latest<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>/data/bids_dataset<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>/data/bids_dataset/derivatives<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>participant<span class="w"> </span><span class="se">\</span>
@@ -698,7 +698,7 @@ analysis:</p>
 <p><strong>Docker:</strong></p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>run<span class="w"> </span>-ti<span class="w"> </span>--rm<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>-v<span class="w"> </span><span class="k">$(</span><span class="nb">pwd</span><span class="k">)</span>:/data<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>sitek/ffrprep:latest<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>ksitek/ffrprep:latest<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>/data/bids_dataset<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>/data/bids_dataset/derivatives<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>participant<span class="w"> </span><span class="se">\</span>

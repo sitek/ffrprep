@@ -46,13 +46,13 @@
   
   
   
-    <title>Installation &#8212; ffrprep 0.1.dev1+gdcaa2e2dc documentation</title>
+    <title>Installation &#8212; ffrprep 0.1.dev1+ga9bf75dc8 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
     <link rel="stylesheet" type="text/css" href="_static/material.css?v=79c92029" />
     <link rel="stylesheet" type="text/css" href="_static/plot_directive.css" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <script src="_static/documentation_options.js?v=6d5b5d3f"></script>
+    <script src="_static/documentation_options.js?v=419a05ea"></script>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -85,7 +85,7 @@
   <nav class="md-header-nav md-grid">
     <div class="md-flex navheader">
       <div class="md-flex__cell md-flex__cell--shrink">
-        <a href="index.html" title="ffrprep 0.1.dev1+gdcaa2e2dc documentation"
+        <a href="index.html" title="ffrprep 0.1.dev1+ga9bf75dc8 documentation"
            class="md-header-nav__button md-logo">
           
             &nbsp;
@@ -171,7 +171,7 @@
   <nav class="md-tabs" data-md-component="tabs">
     <div class="md-tabs__inner md-grid">
       <ul class="md-tabs__list">
-          <li class="md-tabs__item"><a href="index.html" class="md-tabs__link">ffrprep 0.1.dev1+gdcaa2e2dc documentation</a></li>
+          <li class="md-tabs__item"><a href="index.html" class="md-tabs__link">ffrprep 0.1.dev1+ga9bf75dc8 documentation</a></li>
       </ul>
     </div>
   </nav>
@@ -183,13 +183,13 @@
               <div class="md-sidebar__inner">
                 <nav class="md-nav md-nav--primary" data-md-level="0">
   <label class="md-nav__title md-nav__title--site" for="__drawer">
-    <a href="index.html" title="ffrprep 0.1.dev1+gdcaa2e2dc documentation" class="md-nav__button md-logo">
+    <a href="index.html" title="ffrprep 0.1.dev1+ga9bf75dc8 documentation" class="md-nav__button md-logo">
       
         <img src="_static/" alt=" logo" width="48" height="48">
       
     </a>
     <a href="index.html"
-       title="ffrprep 0.1.dev1+gdcaa2e2dc documentation">ffrprep</a>
+       title="ffrprep 0.1.dev1+ga9bf75dc8 documentation">ffrprep</a>
   </label>
     <div class="md-nav__source">
       <a href="https://github.com/sitek/ffrprep" title="Go to repository" class="md-source" data-md-source="github">
@@ -347,7 +347,7 @@ Once you are ready to run <code class="docutils literal notranslate"><span class
 <p>In order to run <code class="docutils literal notranslate"><span class="pre">`ffrprep`</span></code> in a Docker container, Docker must be <a class="reference external" href="https://docs.docker.com/engine/installation/">installed</a> on your system.
 Once Docker is installed, you can get <code class="docutils literal notranslate"><span class="pre">ffrprep</span></code> through  running one of the following
 commands in the terminal of your choice.</p>
-<p>Option 1: pulling from the <a class="reference external" href="https://hub.docker.com/repository/docker/sitek/ffrprep/general">dockerhub registry</a> :</p>
+<p>Option 1: pulling from the <a class="reference external" href="https://hub.docker.com/repository/docker/ksitek/ffrprep/general">dockerhub registry</a> :</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>pull<span class="w"> </span>sitek/ffrprep:version
 </pre></div>
 </div>
@@ -357,7 +357,7 @@ commands in the terminal of your choice.</p>
 </div>
 <p>Where <code class="docutils literal notranslate"><span class="pre">version</span></code> is the specific version of <code class="docutils literal notranslate"><span class="pre">ffrprep</span></code> you would like to use. For example, if you want
 to employ the <code class="docutils literal notranslate"><span class="pre">latest</span></code>/most up to date <code class="docutils literal notranslate"><span class="pre">version</span></code> you can either run</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>pull<span class="w"> </span>sitek/ffrprep:latest
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>pull<span class="w"> </span>ksitek/ffrprep:latest
 </pre></div>
 </div>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/sitek/ffrprep:latest
@@ -366,7 +366,7 @@ to employ the <code class="docutils literal notranslate"><span class="pre">lates
 <p>or the same command without the <code class="docutils literal notranslate"><span class="pre">:latest</span></code> tag, as <code class="docutils literal notranslate"><span class="pre">Docker</span></code> searches for the <code class="docutils literal notranslate"><span class="pre">latest</span></code> tag by default.
 However, as the <code class="docutils literal notranslate"><span class="pre">latest</span></code> version is subject to changes and not necessarily in synch with the most recent <code class="docutils literal notranslate"><span class="pre">numbered</span> <span class="pre">version</span></code>, it
 is recommend to utilize the latter to ensure reproducibility. For example, if you want to employ <code class="docutils literal notranslate"><span class="pre">ffrprep</span> <span class="pre">v0.0.1</span></code> the command would look as follows:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>pull<span class="w"> </span>sitek/ffrprep:v0.0.1
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>pull<span class="w"> </span>ksitek/ffrprep:v0.0.1
 </pre></div>
 </div>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>pull<span class="w"> </span>ghcr.io/sitek/ffrprep:v0.0.1
@@ -393,12 +393,12 @@ a <code class="docutils literal notranslate"><span class="pre">Singularity</span
 <p>If the version of Singularity on your HPC is modern enough you can create a <code class="docutils literal notranslate"><span class="pre">Singularity</span>
 <span class="pre">image</span></code> directly on the HCP.
 This is as simple as:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>singularity<span class="w"> </span>build<span class="w"> </span>/my_images/ffrprep-&lt;version&gt;.simg<span class="w"> </span>docker://sitek/ffrprep:&lt;version&gt;
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>singularity<span class="w"> </span>build<span class="w"> </span>/my_images/ffrprep-&lt;version&gt;.simg<span class="w"> </span>docker://ksitek/ffrprep:&lt;version&gt;
 </pre></div>
 </div>
 <p>Where <code class="docutils literal notranslate"><span class="pre">&lt;version&gt;</span></code> should be replaced with the desired version of <code class="docutils literal notranslate"><span class="pre">ffrprep</span></code> that you want to download.
 For example, if you want to use <code class="docutils literal notranslate"><span class="pre">ffrprep</span> <span class="pre">v0.0.4</span></code>, the command would look as follows.</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>singularity<span class="w"> </span>build<span class="w"> </span>/my_images/ffrprep-v0.0.4.simg<span class="w"> </span>docker://sitek/ffrprep:v0.0.4
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>singularity<span class="w"> </span>build<span class="w"> </span>/my_images/ffrprep-v0.0.4.simg<span class="w"> </span>docker://ksitek/ffrprep:v0.0.4
 </pre></div>
 </div>
 </section>
@@ -411,7 +411,7 @@ create a <code class="docutils literal notranslate"><span class="pre">Singularit
 <span class="w">    </span>-v<span class="w"> </span>/var/run/docker.sock:/var/run/docker.sock<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>-v<span class="w"> </span>/absolute/path/to/output/folder:/output<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>singularityware/docker2singularity<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>sitek/ffrprep:&lt;version&gt;
+<span class="w">    </span>ksitek/ffrprep:&lt;version&gt;
 </pre></div>
 </div>
 <p>Where <code class="docutils literal notranslate"><span class="pre">&lt;version&gt;</span></code> should be replaced with the desired version of <code class="docutils literal notranslate"><span class="pre">`ffrprep`</span></code> that you want
@@ -421,7 +421,7 @@ should be stored. Sticking with the example of <code class="docutils literal not
 <span class="w">    </span>-v<span class="w"> </span>/var/run/docker.sock:/var/run/docker.sock<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>-v<span class="w"> </span>/absolute/path/to/output/folder:/output<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>singularityware/docker2singularity<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>sitek/ffrprep:v0.0.4
+<span class="w">    </span>ksitek/ffrprep:v0.0.4
 </pre></div>
 </div>
 <p>Beware of the back slashes, expected for Windows systems. The above command would translate to Windows systems as follows:</p>
@@ -429,11 +429,11 @@ should be stored. Sticking with the example of <code class="docutils literal not
 <span class="w">    </span>-v<span class="w"> </span>/var/run/docker.sock:/var/run/docker.sock<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>-v<span class="w"> </span>D:<span class="se">\h</span>ost<span class="se">\p</span>ath<span class="se">\w</span>here<span class="se">\t</span>o<span class="se">\o</span>utput<span class="se">\s</span>ingularity<span class="se">\i</span>mage:/output<span class="w"> </span><span class="se">\</span>
 <span class="w">    </span>singularityware/docker2singularity<span class="w"> </span><span class="se">\</span>
-<span class="w">    </span>sitek/ffrprep:&lt;version&gt;
+<span class="w">    </span>ksitek/ffrprep:&lt;version&gt;
 </pre></div>
 </div>
 <p>You can then transfer the resulting <code class="docutils literal notranslate"><span class="pre">Singularity</span> <span class="pre">image</span></code> to the HPC, for example, using <code class="docutils literal notranslate"><span class="pre">scp</span></code>.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ scp sitek_ffrprep&lt;version&gt;.simg &lt;user&gt;@&lt;hcpserver.edu&gt;:/my_images
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ scp ksitek_ffrprep&lt;version&gt;.simg &lt;user&gt;@&lt;hcpserver.edu&gt;:/my_images
 </pre></div>
 </div>
 <p>Where <code class="docutils literal notranslate"><span class="pre">&lt;version&gt;</span></code> should be replaced with the version of <code class="docutils literal notranslate"><span class="pre">ffrprep</span></code> that you used to create the <code class="docutils literal notranslate"><span class="pre">Singularity</span> <span class="pre">image</span></code>, <code class="docutils literal notranslate"><span class="pre">&lt;user&gt;</span></code>
@@ -451,7 +451,7 @@ with your <code class="docutils literal notranslate"><span class="pre">user</spa
 <p class="admonition-title">Note</p>
 <p>Make sure to check the name of the created <code class="docutils literal notranslate"><span class="pre">Singularity</span> <span class="pre">image</span></code> as that might
 diverge based on the method you used. Here and going forward it is assumed that you used <code class="docutils literal notranslate"><span class="pre">Singularity</span> <span class="pre">&gt;=</span> <span class="pre">2.5</span></code>
-and thus <code class="docutils literal notranslate"><span class="pre">ffrprep-&lt;version&gt;.simg</span></code> instead of <code class="docutils literal notranslate"><span class="pre">sitek_ffrprep&lt;version&gt;.simg</span></code>.</p>
+and thus <code class="docutils literal notranslate"><span class="pre">ffrprep-&lt;version&gt;.simg</span></code> instead of <code class="docutils literal notranslate"><span class="pre">ksitek_ffrprep&lt;version&gt;.simg</span></code>.</p>
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
