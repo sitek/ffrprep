@@ -17,7 +17,7 @@ In order to run ```ffrprep``` in a Docker container, Docker must be `installed
 Once Docker is installed, you can get ``ffrprep`` through  running one of the following
 commands in the terminal of your choice.
 
-Option 1: pulling from the `dockerhub registry <https://hub.docker.com/repository/docker/sitek/ffrprep/general>`_ :
+Option 1: pulling from the `dockerhub registry <https://hub.docker.com/repository/docker/ksitek/ffrprep/general>`_ :
 
 
 .. code-block:: bash
@@ -35,7 +35,7 @@ to employ the ``latest``/most up to date ``version`` you can either run
 
 .. code-block:: bash
 
-    docker pull sitek/ffrprep:latest
+    docker pull ksitek/ffrprep:latest
 
 .. code-block:: bash
 
@@ -47,7 +47,7 @@ is recommend to utilize the latter to ensure reproducibility. For example, if yo
 
 .. code-block:: bash
 
-    docker pull sitek/ffrprep:v0.0.1
+    docker pull ksitek/ffrprep:v0.0.1
 
 .. code-block:: bash
 
@@ -81,14 +81,14 @@ This is as simple as:
 
 .. code-block:: bash
 
-    $ singularity build /my_images/ffrprep-<version>.simg docker://sitek/ffrprep:<version>
+    $ singularity build /my_images/ffrprep-<version>.simg docker://ksitek/ffrprep:<version>
 
 Where ``<version>`` should be replaced with the desired version of ``ffrprep`` that you want to download.
 For example, if you want to use ``ffrprep v0.0.4``, the command would look as follows.
 
 .. code-block:: bash
 
-    $ singularity build /my_images/ffrprep-v0.0.4.simg docker://sitek/ffrprep:v0.0.4
+    $ singularity build /my_images/ffrprep-v0.0.4.simg docker://ksitek/ffrprep:v0.0.4
 
 
 Preparing a Singularity image (Singularity version < 2.5)
@@ -103,7 +103,7 @@ create a ``Singularity image``. You will need an active internet connection and 
         -v /var/run/docker.sock:/var/run/docker.sock \
         -v /absolute/path/to/output/folder:/output \
         singularityware/docker2singularity \
-        sitek/ffrprep:<version>
+        ksitek/ffrprep:<version>
 
 Where ``<version>`` should be replaced with the desired version of ```ffrprep``` that you want
 to download and ``/absolute/path/to/output/folder`` with the absolute path where the created ``Singularity image``
@@ -115,7 +115,7 @@ should be stored. Sticking with the example of ``ffrprep v0.0.4`` this would loo
         -v /var/run/docker.sock:/var/run/docker.sock \
         -v /absolute/path/to/output/folder:/output \
         singularityware/docker2singularity \
-        sitek/ffrprep:v0.0.4
+        ksitek/ffrprep:v0.0.4
 
 Beware of the back slashes, expected for Windows systems. The above command would translate to Windows systems as follows:
 
@@ -125,12 +125,12 @@ Beware of the back slashes, expected for Windows systems. The above command woul
         -v /var/run/docker.sock:/var/run/docker.sock \
         -v D:\host\path\where\to\output\singularity\image:/output \
         singularityware/docker2singularity \
-        sitek/ffrprep:<version>
+        ksitek/ffrprep:<version>
 
 
 You can then transfer the resulting ``Singularity image`` to the HPC, for example, using ``scp``. ::
 
-    $ scp sitek_ffrprep<version>.simg <user>@<hcpserver.edu>:/my_images
+    $ scp ksitek_ffrprep<version>.simg <user>@<hcpserver.edu>:/my_images
 
 Where ``<version>`` should be replaced with the version of ``ffrprep`` that you used to create the ``Singularity image``, ``<user>``
 with your ``user name`` on the HPC and ``<hcpserver.edu>`` with the address of the HPC.  
@@ -149,7 +149,7 @@ Running a Singularity Image
 
     Make sure to check the name of the created ``Singularity image`` as that might
     diverge based on the method you used. Here and going forward it is assumed that you used ``Singularity >= 2.5``
-    and thus ``ffrprep-<version>.simg`` instead of ``sitek_ffrprep<version>.simg``.   
+    and thus ``ffrprep-<version>.simg`` instead of ``ksitek_ffrprep<version>.simg``.   
 
 
 .. note::

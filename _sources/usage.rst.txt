@@ -50,7 +50,7 @@ container's entrypoint dispatches ``download …`` to the
     # Just the EEG data (default)
     docker run --rm \
       -v /path/to/data:/out:rw \
-      sitek/ffrprep:latest \
+      ksitek/ffrprep:latest \
       download example --out /out
 
     # Also fetch the stimulus audio + augment events.tsv with the
@@ -58,7 +58,7 @@ container's entrypoint dispatches ``download …`` to the
     # correlation in the analysis report)
     docker run --rm \
       -v /path/to/data:/out:rw \
-      sitek/ffrprep:latest \
+      ksitek/ffrprep:latest \
       download example --with-stimuli --out /out
 
 ``--with-stimuli`` is ``BooleanOptionalAction`` (default ``False``);
@@ -97,7 +97,7 @@ Example 1 - Basic preprocessing
 
     docker run --rm \
       -v /local/bids_dataset:/data:rw \
-      sitek/ffrprep:latest \
+      ksitek/ffrprep:latest \
       /data \
       /data/derivatives \
       participant \
@@ -109,7 +109,7 @@ What's in this call:
 - ``docker run --rm`` runs the container and removes it after completion.
 - ``-v /local/bids_dataset:/data:rw`` mounts the local BIDS dataset
   read-write so derivatives can be written back to disk.
-- ``sitek/ffrprep:latest`` is the published image (see
+- ``ksitek/ffrprep:latest`` is the published image (see
   :ref:`installation` for tag pinning).
 - ``/data`` (1st positional) is the BIDS dataset inside the
   container; ``/data/derivatives`` (2nd) is the output directory;
@@ -126,7 +126,7 @@ Example 2 - Full analysis with custom parameters
 
     docker run --rm \
       -v /local/bids_dataset:/data:rw \
-      sitek/ffrprep:latest \
+      ksitek/ffrprep:latest \
       /data \
       /data/derivatives \
       participant \
@@ -173,7 +173,7 @@ files are always emitted.
 
     docker run --rm \
       -v /local/bids_dataset:/data:rw \
-      sitek/ffrprep:latest \
+      ksitek/ffrprep:latest \
       /data \
       /data/derivatives \
       participant \
@@ -217,7 +217,7 @@ To keep the split on but restrict it to a subset of trial types
     # any (auto-paired or explicit) difference evokeds
     docker run --rm \
       -v /local/bids_dataset:/data:rw \
-      sitek/ffrprep:latest \
+      ksitek/ffrprep:latest \
       /data \
       /data/derivatives \
       participant \
@@ -230,7 +230,7 @@ To keep the split on but restrict it to a subset of trial types
     # contains both
     docker run --rm \
       -v /local/bids_dataset:/data:rw \
-      sitek/ffrprep:latest \
+      ksitek/ffrprep:latest \
       /data \
       /data/derivatives \
       participant \
