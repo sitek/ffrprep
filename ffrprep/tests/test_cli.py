@@ -4,6 +4,7 @@ Functions only — no test classes (CLAUDE.md). Mocks via unittest.mock.patch
 work the same on free functions as on methods.
 """
 import argparse
+import json
 import os
 import tempfile
 from pathlib import Path
@@ -947,6 +948,79 @@ def test_collect_evoked_groups_empty_dir_returns_empty_list(tmp_path):
     a_dir = tmp_path / "sub-01"
     a_dir.mkdir(parents=True)
     assert _collect_evoked_groups(a_dir) == []
+
+
+# ---------------------------------------------------------------------------
+# _resolve_events_fpath_for_group: events.tsv resolution per (task, run)
+# group, including the concat-runs case where the evoked filename
+# carries no `run-*` token and the sidecar's ConcatenatedRuns list
+# is the source of truth.
+# ---------------------------------------------------------------------------
+
+
+def test_resolve_events_fpath_for_group_concat_runs_uses_first_listed_run(
+    tmp_path,
+):
+    """Concat-runs: the evoked filename has no run token, so the
+    sidecar's ``ConcatenatedRuns`` list must drive events.tsv
+    resolution. Without this, the stim-correlation helpers silently
+    no-op because ``sub-XX_task-YY_events.tsv`` (no run) does not
+    exist in a per-run BIDS dataset.
+    """
+    from ffrprep.ffrprep_cli import _resolve_events_fpath_for_group
+
+    bids_root = tmp_path / "ds"
+    (bids_root / "sub-01" / "eeg").mkdir(parents=True)
+
+    analysis_dir = tmp_path / "deriv" / "sub-01"
+    evoked_fpath = _touch_evoked(
+        analysis_dir, "sub-01_task-active_desc-evoked.fif"
+    )
+    evoked_fpath.with_suffix(".json").write_text(
+        json.dumps({"ConcatenatedRuns": ["1", "2"]})
+    )
+
+    grp = {
+        "task": "active",
+        "run": None,
+        "evoked_files": [evoked_fpath],
+    }
+    resolved = _resolve_events_fpath_for_group(grp, "01", bids_root)
+    expected = (
+        bids_root / "sub-01" / "eeg"
+        / "sub-01_task-active_run-1_events.tsv"
+    )
+    assert resolved == expected
+
+
+def test_resolve_events_fpath_for_group_single_run_passes_through(tmp_path):
+    """Single-run: ``grp['run']`` is the literal run token, no sidecar
+    fallback needed. Regression guard so the concat-runs fix doesn't
+    break the existing per-run path.
+    """
+    from ffrprep.ffrprep_cli import _resolve_events_fpath_for_group
+
+    bids_root = tmp_path / "ds"
+    (bids_root / "sub-01" / "eeg").mkdir(parents=True)
+
+    analysis_dir = tmp_path / "deriv" / "sub-01"
+    evoked_fpath = _touch_evoked(
+        analysis_dir, "sub-01_task-active_run-1_desc-evoked.fif"
+    )
+    # No sidecar — exercises the empty-meta fallback path so the
+    # function never depends on the sidecar in the single-run case.
+
+    grp = {
+        "task": "active",
+        "run": "1",
+        "evoked_files": [evoked_fpath],
+    }
+    resolved = _resolve_events_fpath_for_group(grp, "01", bids_root)
+    expected = (
+        bids_root / "sub-01" / "eeg"
+        / "sub-01_task-active_run-1_events.tsv"
+    )
+    assert resolved == expected
 
 
 # ---------------------------------------------------------------------------
