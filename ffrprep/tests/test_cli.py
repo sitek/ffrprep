@@ -993,6 +993,36 @@ def test_resolve_events_fpath_for_group_concat_runs_uses_first_listed_run(
     assert resolved == expected
 
 
+def test_concat_payload_runs_passes_discovered_list_through(tmp_path):
+    """Auto-discovered runs (no --run) become the concat payload's
+    run_label so ``save_preprocessing_outputs`` writes
+    ``ConcatenatedRuns`` to the preproc sidecar — without which the
+    analysis-report builder can't resolve the source events.tsv.
+    """
+    from ffrprep.ffrprep_cli import _concat_payload_runs
+
+    assert _concat_payload_runs(["1", "2", "3"]) == ["1", "2", "3"]
+
+
+def test_concat_payload_runs_filters_none_placeholder(tmp_path):
+    """A dataset with no run-token surfaces as ``[None]`` from
+    ``get_sessions_tasks_runs``. That sentinel must be dropped so
+    the saver doesn't write ``ConcatenatedRuns: ['None']``.
+    """
+    from ffrprep.ffrprep_cli import _concat_payload_runs
+
+    assert _concat_payload_runs([None]) is None
+    assert _concat_payload_runs([]) is None
+    assert _concat_payload_runs(None) is None
+
+
+def test_concat_payload_runs_mixed_keeps_real_drops_none(tmp_path):
+    """Mixed lists: keep the real run IDs, drop the None sentinels."""
+    from ffrprep.ffrprep_cli import _concat_payload_runs
+
+    assert _concat_payload_runs(["1", None, "2"]) == ["1", "2"]
+
+
 def test_resolve_events_fpath_for_group_single_run_passes_through(tmp_path):
     """Single-run: ``grp['run']`` is the literal run token, no sidecar
     fallback needed. Regression guard so the concat-runs fix doesn't
