@@ -238,6 +238,39 @@ def _make_preproc_payload(args_snap, deriv_snap, subject, task_label, run_label,
     }
 
 
+def _concat_payload_runs(runs):
+    """Run list for a concat-runs worker.
+
+    Returns the list when at least one real run ID is present, else
+    ``None``. Filtering out ``None`` placeholders matters because
+    ``get_sessions_tasks_runs`` returns ``[None]`` for datasets that
+    don't use a ``run-*`` token at all; passing that straight through
+    would write ``ConcatenatedRuns: ['None']`` to the sidecar, which
+    in turn breaks the analysis-report builder's events.tsv path
+    resolution.
+
+    Always returning a list (not ``None``) when real runs exist is
+    what lets ``save_preprocessing_outputs`` populate
+    ``ConcatenatedRuns`` on the preproc sidecar — required so the
+    analysis report can pick a source events.tsv to read the
+    ``stim_file`` column from.
+
+    Parameters
+    ----------
+    runs : list or None
+        The run list collected upstream (either the user's
+        ``--run`` selection or the dataset's auto-discovered list).
+        May contain ``None`` sentinels for no-run-token datasets.
+
+    Returns
+    -------
+    list[str] or None
+        The cleaned run list, or ``None`` when no real runs remain.
+    """
+    real = [r for r in (runs or []) if r is not None]
+    return real if real else None
+
+
 def _make_concat_payload(args_snap, deriv_snap, subject, task_label, runs,
                          ref_channels, effective_l, effective_h, baseline,
                          reject_value):
@@ -380,6 +413,55 @@ def _collect_evoked_groups(analysis_dir):
             }
         groups_map[identifier]["evoked_files"].append(fpath)
     return list(groups_map.values())
+
+
+def _resolve_events_fpath_for_group(grp, subject, bids_root):
+    """Resolve the events.tsv path for one analysis group.
+
+    Concat-runs analysis outputs carry no ``run-*`` token in their
+    filenames, so ``grp['run']`` is ``None`` and a literal
+    ``sub-XX_task-YY_events.tsv`` lookup misses (the source BIDS
+    dataset only has per-run events files). Read the sidecar's
+    ``ConcatenatedRuns`` list and use the first listed run; the
+    ``stim_file`` column is invariant across runs for a given
+    ``trial_type`` so any run is sufficient. Falls back to
+    ``grp['run']`` when no ``ConcatenatedRuns`` field is present
+    (the single-run case).
+
+    Parameters
+    ----------
+    grp : dict
+        One entry from :func:`_collect_evoked_groups`. Must carry
+        ``task``, ``run`` and ``evoked_files`` keys.
+    subject : str
+        Subject label (without the ``sub-`` prefix).
+    bids_root : pathlib.Path or str
+        BIDS dataset root.
+
+    Returns
+    -------
+    pathlib.Path
+        The resolved events.tsv path. May not exist on disk if the
+        source dataset doesn't carry events files; downstream
+        callers handle the missing-file case as a silent no-op.
+    """
+    import json
+
+    first_sidecar = grp["evoked_files"][0].with_suffix(".json")
+    sidecar_meta = (
+        json.loads(first_sidecar.read_text())
+        if first_sidecar.exists() else {}
+    )
+    runs = sidecar_meta.get("ConcatenatedRuns") or (
+        [grp["run"]] if grp["run"] is not None else []
+    )
+    first_run = next((r for r in runs if r is not None), None)
+    eeg_dir = Path(bids_root) / f"sub-{subject}" / "eeg"
+    if first_run is not None:
+        return eeg_dir / (
+            f"sub-{subject}_task-{grp['task']}_run-{first_run}_events.tsv"
+        )
+    return eeg_dir / f"sub-{subject}_task-{grp['task']}_events.tsv"
 
 
 def _make_analysis_payload(args_snap, deriv_snap, subject, group):
@@ -1134,13 +1216,8 @@ def _build_analysis_report(args, derivatives_info, subject):
         task = grp["task"]
         run = grp["run"]
         sections = []
-        events_fpath = (
-            bids_root / f"sub-{subject}" / "eeg"
-            / (
-                f"sub-{subject}_task-{task}_run-{run}_events.tsv"
-                if run is not None
-                else f"sub-{subject}_task-{task}_events.tsv"
-            )
+        events_fpath = _resolve_events_fpath_for_group(
+            grp, subject, bids_root,
         )
         for idx, evo_fpath in enumerate(grp["evoked_files"]):
             all_files.append(evo_fpath)
@@ -2036,7 +2113,7 @@ def run_ffrprep():
                 payloads = [
                     _make_concat_payload(
                         args_snap, deriv_snap, subject, task_label,
-                        runs if args.run else None,
+                        _concat_payload_runs(runs),
                         ref_channels, effective_l, effective_h,
                         baseline, reject_value,
                     )
