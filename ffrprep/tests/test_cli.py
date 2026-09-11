@@ -220,6 +220,13 @@ def test_parse_ref_channels_average():
     assert parse_ref_channels("Average") is None
 
 
+def test_parse_ref_channels_average_from_argparse_list():
+    """--ref_channels uses nargs='+', so real CLI usage always passes a
+    list (e.g. ['average']) rather than a bare string."""
+    assert parse_ref_channels(["average"]) is None
+    assert parse_ref_channels(["AVERAGE"]) is None
+
+
 def test_parse_ref_channels_single():
     assert parse_ref_channels("Cz") == "Cz"
     assert parse_ref_channels("TP9") == "TP9"
@@ -233,6 +240,20 @@ def test_parse_ref_channels_multiple():
 def test_parse_ref_channels_empty_string():
     """An empty string normalizes to None (no reference channel given)."""
     assert parse_ref_channels("") is None
+
+
+def test_parse_ref_channels_skip():
+    """'skip' normalizes to [] (data already referenced; do not modify)."""
+    assert parse_ref_channels("skip") == []
+    assert parse_ref_channels("SKIP") == []
+    assert parse_ref_channels("Skip") == []
+
+
+def test_parse_ref_channels_skip_from_argparse_list():
+    """--ref_channels uses nargs='+', so real CLI usage always passes a
+    list (e.g. ['skip']) rather than a bare string."""
+    assert parse_ref_channels(["skip"]) == []
+    assert parse_ref_channels(["SKIP"]) == []
 
 
 # ---------------------------------------------------------------------------
