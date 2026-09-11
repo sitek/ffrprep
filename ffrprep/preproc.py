@@ -587,7 +587,8 @@ def reference_data(eeg_data=None, ref_channels=None):
         Channels to be used as reference. If more than one channel
         in list, the average of the channels in `ref_channels` will
         be used as the reference. If `None`, all channels will be
-        averaged as the reference.
+        averaged as the reference. If an empty list, the data is
+        marked as already referenced and is not modified.
         Default = None.
 
     Returns

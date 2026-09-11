@@ -1561,8 +1561,10 @@ def get_parser():
         help=(
             "Reference channel(s) for re-referencing. Provide space-separated "
             "channel names (e.g. --ref_channels M1 M2). Use 'average' for "
-            "average reference. Comma-separated single-argument styles are "
-            "also accepted for backward compatibility (e.g. 'M1,M2')."
+            "average reference, or 'skip' if the data is already referenced "
+            "and should not be re-referenced. Comma-separated single-argument "
+            "styles are also accepted for backward compatibility (e.g. "
+            "'M1,M2')."
         ),
         nargs="+",
         type=str,
@@ -1813,6 +1815,8 @@ def parse_ref_channels(ref_str):
         # Already a sequence; ensure items are stripped and handle
         # comma-separated tokens inside any element for backward
         # compatibility (e.g. ['M1,M2'] -> ['M1','M2']).
+        if len(ref_str) == 1 and isinstance(ref_str[0], str) and ref_str[0].strip().lower() == "skip":
+            return []  # Data is already referenced; do not re-reference
         out = []
         for item in ref_str:
             if isinstance(item, str) and "," in item:
@@ -1824,6 +1828,8 @@ def parse_ref_channels(ref_str):
     s = str(ref_str)
     if s.lower() == "average":
         return None  # Average reference
+    if s.lower() == "skip":
+        return []  # Data is already referenced; do not re-reference
     if "," in s:
         # Split and strip whitespace around channel names
         return [c.strip() for c in s.split(",") if c.strip()]

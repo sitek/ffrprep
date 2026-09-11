@@ -235,6 +235,20 @@ def test_parse_ref_channels_empty_string():
     assert parse_ref_channels("") is None
 
 
+def test_parse_ref_channels_skip():
+    """'skip' normalizes to [] (data already referenced; do not modify)."""
+    assert parse_ref_channels("skip") == []
+    assert parse_ref_channels("SKIP") == []
+    assert parse_ref_channels("Skip") == []
+
+
+def test_parse_ref_channels_skip_from_argparse_list():
+    """--ref_channels uses nargs='+', so real CLI usage always passes a
+    list (e.g. ['skip']) rather than a bare string."""
+    assert parse_ref_channels(["skip"]) == []
+    assert parse_ref_channels(["SKIP"]) == []
+
+
 # ---------------------------------------------------------------------------
 # run_ffrprep — mocked end-to-end behavior
 # ---------------------------------------------------------------------------
