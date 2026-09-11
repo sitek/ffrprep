@@ -34,6 +34,7 @@ jobs:
         run: uv run make -C docs clean html
 
       - name: GitHub Pages action
+        if: github.event_name == 'push'
         uses: peaceiris/actions-gh-pages@v3.6.1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
