@@ -1817,6 +1817,8 @@ def parse_ref_channels(ref_str):
         # compatibility (e.g. ['M1,M2'] -> ['M1','M2']).
         if len(ref_str) == 1 and isinstance(ref_str[0], str) and ref_str[0].strip().lower() == "skip":
             return []  # Data is already referenced; do not re-reference
+        if len(ref_str) == 1 and isinstance(ref_str[0], str) and ref_str[0].strip().lower() == "average":
+            return None  # Average reference
         out = []
         for item in ref_str:
             if isinstance(item, str) and "," in item:

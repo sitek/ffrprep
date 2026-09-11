@@ -220,6 +220,13 @@ def test_parse_ref_channels_average():
     assert parse_ref_channels("Average") is None
 
 
+def test_parse_ref_channels_average_from_argparse_list():
+    """--ref_channels uses nargs='+', so real CLI usage always passes a
+    list (e.g. ['average']) rather than a bare string."""
+    assert parse_ref_channels(["average"]) is None
+    assert parse_ref_channels(["AVERAGE"]) is None
+
+
 def test_parse_ref_channels_single():
     assert parse_ref_channels("Cz") == "Cz"
     assert parse_ref_channels("TP9") == "TP9"
