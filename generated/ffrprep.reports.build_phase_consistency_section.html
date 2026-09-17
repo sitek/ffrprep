@@ -314,19 +314,19 @@ channel count.</p></li>
 <li><p><strong>epochs_b</strong> (<em>mne.Epochs</em>) – Two polarities of Epochs (typically positive / negative for an
 FFR experiment), matched in sampling rate, time axis, and
 channel count.</p></li>
-<li><p><strong>section_id</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Anchor used by the report template.</p></li>
-<li><p><strong>title</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Heading shown in the report.</p></li>
-<li><p><strong>alpha</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default 0.01</em>) – Significance level forwarded to
+<li><p><strong>section_id</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Anchor used by the report template.</p></li>
+<li><p><strong>title</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Heading shown in the report.</p></li>
+<li><p><strong>alpha</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>default 0.01</em>) – Significance level forwarded to
 <code class="docutils literal notranslate"><span class="pre">plot_phase_consistency_masked</span></code>; controls the per-cell
 masking cutoff. Ignored when <code class="docutils literal notranslate"><span class="pre">mask=False</span></code>.</p></li>
-<li><p><strong>pol_names</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>] </em><em>| </em><em>None</em>) – Display names for the two polarities (e.g. <code class="docutils literal notranslate"><span class="pre">("Positive",</span>
+<li><p><strong>pol_names</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>] </em><em>| </em><em>None</em>) – Display names for the two polarities (e.g. <code class="docutils literal notranslate"><span class="pre">("Positive",</span>
 <span class="pre">"Negative")</span></code>). When given, replaces the PR-35 plot’s opaque
 <code class="docutils literal notranslate"><span class="pre">A</span></code> / <code class="docutils literal notranslate"><span class="pre">B</span></code> subplot titles with the actual trial-type
 names and adds a <code class="docutils literal notranslate"><span class="pre">Polarities</span></code> row to the summary so
 report readers know which subplot is which. The <code class="docutils literal notranslate"><span class="pre">add</span></code> /
 <code class="docutils literal notranslate"><span class="pre">sub</span></code> subplots are auto-labelled
 <code class="docutils literal notranslate"><span class="pre">"&lt;a&gt;</span> <span class="pre">+</span> <span class="pre">&lt;b&gt;"</span></code> / <code class="docutils literal notranslate"><span class="pre">"&lt;a&gt;</span> <span class="pre">−</span> <span class="pre">&lt;b&gt;"</span></code>.</p></li>
-<li><p><strong>mask</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>default True</em>) – When True, apply significance masking via
+<li><p><strong>mask</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a><em>, </em><em>default True</em>) – When True, apply significance masking via
 <code class="docutils literal notranslate"><span class="pre">plot_phase_consistency_masked</span></code> and surface the threshold
 in the summary table. When False, render the unmasked plot
 via <code class="docutils literal notranslate"><span class="pre">plot_phase_consistency</span></code> and drop the alpha-related

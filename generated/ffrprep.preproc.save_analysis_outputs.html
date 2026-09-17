@@ -303,18 +303,18 @@
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>evoked</strong> (<em>mne.Evoked</em><em> or </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – Either a single Evoked (treated as the combined output) or a
+<li><p><strong>evoked</strong> (<em>mne.Evoked</em><em> or </em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – Either a single Evoked (treated as the combined output) or a
 structured payload with keys drawn from
 <code class="docutils literal notranslate"><span class="pre">{"by_type",</span> <span class="pre">"combined",</span> <span class="pre">"diff"}</span></code> (any subset).
 <code class="docutils literal notranslate"><span class="pre">by_type</span></code> is <code class="docutils literal notranslate"><span class="pre">dict[str,</span> <span class="pre">Evoked]</span></code> keyed by trial-type name;
 <code class="docutils literal notranslate"><span class="pre">combined</span></code> is a single <code class="docutils literal notranslate"><span class="pre">mne.Evoked</span></code>; <code class="docutils literal notranslate"><span class="pre">diff</span></code> is
 <code class="docutils literal notranslate"><span class="pre">dict[tuple[str,</span> <span class="pre">str],</span> <span class="pre">Evoked]</span></code> keyed by <code class="docutils literal notranslate"><span class="pre">(A,</span> <span class="pre">B)</span></code>.</p></li>
-<li><p><strong>bids_root</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>pathlib.Path</em></a>) – Path to the BIDS dataset root directory.</p></li>
-<li><p><strong>subject</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Subject label (without ‘sub-’ prefix).</p></li>
-<li><p><strong>task</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Task label (without ‘task-’ prefix). Required for BIDS compliance.</p></li>
-<li><p><strong>session</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – Session label (without ‘ses-’ prefix).</p></li>
-<li><p><strong>run</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>optional</em>) – Run label (without ‘run-’ prefix).</p></li>
-<li><p><strong>analysis_type</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Type of analysis output (‘evoked’, ‘spectrum’, etc.).</p></li>
+<li><p><strong>bids_root</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>pathlib.Path</em></a>) – Path to the BIDS dataset root directory.</p></li>
+<li><p><strong>subject</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Subject label (without ‘sub-’ prefix).</p></li>
+<li><p><strong>task</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Task label (without ‘task-’ prefix). Required for BIDS compliance.</p></li>
+<li><p><strong>session</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><em>optional</em>) – Session label (without ‘ses-’ prefix).</p></li>
+<li><p><strong>run</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>optional</em>) – Run label (without ‘run-’ prefix).</p></li>
+<li><p><strong>analysis_type</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Type of analysis output (‘evoked’, ‘spectrum’, etc.).</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -324,7 +324,7 @@ structured payload with keys drawn from
 <code class="docutils literal notranslate"><span class="pre">_desc-{analysis_type}Diff{A}Vs{B}.fif</span></code>.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a> of <a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)">pathlib.Path</a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)">list</a> of <a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)">pathlib.Path</a></p>
 </dd>
 </dl>
 </dd></dl>

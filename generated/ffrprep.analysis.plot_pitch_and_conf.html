@@ -307,7 +307,7 @@ with optional per-frame coloring by a confidence metric, and the bottom row
 shows one or more confidence time-series (rmax, z-score, pnr, etc.).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>results</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – <p>Dictionary as returned by compute_pitch_and_conf(). The dictionary must
+<dd class="field-odd"><p><strong>results</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a>) – <p>Dictionary as returned by compute_pitch_and_conf(). The dictionary must
 contain at least the following keys:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">'times'</span></code> (array-like) — 1-D array of time stamps in seconds for
@@ -343,8 +343,8 @@ The function does not return any value.</p>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
 <dd class="field-even"><ul class="simple">
-<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TypeError" title="(in Python v3.14)"><strong>TypeError</strong></a> – If <cite>results</cite> is not a dict.</p></li>
-<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If required keys (‘times’ and ‘pitch_hz_smooth’) are missing or None.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#TypeError" title="(in Python v3.14)"><strong>TypeError</strong></a> – If <cite>results</cite> is not a dict.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If required keys (‘times’ and ‘pitch_hz_smooth’) are missing or None.</p></li>
 </ul>
 </dd>
 </dl>

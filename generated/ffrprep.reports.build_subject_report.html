@@ -303,22 +303,22 @@
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>bids_root</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>Path</em>) – Top-level BIDS dataset directory. Recorded for provenance and
+<li><p><strong>bids_root</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>Path</em>) – Top-level BIDS dataset directory. Recorded for provenance and
 used to resolve relative paths displayed in the report body.</p></li>
-<li><p><strong>subject</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – BIDS subject identifier without the <code class="docutils literal notranslate"><span class="pre">sub-</span></code> prefix
+<li><p><strong>subject</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – BIDS subject identifier without the <code class="docutils literal notranslate"><span class="pre">sub-</span></code> prefix
 (e.g. <code class="docutils literal notranslate"><span class="pre">"01"</span></code>).</p></li>
-<li><p><strong>out_dir</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>Path</em>) – Directory where the rendered <code class="docutils literal notranslate"><span class="pre">.html</span></code> file is written. Created
+<li><p><strong>out_dir</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>Path</em>) – Directory where the rendered <code class="docutils literal notranslate"><span class="pre">.html</span></code> file is written. Created
 if missing.</p></li>
-<li><p><strong>sections</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>, </em><em>optional</em>) – Flat list of section descriptors. Use this when there is no
+<li><p><strong>sections</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>, </em><em>optional</em>) – Flat list of section descriptors. Use this when there is no
 natural session/task/run grouping. Mutually exclusive with
 <cite>groups</cite>; if both are passed, <cite>groups</cite> wins.</p></li>
-<li><p><strong>groups</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>, </em><em>optional</em>) – Nested structure. Each group dict carries <code class="docutils literal notranslate"><span class="pre">id</span></code>, <code class="docutils literal notranslate"><span class="pre">title</span></code>,
+<li><p><strong>groups</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>, </em><em>optional</em>) – Nested structure. Each group dict carries <code class="docutils literal notranslate"><span class="pre">id</span></code>, <code class="docutils literal notranslate"><span class="pre">title</span></code>,
 <code class="docutils literal notranslate"><span class="pre">session</span></code>, <code class="docutils literal notranslate"><span class="pre">task</span></code>, <code class="docutils literal notranslate"><span class="pre">run</span></code>, and <code class="docutils literal notranslate"><span class="pre">sections</span></code> (list of
 section dicts). Construct via <a class="reference internal" href="ffrprep.reports.make_group.html#ffrprep.reports.make_group" title="ffrprep.reports.make_group"><code class="xref py py-func docutils literal notranslate"><span class="pre">make_group()</span></code></a> for the BIDS
 defaults. The TOC renders one foldable container per group.</p></li>
-<li><p><strong>overview</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>, </em><em>optional</em>) – Top-of-report summary card. Recognised keys: <code class="docutils literal notranslate"><span class="pre">summary</span></code>
+<li><p><strong>overview</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>, </em><em>optional</em>) – Top-of-report summary card. Recognised keys: <code class="docutils literal notranslate"><span class="pre">summary</span></code>
 (key→value table) and <code class="docutils literal notranslate"><span class="pre">command</span></code> (rendered as a code block).</p></li>
-<li><p><strong>title</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Page title and <code class="docutils literal notranslate"><span class="pre">&lt;h1&gt;</span></code> text. Defaults to
+<li><p><strong>title</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Page title and <code class="docutils literal notranslate"><span class="pre">&lt;h1&gt;</span></code> text. Defaults to
 <code class="docutils literal notranslate"><span class="pre">"ffrprep</span> <span class="pre">preprocessing</span> <span class="pre">report</span> <span class="pre">sub-{subject}"</span></code>.</p></li>
 </ul>
 </dd>
@@ -326,7 +326,7 @@ defaults. The TOC renders one foldable container per group.</p></li>
 <dd class="field-even"><p>Absolute path to the written HTML file.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
 </dd>
 </dl>
 </dd></dl>
