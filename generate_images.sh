@@ -25,7 +25,7 @@ INSTALL_GROUP_FLAG="--no-dev"
 
 generate_docker() {
   docker run --rm repronim/neurodocker:2.1.1 generate docker \
-    --base-image debian:bullseye-slim \
+    --base-image debian:bookworm-slim \
     --pkg-manager apt \
     --arg DEBIAN_FRONTEND=noninteractive \
     --install $OS_PACKAGES \
@@ -33,6 +33,7 @@ generate_docker() {
     --run "$UV_INSTALL" \
     --env UV_LINK_MODE=copy \
     --env UV_PYTHON_INSTALL_DIR=/opt/uv-python \
+    --env UV_PYTHON=3.11 \
     --env UV_PROJECT_ENVIRONMENT=/home/ffrprep/.venv \
     --env PYTHONDONTWRITEBYTECODE=1 \
     --copy . /home/ffrprep \
@@ -48,7 +49,7 @@ generate_docker() {
 
 generate_singularity() {
   docker run --rm repronim/neurodocker:2.1.1 generate singularity \
-    --base-image debian:bullseye-slim \
+    --base-image debian:bookworm-slim \
     --pkg-manager apt \
     --arg DEBIAN_FRONTEND=noninteractive \
     --install $OS_PACKAGES \
@@ -56,6 +57,7 @@ generate_singularity() {
     --run "$UV_INSTALL" \
     --env UV_LINK_MODE=copy \
     --env UV_PYTHON_INSTALL_DIR=/opt/uv-python \
+    --env UV_PYTHON=3.11 \
     --env UV_PROJECT_ENVIRONMENT=/home/ffrprep/.venv \
     --env PYTHONDONTWRITEBYTECODE=1 \
     --copy . /home/ffrprep \
