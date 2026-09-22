@@ -304,8 +304,9 @@ The analysis outputs include:
   fundamental frequency and its harmonics.
 - **Autocorrelation**: Periodic peaks at the stimulus period indicate
   good phase-locking.
-- **RMS SNR**: Response RMS / baseline RMS over the 100–200 ms
-  response window. Higher is better.
+- **RMS SNR**: Response RMS / baseline RMS over the response window
+  (100–200 ms by default; configurable via ``--response-window
+  START END``). Higher is better.
 - **Stim ↔ response cross-correlation**: peak r near zero lag (or
   within typical FFR lag of ~7–14 ms after onset) indicates good
   stimulus tracking. The envelope correlation on the combined

@@ -1269,6 +1269,7 @@ def _build_analysis_report(args, derivatives_info, subject):
                     label="Evoked",
                     extra_summary=stim_data.get("summary") or None,
                     extra_figures=stim_data.get("figures") or None,
+                    response_window=tuple(args.response_window),
                 ))
 
         # Phase consistency: requires both polarities as separate
@@ -1759,6 +1760,20 @@ def get_parser():
             "auto-computed; this flag is required to opt in to diffs "
             "when there are three or more trial types."
         ),
+    )
+    analysis_group.add_argument(
+        "--response-window",
+        dest="response_window",
+        help=(
+            "Response window for RMS SNR and band-power summary metrics. "
+            "Provide two numbers: START END in seconds, relative to the "
+            "Evoked time axis (e.g. --response-window 0.1 0.2 for "
+            "100-200 ms)."
+        ),
+        nargs=2,
+        type=float,
+        metavar=("START", "END"),
+        default=[0.100, 0.200],
     )
 
     # General options

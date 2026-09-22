@@ -67,6 +67,7 @@ def test_optional_arguments_defaults():
     assert args.split_by_trial_type is True
     assert args.trial_types is None
     assert args.difference_pairs is None
+    assert args.response_window == [0.100, 0.200]
     assert args.skip_bids_validation is False
     assert args.participant_label is None
     assert args.work_dir is None
@@ -126,6 +127,16 @@ def test_no_split_by_trial_type_opt_out():
         "--no-split-by-trial-type",
     ])
     assert args.split_by_trial_type is False
+
+
+def test_response_window_custom_values():
+    """--response-window overrides the default 100-200 ms RMS SNR/power window."""
+    parser = get_parser()
+    args = parser.parse_args([
+        "/bids", "/output", "participant",
+        "--response-window", "0.05", "0.15",
+    ])
+    assert args.response_window == [0.05, 0.15]
 
 
 def test_by_event_type_deprecated_alias():

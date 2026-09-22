@@ -430,6 +430,54 @@ def test_build_evoked_section_extra_summary_overrides_defaults():
     assert section["summary"]["Channels"] == "OVERRIDDEN"
 
 
+def test_build_evoked_section_response_window_is_configurable():
+    """A non-default response_window relabels and recomputes the FFR metrics.
+
+    Confirms the window is no longer hardcoded to 100-200 ms: passing
+    response_window=(0.05, 0.15) both changes the summary key labels
+    and changes the computed RMS SNR value relative to the default.
+    """
+    n_channels = 1
+    sfreq = 1000.0
+    n_times = 500   # >= 250 so compute_power's TFR wavelets fit
+    rng = np.random.default_rng(61)
+    data = rng.normal(0, 1e-6, size=(n_channels, n_times))
+    info = mne.create_info(
+        ch_names=["Cz"], sfreq=sfreq, ch_types=["eeg"],
+    )
+    evoked = mne.EvokedArray(data, info, tmin=-0.04, verbose=False)
+    evoked.baseline = (-0.04, 0.0)
+
+    from ffrprep.analysis import rms_snr
+    from ffrprep.reports import build_evoked_section
+
+    default_section = build_evoked_section(
+        evoked.copy(),
+        section_id="evoked-active-1-0-0",
+        title="Evoked",
+    )
+    custom_section = build_evoked_section(
+        evoked.copy(),
+        section_id="evoked-active-1-0-0",
+        title="Evoked",
+        response_window=(0.05, 0.15),
+    )
+
+    assert "RMS SNR (100-200 ms)" in default_section["summary"]
+    assert "RMS SNR (50-150 ms)" in custom_section["summary"]
+    assert "RMS SNR (50-150 ms)" not in default_section["summary"]
+    assert "Mean power 90-110 Hz, 50-150 ms" in custom_section["summary"]
+
+    # Full-precision check (the summary strings above are rounded to 2
+    # decimal places, which can coincidentally collide between windows)
+    # that response_window is actually reaching rms_snr's computation,
+    # not just relabeling the same default-window value.
+    pick = evoked.copy().pick(["Cz"])
+    default_snr = rms_snr(pick, response_lower=0.100, response_upper=0.200)
+    custom_snr = rms_snr(pick, response_lower=0.05, response_upper=0.15)
+    assert default_snr != custom_snr
+
+
 def test_build_evoked_section_accepts_extra_figures():
     """Caller-supplied extra_figures are appended to the figures list.
 
