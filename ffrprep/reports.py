@@ -279,13 +279,14 @@ def evoked_qa(evoked, save_dir=None, prefix="ffr_evoked"):
 def build_evoked_section(
     evoked, *, section_id, title, label=None,
     extra_summary=None, extra_figures=None,
+    response_window=(0.100, 0.200),
 ):
     """Build a section descriptor from an Evoked object.
 
     Summary table includes the standard metadata plus two FFR-specific
-    scalar metrics: RMS SNR over the 100-200 ms response window and
-    average band power across 90-110 Hz over the same window (defaults
-    matching :func:`ffrprep.analysis.rms_snr` and
+    scalar metrics: RMS SNR over ``response_window`` and average band
+    power across 90-110 Hz over the same window (via
+    :func:`ffrprep.analysis.rms_snr` and
     :func:`ffrprep.analysis.compute_power`).
 
     ``extra_summary`` is folded into the summary table last, so caller-
@@ -295,6 +296,13 @@ def build_evoked_section(
     ``extra_figures`` is appended to the figures list after the
     built-in ``evoked_qa`` output; entries must already be section-
     figure dicts (``{"title", "caption", "data_uri"}``).
+
+    Parameters
+    ----------
+    response_window : tuple of (float, float), default=(0.100, 0.200)
+        ``(start, end)`` of the response window, in seconds relative
+        to the Evoked time axis, used for both the RMS SNR and band
+        power summary metrics.
     """
     from .analysis import compute_power, rms_snr
 
@@ -315,13 +323,19 @@ def build_evoked_section(
     if getattr(evoked, "comment", None):
         summary["Condition"] = str(evoked.comment)
 
-    # Scalar FFR metrics on the FFR pick. These rely on the analysis
-    # helpers' default windows; they're indicative, not authoritative.
+    # Scalar FFR metrics on the FFR pick, over the caller-supplied
+    # response window; indicative, not authoritative.
+    resp_lower, resp_upper = response_window
+    window_label = f"{resp_lower * 1000:.0f}-{resp_upper * 1000:.0f} ms"
     if evoked.baseline is not None:
-        snr = rms_snr(evoked_pick)
-        summary["RMS SNR (100-200 ms)"] = f"{snr:.2f}"
-    band_power = compute_power(evoked_pick, f_low=90, f_high=110, t_low=0.1, t_high=0.2)
-    summary["Mean power 90-110 Hz, 100-200 ms"] = f"{band_power:.3e} V²"
+        snr = rms_snr(
+            evoked_pick, response_lower=resp_lower, response_upper=resp_upper,
+        )
+        summary[f"RMS SNR ({window_label})"] = f"{snr:.2f}"
+    band_power = compute_power(
+        evoked_pick, f_low=90, f_high=110, t_low=resp_lower, t_high=resp_upper,
+    )
+    summary[f"Mean power 90-110 Hz, {window_label}"] = f"{band_power:.3e} V²"
 
     if extra_summary:
         summary.update(extra_summary)

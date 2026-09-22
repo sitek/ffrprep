@@ -336,8 +336,9 @@ subject-level HTML is rendered via ``build_subject_report`` /
 
   - waveform / PSD / TFR / autocorrelation / pitch-track figures
     (via :py:func:`ffrprep.reports.evoked_qa`);
-  - scalar metrics: ``RMS SNR (100-200 ms)``, ``Mean power 90-110 Hz,
-    100-200 ms``;
+  - scalar metrics: ``RMS SNR (<window>)``, ``Mean power 90-110 Hz,
+    <window>``, where ``<window>`` defaults to 100-200 ms and is
+    configurable via ``--response-window START END`` (seconds);
   - when the BIDS ``stim_file`` column is populated in
     ``events.tsv``, a ``Stim correlation (peak r)`` +
     ``Stim correlation (lag, ms)`` row plus a stim ↔ response
