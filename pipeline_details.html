@@ -46,13 +46,13 @@
   
   
   
-    <title>Pipeline details &#8212; ffrprep 0.1.dev1+g71edff266 documentation</title>
+    <title>Pipeline details &#8212; ffrprep 0.1.dev1+gbc321497b documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
     <link rel="stylesheet" type="text/css" href="_static/material.css?v=79c92029" />
     <link rel="stylesheet" type="text/css" href="_static/plot_directive.css" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <script src="_static/documentation_options.js?v=5548b97c"></script>
+    <script src="_static/documentation_options.js?v=33cf9f3c"></script>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -85,7 +85,7 @@
   <nav class="md-header-nav md-grid">
     <div class="md-flex navheader">
       <div class="md-flex__cell md-flex__cell--shrink">
-        <a href="index.html" title="ffrprep 0.1.dev1+g71edff266 documentation"
+        <a href="index.html" title="ffrprep 0.1.dev1+gbc321497b documentation"
            class="md-header-nav__button md-logo">
           
             &nbsp;
@@ -171,7 +171,7 @@
   <nav class="md-tabs" data-md-component="tabs">
     <div class="md-tabs__inner md-grid">
       <ul class="md-tabs__list">
-          <li class="md-tabs__item"><a href="index.html" class="md-tabs__link">ffrprep 0.1.dev1+g71edff266 documentation</a></li>
+          <li class="md-tabs__item"><a href="index.html" class="md-tabs__link">ffrprep 0.1.dev1+gbc321497b documentation</a></li>
       </ul>
     </div>
   </nav>
@@ -183,13 +183,13 @@
               <div class="md-sidebar__inner">
                 <nav class="md-nav md-nav--primary" data-md-level="0">
   <label class="md-nav__title md-nav__title--site" for="__drawer">
-    <a href="index.html" title="ffrprep 0.1.dev1+g71edff266 documentation" class="md-nav__button md-logo">
+    <a href="index.html" title="ffrprep 0.1.dev1+gbc321497b documentation" class="md-nav__button md-logo">
       
         <img src="_static/" alt=" logo" width="48" height="48">
       
     </a>
     <a href="index.html"
-       title="ffrprep 0.1.dev1+g71edff266 documentation">ffrprep</a>
+       title="ffrprep 0.1.dev1+gbc321497b documentation">ffrprep</a>
   </label>
     <div class="md-nav__source">
       <a href="https://github.com/sitek/ffrprep" title="Go to repository" class="md-source" data-md-source="github">
@@ -657,8 +657,9 @@ Negative). Each carries:</p>
 <ul>
 <li><p>waveform / PSD / TFR / autocorrelation / pitch-track figures
 (via <a class="reference internal" href="generated/ffrprep.reports.evoked_qa.html#ffrprep.reports.evoked_qa" title="ffrprep.reports.evoked_qa"><code class="xref py py-func docutils literal notranslate"><span class="pre">ffrprep.reports.evoked_qa()</span></code></a>);</p></li>
-<li><p>scalar metrics: <code class="docutils literal notranslate"><span class="pre">RMS</span> <span class="pre">SNR</span> <span class="pre">(100-200</span> <span class="pre">ms)</span></code>, <code class="docutils literal notranslate"><span class="pre">Mean</span> <span class="pre">power</span> <span class="pre">90-110</span> <span class="pre">Hz,</span>
-<span class="pre">100-200</span> <span class="pre">ms</span></code>;</p></li>
+<li><p>scalar metrics: <code class="docutils literal notranslate"><span class="pre">RMS</span> <span class="pre">SNR</span> <span class="pre">(&lt;window&gt;)</span></code>, <code class="docutils literal notranslate"><span class="pre">Mean</span> <span class="pre">power</span> <span class="pre">90-110</span> <span class="pre">Hz,</span>
+<span class="pre">&lt;window&gt;</span></code>, where <code class="docutils literal notranslate"><span class="pre">&lt;window&gt;</span></code> defaults to 100-200 ms and is
+configurable via <code class="docutils literal notranslate"><span class="pre">--response-window</span> <span class="pre">START</span> <span class="pre">END</span></code> (seconds);</p></li>
 <li><p>when the BIDS <code class="docutils literal notranslate"><span class="pre">stim_file</span></code> column is populated in
 <code class="docutils literal notranslate"><span class="pre">events.tsv</span></code>, a <code class="docutils literal notranslate"><span class="pre">Stim</span> <span class="pre">correlation</span> <span class="pre">(peak</span> <span class="pre">r)</span></code> +
 <code class="docutils literal notranslate"><span class="pre">Stim</span> <span class="pre">correlation</span> <span class="pre">(lag,</span> <span class="pre">ms)</span></code> row plus a stim ↔ response

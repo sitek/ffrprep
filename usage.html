@@ -46,13 +46,13 @@
   
   
   
-    <title>Usage &#8212; ffrprep 0.1.dev1+g71edff266 documentation</title>
+    <title>Usage &#8212; ffrprep 0.1.dev1+gbc321497b documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
     <link rel="stylesheet" type="text/css" href="_static/material.css?v=79c92029" />
     <link rel="stylesheet" type="text/css" href="_static/plot_directive.css" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <script src="_static/documentation_options.js?v=5548b97c"></script>
+    <script src="_static/documentation_options.js?v=33cf9f3c"></script>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -85,7 +85,7 @@
   <nav class="md-header-nav md-grid">
     <div class="md-flex navheader">
       <div class="md-flex__cell md-flex__cell--shrink">
-        <a href="index.html" title="ffrprep 0.1.dev1+g71edff266 documentation"
+        <a href="index.html" title="ffrprep 0.1.dev1+gbc321497b documentation"
            class="md-header-nav__button md-logo">
           
             &nbsp;
@@ -171,7 +171,7 @@
   <nav class="md-tabs" data-md-component="tabs">
     <div class="md-tabs__inner md-grid">
       <ul class="md-tabs__list">
-          <li class="md-tabs__item"><a href="index.html" class="md-tabs__link">ffrprep 0.1.dev1+g71edff266 documentation</a></li>
+          <li class="md-tabs__item"><a href="index.html" class="md-tabs__link">ffrprep 0.1.dev1+gbc321497b documentation</a></li>
       </ul>
     </div>
   </nav>
@@ -183,13 +183,13 @@
               <div class="md-sidebar__inner">
                 <nav class="md-nav md-nav--primary" data-md-level="0">
   <label class="md-nav__title md-nav__title--site" for="__drawer">
-    <a href="index.html" title="ffrprep 0.1.dev1+g71edff266 documentation" class="md-nav__button md-logo">
+    <a href="index.html" title="ffrprep 0.1.dev1+gbc321497b documentation" class="md-nav__button md-logo">
       
         <img src="_static/" alt=" logo" width="48" height="48">
       
     </a>
     <a href="index.html"
-       title="ffrprep 0.1.dev1+g71edff266 documentation">ffrprep</a>
+       title="ffrprep 0.1.dev1+gbc321497b documentation">ffrprep</a>
   </label>
     <div class="md-nav__source">
       <a href="https://github.com/sitek/ffrprep" title="Go to repository" class="md-source" data-md-source="github">
@@ -474,8 +474,8 @@ augments every <code class="docutils literal notranslate"><span class="pre">sub-
                <span class="p">[</span><span class="o">--</span><span class="n">split</span><span class="o">-</span><span class="n">by</span><span class="o">-</span><span class="n">trial</span><span class="o">-</span><span class="nb">type</span> <span class="o">|</span> <span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">split</span><span class="o">-</span><span class="n">by</span><span class="o">-</span><span class="n">trial</span><span class="o">-</span><span class="nb">type</span><span class="p">]</span>
                <span class="p">[</span><span class="o">--</span><span class="n">trial</span><span class="o">-</span><span class="n">types</span> <span class="n">TRIAL_TYPES</span> <span class="p">[</span><span class="n">TRIAL_TYPES</span> <span class="o">...</span><span class="p">]]</span>
                <span class="p">[</span><span class="o">--</span><span class="n">difference</span><span class="o">-</span><span class="n">pairs</span> <span class="n">DIFFERENCE_PAIRS</span> <span class="p">[</span><span class="n">DIFFERENCE_PAIRS</span> <span class="o">...</span><span class="p">]]</span>
-               <span class="p">[</span><span class="o">--</span><span class="n">skip_bids_validation</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">n_procs</span> <span class="n">N_PROCS</span><span class="p">]</span>
-               <span class="p">[</span><span class="o">--</span><span class="n">work_dir</span> <span class="n">WORK_DIR</span><span class="p">]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">response</span><span class="o">-</span><span class="n">window</span> <span class="n">START</span> <span class="n">END</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">skip_bids_validation</span><span class="p">]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">n_procs</span> <span class="n">N_PROCS</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">work_dir</span> <span class="n">WORK_DIR</span><span class="p">]</span>
                <span class="n">bids_dir</span> <span class="n">output_dir</span> <span class="p">{</span><span class="n">participant</span><span class="p">,</span><span class="n">group</span><span class="p">}</span>
 </pre></div>
 </div>
@@ -592,6 +592,9 @@ augments every <code class="docutils literal notranslate"><span class="pre">sub-
 </dd>
 <dt><kbd>--difference-pairs</kbd></dt>
 <dd><p>Difference evokeds to compute, given as <code class="docutils literal notranslate"><span class="pre">A:B</span></code> tokens (e.g. Pos:Neg). For exactly two trial types the diff is auto-computed; this flag is required to opt in to diffs when there are three or more trial types.</p>
+</dd>
+<dt><kbd>--response-window</kbd></dt>
+<dd><p>Response window for RMS SNR and band-power summary metrics. Provide two numbers: START END in seconds, relative to the Evoked time axis (e.g. –response-window 0.1 0.2 for 100-200 ms).</p>
 </dd>
 </dl>
 </section>

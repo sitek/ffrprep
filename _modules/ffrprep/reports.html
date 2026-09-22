@@ -45,13 +45,13 @@
   
   
   
-    <title>ffrprep.reports &#8212; ffrprep 0.1.dev1+g71edff266 documentation</title>
+    <title>ffrprep.reports &#8212; ffrprep 0.1.dev1+gbc321497b documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
     <link rel="stylesheet" type="text/css" href="../../_static/material.css?v=79c92029" />
     <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
-    <script src="../../_static/documentation_options.js?v=5548b97c"></script>
+    <script src="../../_static/documentation_options.js?v=33cf9f3c"></script>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -82,7 +82,7 @@
   <nav class="md-header-nav md-grid">
     <div class="md-flex navheader">
       <div class="md-flex__cell md-flex__cell--shrink">
-        <a href="../../index.html" title="ffrprep 0.1.dev1+g71edff266 documentation"
+        <a href="../../index.html" title="ffrprep 0.1.dev1+gbc321497b documentation"
            class="md-header-nav__button md-logo">
           
             &nbsp;
@@ -168,7 +168,7 @@
   <nav class="md-tabs" data-md-component="tabs">
     <div class="md-tabs__inner md-grid">
       <ul class="md-tabs__list">
-          <li class="md-tabs__item"><a href="../../index.html" class="md-tabs__link">ffrprep 0.1.dev1+g71edff266 documentation</a></li>
+          <li class="md-tabs__item"><a href="../../index.html" class="md-tabs__link">ffrprep 0.1.dev1+gbc321497b documentation</a></li>
           <li class="md-tabs__item"><a href="../index.html" class="md-tabs__link">Module code</a></li>
       </ul>
     </div>
@@ -181,13 +181,13 @@
               <div class="md-sidebar__inner">
                 <nav class="md-nav md-nav--primary" data-md-level="0">
   <label class="md-nav__title md-nav__title--site" for="__drawer">
-    <a href="../../index.html" title="ffrprep 0.1.dev1+g71edff266 documentation" class="md-nav__button md-logo">
+    <a href="../../index.html" title="ffrprep 0.1.dev1+gbc321497b documentation" class="md-nav__button md-logo">
       
         <img src="../../_static/" alt=" logo" width="48" height="48">
       
     </a>
     <a href="../../index.html"
-       title="ffrprep 0.1.dev1+g71edff266 documentation">ffrprep</a>
+       title="ffrprep 0.1.dev1+gbc321497b documentation">ffrprep</a>
   </label>
     <div class="md-nav__source">
       <a href="https://github.com/sitek/ffrprep" title="Go to repository" class="md-source" data-md-source="github">
@@ -576,13 +576,14 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">build_evoked_section</span><span class="p">(</span>
     <span class="n">evoked</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">section_id</span><span class="p">,</span> <span class="n">title</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="n">extra_summary</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">extra_figures</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">response_window</span><span class="o">=</span><span class="p">(</span><span class="mf">0.100</span><span class="p">,</span> <span class="mf">0.200</span><span class="p">),</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">"""Build a section descriptor from an Evoked object.</span>
 
 <span class="sd">    Summary table includes the standard metadata plus two FFR-specific</span>
-<span class="sd">    scalar metrics: RMS SNR over the 100-200 ms response window and</span>
-<span class="sd">    average band power across 90-110 Hz over the same window (defaults</span>
-<span class="sd">    matching :func:`ffrprep.analysis.rms_snr` and</span>
+<span class="sd">    scalar metrics: RMS SNR over ``response_window`` and average band</span>
+<span class="sd">    power across 90-110 Hz over the same window (via</span>
+<span class="sd">    :func:`ffrprep.analysis.rms_snr` and</span>
 <span class="sd">    :func:`ffrprep.analysis.compute_power`).</span>
 
 <span class="sd">    ``extra_summary`` is folded into the summary table last, so caller-</span>
@@ -592,6 +593,13 @@
 <span class="sd">    ``extra_figures`` is appended to the figures list after the</span>
 <span class="sd">    built-in ``evoked_qa`` output; entries must already be section-</span>
 <span class="sd">    figure dicts (``{"title", "caption", "data_uri"}``).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    response_window : tuple of (float, float), default=(0.100, 0.200)</span>
+<span class="sd">        ``(start, end)`` of the response window, in seconds relative</span>
+<span class="sd">        to the Evoked time axis, used for both the RMS SNR and band</span>
+<span class="sd">        power summary metrics.</span>
 <span class="sd">    """</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">.analysis</span><span class="w"> </span><span class="kn">import</span> <span class="n">compute_power</span><span class="p">,</span> <span class="n">rms_snr</span>
 
@@ -612,13 +620,19 @@
     <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">evoked</span><span class="p">,</span> <span class="s2">"comment"</span><span class="p">,</span> <span class="kc">None</span><span class="p">):</span>
         <span class="n">summary</span><span class="p">[</span><span class="s2">"Condition"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">evoked</span><span class="o">.</span><span class="n">comment</span><span class="p">)</span>
 
-    <span class="c1"># Scalar FFR metrics on the FFR pick. These rely on the analysis</span>
-    <span class="c1"># helpers' default windows; they're indicative, not authoritative.</span>
+    <span class="c1"># Scalar FFR metrics on the FFR pick, over the caller-supplied</span>
+    <span class="c1"># response window; indicative, not authoritative.</span>
+    <span class="n">resp_lower</span><span class="p">,</span> <span class="n">resp_upper</span> <span class="o">=</span> <span class="n">response_window</span>
+    <span class="n">window_label</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">resp_lower</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">1000</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">resp_upper</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">1000</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> ms"</span>
     <span class="k">if</span> <span class="n">evoked</span><span class="o">.</span><span class="n">baseline</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">snr</span> <span class="o">=</span> <span class="n">rms_snr</span><span class="p">(</span><span class="n">evoked_pick</span><span class="p">)</span>
-        <span class="n">summary</span><span class="p">[</span><span class="s2">"RMS SNR (100-200 ms)"</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">snr</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">"</span>
-    <span class="n">band_power</span> <span class="o">=</span> <span class="n">compute_power</span><span class="p">(</span><span class="n">evoked_pick</span><span class="p">,</span> <span class="n">f_low</span><span class="o">=</span><span class="mi">90</span><span class="p">,</span> <span class="n">f_high</span><span class="o">=</span><span class="mi">110</span><span class="p">,</span> <span class="n">t_low</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">t_high</span><span class="o">=</span><span class="mf">0.2</span><span class="p">)</span>
-    <span class="n">summary</span><span class="p">[</span><span class="s2">"Mean power 90-110 Hz, 100-200 ms"</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">band_power</span><span class="si">:</span><span class="s2">.3e</span><span class="si">}</span><span class="s2"> V²"</span>
+        <span class="n">snr</span> <span class="o">=</span> <span class="n">rms_snr</span><span class="p">(</span>
+            <span class="n">evoked_pick</span><span class="p">,</span> <span class="n">response_lower</span><span class="o">=</span><span class="n">resp_lower</span><span class="p">,</span> <span class="n">response_upper</span><span class="o">=</span><span class="n">resp_upper</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">summary</span><span class="p">[</span><span class="sa">f</span><span class="s2">"RMS SNR (</span><span class="si">{</span><span class="n">window_label</span><span class="si">}</span><span class="s2">)"</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">snr</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">"</span>
+    <span class="n">band_power</span> <span class="o">=</span> <span class="n">compute_power</span><span class="p">(</span>
+        <span class="n">evoked_pick</span><span class="p">,</span> <span class="n">f_low</span><span class="o">=</span><span class="mi">90</span><span class="p">,</span> <span class="n">f_high</span><span class="o">=</span><span class="mi">110</span><span class="p">,</span> <span class="n">t_low</span><span class="o">=</span><span class="n">resp_lower</span><span class="p">,</span> <span class="n">t_high</span><span class="o">=</span><span class="n">resp_upper</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">summary</span><span class="p">[</span><span class="sa">f</span><span class="s2">"Mean power 90-110 Hz, </span><span class="si">{</span><span class="n">window_label</span><span class="si">}</span><span class="s2">"</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">band_power</span><span class="si">:</span><span class="s2">.3e</span><span class="si">}</span><span class="s2"> V²"</span>
 
     <span class="k">if</span> <span class="n">extra_summary</span><span class="p">:</span>
         <span class="n">summary</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">extra_summary</span><span class="p">)</span>
