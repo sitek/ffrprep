@@ -47,6 +47,16 @@ Preprocessing
 Analysis
 --------
 
+- Fixed: ``plot_pitch_and_conf`` no longer calls ``plt.show()``. On any
+  local (non-Docker) install where matplotlib defaults to an
+  interactive backend (e.g. ``macosx`` on a Mac, ``TkAgg``/``QtAgg`` on
+  many Linux desktops), this call blocked ``--stage analysis`` /
+  ``--stage both`` runs indefinitely waiting for a GUI window to
+  close, since ``evoked_qa`` invokes it during every analysis report
+  build. CI/Docker never hit this because tests force ``Agg`` and the
+  container images run headless. The figure was already captured via
+  ``plt.gcf()`` immediately after the call (see ``reports.evoked_qa``),
+  so nothing depended on the interactive display.
 - ``save_analysis_outputs`` accepts a structured payload
   ``{"by_type": dict, "combined": Evoked, "diff": dict}`` (any
   subset). Filenames:
