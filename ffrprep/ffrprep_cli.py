@@ -1572,10 +1572,10 @@ def get_parser():
         default=None,
     )
     preproc_group.add_argument(
-        "--high_pass", type=float, help="High-pass filter cutoff frequency in Hz.", default=1.0
+        "--high_pass", type=float, help="High-pass filter cutoff frequency in Hz.", default=70.0
     )
     preproc_group.add_argument(
-        "--low_pass", type=float, help="Low-pass filter cutoff frequency in Hz.", default=40.0
+        "--low_pass", type=float, help="Low-pass filter cutoff frequency in Hz.", default=1000.0
     )
     # New MNE-style arguments (l_freq/h_freq) to make mapping explicit.
     # These override the legacy --high_pass/--low_pass when provided.
