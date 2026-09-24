@@ -36,6 +36,12 @@ CLI
 - New flag ``--no-report``: skip HTML report generation (preprocessing
   and analysis) while still writing all derivatives. Intended for bulk
   runs over many subjects, where report figures dominate runtime.
+- New flags for resumable, disk-friendly bulk runs: ``--skip-existing``
+  (skip (task, run) iterations whose sidecar outputs already exist),
+  ``--clean-work-dir`` (delete each iteration's Nipype working files after
+  it succeeds; logs are kept) and ``--keep-epochs`` /
+  ``--no-keep-epochs`` (default keep; ``--no-keep-epochs`` deletes the
+  ``*_epo.fif`` files after analysis and keeps the JSON sidecars).
 - New flag ``--with-stimuli`` on ``ffrprep-download example``
   (``BooleanOptionalAction``, default ``False``): additionally
   fetches the BIDS ``/stimuli/`` directory needed by stimulus-aware

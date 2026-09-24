@@ -353,6 +353,33 @@ Cluster (GNU parallel on a single beefy box)
          --participant_label {} --n_procs 4" \
       ::: 01 02 03 04 05 06 07 08
 
+Resuming and saving disk space
+------------------------------
+
+Large cohorts are limited by disk space more than by CPU: each subject's
+Nipype working directory can hold several GB, and the epochs files are
+much larger than the evokeds. Three flags make bulk runs resumable and
+lean:
+
+.. code-block:: bash
+
+    ffrprep /data /data/derivatives participant \
+        --participant_label 01 02 03 \
+        --skip-existing --clean-work-dir --no-keep-epochs
+
+* ``--skip-existing`` skips (task, run) iterations whose JSON sidecar
+  outputs already exist, so an interrupted run can simply be started again.
+  Completion is judged from the sidecars, so it still works after
+  ``--no-keep-epochs``. Iterations that are already complete build no
+  report.
+* ``--clean-work-dir`` deletes each iteration's Nipype working files once
+  it has succeeded. Worker logs are kept, and the working files of a failed
+  iteration are kept for debugging.
+* ``--no-keep-epochs`` deletes the ``*_epo.fif`` files after the analysis
+  stage (evokeds and all JSON sidecars stay). It is ignored, with a
+  warning, for ``--stage preprocessing`` because the analysis stage still
+  needs the epochs.
+
 Failure handling
 ----------------
 

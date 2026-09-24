@@ -2,6 +2,7 @@ import argparse
 import logging
 import multiprocessing
 import os
+import shutil
 import sys
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -223,6 +224,7 @@ def _make_preproc_payload(args_snap, deriv_snap, subject, task_label, run_label,
         "low_pass": effective_h,
         "filter_method": args_snap.get("filter_method", "fir"),
         "reject_mode": args_snap.get("reject_mode", "ptp"),
+        "clean_work_dir": bool(args_snap.get("clean_work_dir", False)),
         "baseline": baseline,
         "tmin": args_snap.get("tmin"),
         "tmax": args_snap.get("tmax"),
@@ -312,6 +314,7 @@ def _make_concat_payload(args_snap, deriv_snap, subject, task_label, runs,
         "low_pass": effective_h,
         "filter_method": args_snap.get("filter_method", "fir"),
         "reject_mode": args_snap.get("reject_mode", "ptp"),
+        "clean_work_dir": bool(args_snap.get("clean_work_dir", False)),
         "baseline": baseline,
         "tmin": args_snap.get("tmin"),
         "tmax": args_snap.get("tmax"),
@@ -505,6 +508,7 @@ def _make_analysis_payload(args_snap, deriv_snap, subject, group):
         ),
         "analysis_subject_dir": str(deriv_snap["analysis_subject_dir"]),
         "derivatives_root": str(deriv_snap.get("derivatives_root", "")),
+        "clean_work_dir": bool(args_snap.get("clean_work_dir", False)),
     }
 
 
@@ -1303,6 +1307,75 @@ def _build_analysis_report(args, derivatives_info, subject):
     print(f"Analysis report written to: {out_path}")
 
 
+def _find_preproc_outputs(payload, suffix=".fif"):
+    """Preprocessing outputs (``_desc-preproc*_epo<suffix>``) for one iteration.
+
+    ``suffix=".json"`` finds the sidecars instead of the epochs; those are
+    written with every output and survive ``--no-keep-epochs``, so they are
+    what ``--skip-existing`` keys on.
+    """
+    expected_dir = Path(payload["output_dir"])
+    subject = payload["subject"]
+    task_label = payload["task_label"]
+    candidates = sorted(expected_dir.glob(
+        f"sub-{subject}_*task-{task_label}_*desc-preproc*_epo{suffix}"
+    ))
+    if payload["kind"] == "per_run":
+        run_label = payload["run_label"]
+        if run_label is not None:
+            candidates = [c for c in candidates if f"run-{run_label}" in c.name]
+    else:  # concat
+        candidates = [c for c in candidates if "_run-" not in c.name]
+    return candidates
+
+
+def _preproc_done(payload):
+    """True when this preprocessing iteration's outputs already exist."""
+    return bool(_find_preproc_outputs(payload, suffix=".json"))
+
+
+def _analysis_done(payload):
+    """True when this (task, run) group's combined evoked sidecar exists."""
+    base_stem = Path(payload["preproc_files"][0]).stem.partition("_desc-preproc")[0]
+    return (Path(payload["analysis_subject_dir"]) / f"{base_stem}_desc-evoked.json").exists()
+
+
+def _analysis_outputs_complete(analysis_subject_dir):
+    """True when any combined-evoked sidecar exists in the subject's analysis dir."""
+    return any(Path(analysis_subject_dir).glob("*_desc-evoked.json"))
+
+
+def _select_pending(payloads, done_fn, skip_existing, label):
+    """Drop already-complete iterations when ``--skip-existing`` is set."""
+    if not skip_existing:
+        return payloads
+    pending = [p for p in payloads if not done_fn(p)]
+    print(
+        f"--skip-existing: {len(payloads) - len(pending)}/{len(payloads)} "
+        f"{label} iteration(s) already complete"
+    )
+    return pending
+
+
+def _remove_workflow_files(work_dir, workflow_name):
+    """Delete a finished iteration's nipype node directories, keeping ``*.log``.
+
+    nipype writes ``<work_dir>/<workflow name>/<node>/...``; the worker log
+    lives directly in ``work_dir`` and is not touched.
+    """
+    shutil.rmtree(Path(work_dir) / workflow_name, ignore_errors=True)
+
+
+def _remove_epoch_files(preproc_subject_dir):
+    """Delete ``*_epo.fif`` files (sidecars stay); returns (count, bytes freed)."""
+    count, freed = 0, 0
+    for path in Path(preproc_subject_dir).glob("*_epo.fif"):
+        freed += path.stat().st_size
+        path.unlink()
+        count += 1
+    return count, freed
+
+
 def _check_preproc_output_or_raise(payload):
     """Confirm at least one preprocessing output landed on disk.
 
@@ -1321,16 +1394,11 @@ def _check_preproc_output_or_raise(payload):
     expected_dir = Path(payload["output_dir"])
     subject = payload["subject"]
     task_label = payload["task_label"]
-    candidates = sorted(expected_dir.glob(
-        f"sub-{subject}_*task-{task_label}_*desc-preproc*_epo.fif"
-    ))
+    candidates = _find_preproc_outputs(payload)
     if payload["kind"] == "per_run":
         run_label = payload["run_label"]
-        if run_label is not None:
-            candidates = [c for c in candidates if f"run-{run_label}" in c.name]
         marker = f"run-{run_label}" if run_label is not None else "single"
     else:  # concat
-        candidates = [c for c in candidates if "_run-" not in c.name]
         marker = "concat"
     if not candidates:
         raise FileNotFoundError(
@@ -1357,6 +1425,8 @@ def _preproc_iteration(payload):
     wf = _build_preproc_workflow(payload)
     wf.run(plugin="Linear")
     outs = _check_preproc_output_or_raise(payload)
+    if payload.get("clean_work_dir"):
+        _remove_workflow_files(work_dir, wf.name)
     return IterationResult(
         identifier=payload["identifier"],
         output_files=[str(p) for p in outs],
@@ -1381,6 +1451,8 @@ def _concat_iteration(payload):
     wf = _build_preproc_workflow(payload)
     wf.run(plugin="Linear")
     outs = _check_preproc_output_or_raise(payload)
+    if payload.get("clean_work_dir"):
+        _remove_workflow_files(work_dir, wf.name)
     return IterationResult(
         identifier=payload["identifier"],
         output_files=[str(p) for p in outs],
@@ -1444,6 +1516,8 @@ def _analysis_iteration(payload):
     # derivatives root and constructs the per-subject path internally.
     analysis_wf.inputs.inputnode.derivatives_root = payload["derivatives_root"]
     analysis_wf.run(plugin="Linear")
+    if payload.get("clean_work_dir"):
+        _remove_workflow_files(work_dir, analysis_wf.name)
 
     # Propagate provenance from each per-condition source file's sidecar
     # into the corresponding analysis-output sidecars. The first file
@@ -1944,6 +2018,40 @@ def get_parser():
         ),
     )
     parser.add_argument(
+        "--skip-existing",
+        dest="skip_existing",
+        action="store_true",
+        default=False,
+        help=(
+            "Skip (task, run) iterations whose outputs already exist (matched "
+            "on the JSON sidecars, so this still works after --no-keep-epochs). "
+            "Makes an interrupted run resumable by re-issuing the same command."
+        ),
+    )
+    parser.add_argument(
+        "--clean-work-dir",
+        dest="clean_work_dir",
+        action="store_true",
+        default=False,
+        help=(
+            "Delete each iteration's nipype working files once it succeeds "
+            "(they can be several GB per subject); worker logs are kept. "
+            "Work dirs of failed iterations are left in place for debugging."
+        ),
+    )
+    parser.add_argument(
+        "--keep-epochs",
+        dest="keep_epochs",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "Keep the large preprocessed *_epo.fif files after the analysis "
+            "stage. --no-keep-epochs deletes them (JSON sidecars stay) once "
+            "analysis and its report are done; ignored with --stage "
+            "preprocessing because analysis still needs them."
+        ),
+    )
+    parser.add_argument(
         "--n_procs", type=int, default=1,
         help=(
             "Number of parallel (task, run) workers per subject. "
@@ -2323,10 +2431,14 @@ def run_ffrprep():
                     )
                     for task_label in tasks
                 ]
-                _dispatch(_concat_iteration, payloads,
-                          n_procs=args.n_procs, kind_label="concat")
-                if not args.no_report:
-                    _build_preproc_report(args, derivatives_info, subject)
+                payloads = _select_pending(
+                    payloads, _preproc_done, args.skip_existing, "preprocessing",
+                )
+                if payloads:
+                    _dispatch(_concat_iteration, payloads,
+                              n_procs=args.n_procs, kind_label="concat")
+                    if not args.no_report:
+                        _build_preproc_report(args, derivatives_info, subject)
             else:
                 # One worker per (task, run) — fully independent iterations.
                 payloads = [
@@ -2338,10 +2450,14 @@ def run_ffrprep():
                     for task_label in tasks
                     for run in runs
                 ]
-                _dispatch(_preproc_iteration, payloads,
-                          n_procs=args.n_procs, kind_label="preproc")
-                if not args.no_report:
-                    _build_preproc_report(args, derivatives_info, subject)
+                payloads = _select_pending(
+                    payloads, _preproc_done, args.skip_existing, "preprocessing",
+                )
+                if payloads:
+                    _dispatch(_preproc_iteration, payloads,
+                              n_procs=args.n_procs, kind_label="preproc")
+                    if not args.no_report:
+                        _build_preproc_report(args, derivatives_info, subject)
 
         if args.stage in ["analysis", "both"]:
             print("\n" + "=" * 60)
@@ -2355,6 +2471,14 @@ def run_ffrprep():
             preproc_subject_dir = Path(derivatives_info["preprocessing_subject_dir"])
             groups = _collect_analysis_groups(preproc_subject_dir)
 
+            if not groups and args.skip_existing and _analysis_outputs_complete(
+                derivatives_info["analysis_subject_dir"]
+            ):
+                print(
+                    "--skip-existing: analysis outputs already complete "
+                    "(preprocessed epochs were removed); nothing to do"
+                )
+                continue
             if not groups:
                 print(f"ERROR: No preprocessing outputs found for subject {subject}.")
                 print(f"Expected location: {preproc_subject_dir}")
@@ -2371,11 +2495,30 @@ def run_ffrprep():
                 _make_analysis_payload(args_snap, deriv_snap, subject, g)
                 for g in groups
             ]
-            _dispatch(_analysis_iteration, payloads,
-                      n_procs=args.n_procs, kind_label="analysis")
-            print(f"Analysis completed. Outputs saved to: {derivatives_info['analysis_subject_dir']}")
-            if not args.no_report:
-                _build_analysis_report(args, derivatives_info, subject)
+            payloads = _select_pending(
+                payloads, _analysis_done, args.skip_existing, "analysis",
+            )
+            if payloads:
+                _dispatch(_analysis_iteration, payloads,
+                          n_procs=args.n_procs, kind_label="analysis")
+                print(f"Analysis completed. Outputs saved to: {derivatives_info['analysis_subject_dir']}")
+                if not args.no_report:
+                    _build_analysis_report(args, derivatives_info, subject)
+
+        if not args.keep_epochs:
+            if args.stage in ("analysis", "both"):
+                n_removed, freed = _remove_epoch_files(
+                    derivatives_info["preprocessing_subject_dir"],
+                )
+                print(
+                    f"--no-keep-epochs: removed {n_removed} epochs file(s) "
+                    f"({freed / 1e6:.0f} MB); JSON sidecars kept"
+                )
+            else:
+                print(
+                    "Warning: --no-keep-epochs is ignored with --stage "
+                    "preprocessing (the analysis stage still needs the epochs)."
+                )
 
     print("\n" + "=" * 60)
     print("ffrprep processing completed successfully!")
