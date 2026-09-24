@@ -154,3 +154,63 @@ def test_xcorr_normalized_peak_matches_corr_stim_to_resp():
     peak_r, peak_lag = corr_stim_to_resp(stim, resp, sfreq)
     assert peak_r == expected_peak_r
     assert peak_lag == expected_peak_lag
+
+
+def _pairwise_pearson_reference(data):
+    """The original O(n**2) scipy.stats.pearsonr loop, kept as the oracle."""
+    from scipy.stats import pearsonr
+
+    r_vals = []
+    for i in range(data.shape[0]):
+        for j in range(i + 1, data.shape[0]):
+            r_vals.append(pearsonr(data[i], data[j])[0])
+    return np.array(r_vals)
+
+
+def _make_epochs(n_epochs, n_channels=1, n_times=200, seed=0, sfreq=1000.0):
+    rng = np.random.default_rng(seed)
+    shared = np.sin(2 * np.pi * 100.0 * np.arange(n_times) / sfreq)
+    data = shared + rng.normal(scale=2.0, size=(n_epochs, n_channels, n_times))
+    info = mne.create_info(
+        ch_names=[f"E{i}" for i in range(n_channels)], sfreq=sfreq, ch_types="eeg",
+    )
+    return mne.EpochsArray(data * 1e-6, info, tmin=0.0, verbose="ERROR")
+
+
+@pytest.mark.parametrize("n_channels", [1, 3])
+def test_response_consistency_matches_pairwise_pearson_loop(n_channels):
+    """Vectorized np.corrcoef must reproduce the pairwise pearsonr loop."""
+    from ffrprep.analysis import response_consistency
+
+    epochs = _make_epochs(n_epochs=15, n_channels=n_channels, seed=3)
+    mean_r, r_vals = response_consistency(epochs)
+
+    data = epochs.get_data(picks="eeg")
+    data = data.mean(axis=1) if data.shape[1] > 1 else data[:, 0, :]
+    expected = _pairwise_pearson_reference(data)
+
+    assert r_vals.shape == (15 * 14 // 2,)
+    np.testing.assert_allclose(r_vals, expected, rtol=0, atol=1e-10)
+    assert mean_r == pytest.approx(expected.mean(), abs=1e-10)
+
+
+def test_response_consistency_honors_time_window():
+    from ffrprep.analysis import response_consistency
+
+    epochs = _make_epochs(n_epochs=8, seed=5)
+    full_mean, _ = response_consistency(epochs)
+    cropped_mean, r_vals = response_consistency(epochs, tmin=0.05, tmax=0.15)
+
+    data = epochs.copy().crop(tmin=0.05, tmax=0.15).get_data(picks="eeg")[:, 0, :]
+    np.testing.assert_allclose(r_vals, _pairwise_pearson_reference(data), atol=1e-10)
+    assert cropped_mean != pytest.approx(full_mean)
+
+
+def test_response_consistency_single_epoch_returns_nan_and_empty():
+    from ffrprep.analysis import response_consistency
+
+    epochs = _make_epochs(n_epochs=1)
+    with pytest.warns(RuntimeWarning):
+        mean_r, r_vals = response_consistency(epochs)
+    assert r_vals.size == 0
+    assert np.isnan(mean_r)

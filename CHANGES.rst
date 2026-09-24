@@ -74,6 +74,9 @@ Analysis
     plotting.
   - ``response_consistency``: mean pairwise Pearson correlation
     across epochs.
+    Computed with a single ``np.corrcoef`` matrix instead of a
+    Python loop of ``scipy.stats.pearsonr`` calls (same values and
+    pair ordering; ~0.3 s vs ~9 min for 3000 epochs x 4147 samples).
   - ``compute_fft``: amplitude spectrum helper.
 
 - Analysis worker granularity changed from per-file to
