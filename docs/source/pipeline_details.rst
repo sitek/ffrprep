@@ -130,8 +130,8 @@ Preprocessing Workflow Nodes
    - Log filter parameters and transition bands
 
 *Default Parameters:*
-   - **High-pass:** 1.0 Hz (removes slow drifts, preserves FFR frequencies)
-   - **Low-pass:** 40.0 Hz (removes EMG and high-frequency noise)
+   - **High-pass:** 70.0 Hz (removes slow drifts and low-frequency noise, preserves FFR frequencies)
+   - **Low-pass:** 1000.0 Hz (preserves FFR harmonics while removing high-frequency noise)
    - **Filter design:** Zero-phase FIR with automatic transition bandwidth
 
 *Outputs:* Filtered EEG data

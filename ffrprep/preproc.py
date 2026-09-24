@@ -647,9 +647,9 @@ def filter_data(eeg_data=None, high_pass=None, low_pass=None):
 
     Examples
     --------
-    Filter an EEG data object with a band-pass filter (1-40 Hz).
+    Filter an EEG data object with a band-pass filter (70-1000 Hz).
 
-    >>> filtered_data = filter_data(eeg_data, high_pass=1.0, low_pass=40.0)
+    >>> filtered_data = filter_data(eeg_data, high_pass=70.0, low_pass=1000.0)
 
     Filter an EEG data object with a high-pass filter (0.1 Hz).
 
