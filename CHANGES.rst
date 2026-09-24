@@ -63,6 +63,18 @@ Group-level analysis
   - Deliberately aggregation-only, not inferential: no group-level
     statistics are computed, matching the scope other BIDS Apps
     (e.g. MRIQC) use for their own "group" level.
+- Group-level FFR metrics (opt-in): ``--f0`` adds ``rms_snr_polarity_sum``,
+  ``f0_uv`` and ``upper_harmonics_uv`` (band-averaged FFT amplitude at the
+  harmonics of F0, computed on the sum of the two per-trial-type
+  averages; see ``--n-harmonics``, ``--harmonic-bin-hz``,
+  ``--harmonic-window``); ``--stimulus`` adds ``stim2resp_r/z/lag_ms``
+  (and ``stim2resp_lim_*`` with ``--xcorr-lag-range``); ``--n-trials-presented``
+  adds ``usable_pct``. ``discover_group_inputs`` now also returns the
+  per-trial-type evoked files (``"by_type"``).
+- The group metrics TSV joins subject-level covariates from
+  ``<bids_dir>/participants.tsv`` and ``--covariates`` (``merge_covariates``);
+  the report section switches to per-metric histograms for cohorts above
+  40 subjects (the per-subject values stay in the TSV).
 - ``ffrprep.reports`` gains ``build_group_report`` and
   ``build_metrics_table_section``; ``build_subject_report`` /
   ``build_analysis_report`` pass new ``entity_label`` / ``meta_label``

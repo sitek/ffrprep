@@ -265,6 +265,24 @@ recomputed from each subject's saved evoked/epochs), and a single
 ``--task`` restrict which subjects/tasks are aggregated, same as at
 the participant level.
 
+Optional metrics for FFR studies are switched on with flags. With
+``--f0`` the metrics table gains ``f0_uv`` and ``upper_harmonics_uv`` (FFT
+amplitude, in microvolts, averaged in a 60 Hz band around each harmonic of
+the stimulus F0 over 60-180 ms) and ``rms_snr_polarity_sum``, all computed
+on the **sum** of the two per-trial-type averages. With ``--stimulus`` (a
+WAV file) it also gains ``stim2resp_r`` / ``stim2resp_z`` /
+``stim2resp_lag_ms``, the maximum stimulus-to-response cross-correlation
+(``xcorr`` "coeff" normalization, Fisher z). ``participants.tsv`` from the
+BIDS directory (plus any ``--covariates`` TSVs) is joined onto the saved
+table so downstream statistics have group, age, etc. alongside the metrics:
+
+.. code-block:: bash
+
+    ffrprep /data /data/derivatives group \
+      --f0 100 --n-harmonics 10 --harmonic-window 0.06 0.18 \
+      --stimulus /path/to/da.wav --xcorr-stim-window 0.05 0.17 \
+      --xcorr-resp-window 0.06 0.18 --n-trials-presented 6000
+
 This step only aggregates outputs participant-level ffrprep has
 already computed — it does not perform any group-level statistics
 (no hypothesis tests, no GLM). Downstream statistical analysis is

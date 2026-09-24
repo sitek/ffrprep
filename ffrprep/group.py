@@ -20,7 +20,15 @@ import mne
 import pandas as pd
 
 import ffrprep.reports as reports
-from ffrprep.analysis import compute_power, response_consistency, rms_snr
+from ffrprep.analysis import (
+    compute_power,
+    harmonic_amplitudes,
+    load_wav_mono,
+    resample_signal,
+    response_consistency,
+    rms_snr,
+    stim_to_resp_xcorr,
+)
 
 # Matches combined/diff evoked filenames written by
 # preproc.save_analysis_outputs(), e.g.
@@ -34,6 +42,7 @@ _EVOKED_RE = re.compile(
     r"_desc-(?P<desc>[A-Za-z0-9]+)\.fif$"
 )
 _DIFF_DESC_RE = re.compile(r"^evokedDiff([A-Za-z0-9]+)Vs([A-Za-z0-9]+)$")
+_PER_TYPE_DESC_RE = re.compile(r"^evoked(?P<label>[A-Za-z0-9]+)$")
 
 # Matches preprocessing epochs filenames written by
 # preproc.save_preprocessing_outputs(), e.g.
@@ -67,13 +76,16 @@ def discover_group_inputs(derivatives_root, participant_label=None, task=None):
     Returns
     -------
     inputs : dict
-        Dictionary with keys ``"evoked"``, ``"diff"``, and
-        ``"epochs"``. ``"evoked"`` and ``"epochs"`` map a
+        Dictionary with keys ``"evoked"``, ``"diff"``, ``"by_type"``
+        and ``"epochs"``. ``"evoked"`` and ``"epochs"`` map a
         ``(task, session, run)`` tuple to ``{subject: Path}``
         (``{subject: [Path, ...]}`` for ``"epochs"``); ``"diff"``
         maps a ``(task, session, run, condition_a, condition_b)``
-        tuple to ``{subject: Path}``. ``session`` and ``run`` are
-        None when not present in a filename.
+        tuple to ``{subject: Path}``; ``"by_type"`` maps a
+        ``(task, session, run)`` tuple to
+        ``{subject: {condition_label: Path}}`` for the per-trial-type
+        evoked files. ``session`` and ``run`` are None when not present
+        in a filename.
     """
     derivatives_root = Path(derivatives_root)
     analysis_dir = derivatives_root / "ffrprep-analysis"
@@ -81,6 +93,7 @@ def discover_group_inputs(derivatives_root, participant_label=None, task=None):
 
     evoked = defaultdict(dict)
     diff = defaultdict(dict)
+    by_type = defaultdict(lambda: defaultdict(dict))
     for path in sorted(analysis_dir.glob("sub-*/*.fif")):
         match = _EVOKED_RE.match(path.name)
         if not match:
@@ -101,6 +114,10 @@ def discover_group_inputs(derivatives_root, participant_label=None, task=None):
         if diff_match:
             a, b = diff_match.groups()
             diff[key + (a, b)][subject] = path
+            continue
+        type_match = _PER_TYPE_DESC_RE.match(desc)
+        if type_match:
+            by_type[key][subject][type_match.group("label")] = path
 
     epochs = defaultdict(lambda: defaultdict(list))
     for path in sorted(preproc_dir.glob("sub-*/eeg/*.fif")):
@@ -120,6 +137,10 @@ def discover_group_inputs(derivatives_root, participant_label=None, task=None):
     return {
         "evoked": dict(evoked),
         "diff": dict(diff),
+        "by_type": {
+            key: {subject: dict(conds) for subject, conds in subjects.items()}
+            for key, subjects in by_type.items()
+        },
         "epochs": {key: dict(value) for key, value in epochs.items()},
     }
 
@@ -164,7 +185,49 @@ def compute_grand_average(evoked_paths):
     return grand_average, subjects
 
 
-def compute_subject_metrics(evoked_paths, epochs_paths=None, response_window=(0.100, 0.200)):
+def _load_polarity_sum(cond_paths):
+    """Sum of a subject's two per-trial-type Evokeds (or None).
+
+    FFR analyses that suppress the cochlear microphonic / stimulus
+    artifact add the responses to the two stimulus polarities (a **sum**
+    of the per-polarity averages, not a trial-weighted mean). Returns
+    None unless exactly two per-type files are available.
+    """
+    if not cond_paths or len(cond_paths) != 2:
+        return None
+    first, second = (_read_evoked_with_baseline(cond_paths[c]) for c in sorted(cond_paths))
+    summed = mne.combine_evoked([first, second], weights=[1, 1])
+    summed.baseline = first.baseline
+    return summed
+
+
+def _window(array, sfreq, tmin, tmax):
+    """Nearest-sample, inclusive ``tmin``-``tmax`` slice of a signal that starts at t=0."""
+    return array[int(round(tmin * sfreq)): int(round(tmax * sfreq)) + 1]
+
+
+def _stim_to_resp_columns(summed, stim, spec, prefix="stim2resp"):
+    """r / z / lag columns for one stimulus-to-response window definition."""
+    sfreq = float(summed.info["sfreq"])
+    stim_tmin, stim_tmax = spec["stim_window"]
+    resp_tmin, resp_tmax = spec["resp_window"]
+    stim_seg = _window(stim, sfreq, stim_tmin, stim_tmax)
+    resp_seg = summed.copy().crop(tmin=resp_tmin, tmax=resp_tmax).data[0]
+    r, z, lag_ms = stim_to_resp_xcorr(
+        stim_seg, resp_seg, sfreq, lag_range_ms=spec.get("lag_range_ms"),
+    )
+    return {f"{prefix}_r": r, f"{prefix}_z": z, f"{prefix}_lag_ms": lag_ms}
+
+
+def compute_subject_metrics(
+    evoked_paths,
+    epochs_paths=None,
+    response_window=(0.100, 0.200),
+    by_type_paths=None,
+    harmonics=None,
+    stimulus=None,
+    n_trials_presented=None,
+):
     """
     Compute per-subject scalar FFR metrics from saved derivatives.
 
@@ -174,6 +237,10 @@ def compute_subject_metrics(evoked_paths, epochs_paths=None, response_window=(0.
     consistency from the saved preprocessing Epochs when available.
     Nothing here is computed from raw data; this only aggregates
     already-computed participant-level derivatives.
+
+    Optionally (``harmonics`` / ``stimulus``) it also derives spectral and
+    stimulus-following measures from the **sum of the two per-trial-type
+    (polarity) averages**, the response commonly analyzed in FFR studies.
 
     Parameters
     ----------
@@ -187,27 +254,49 @@ def compute_subject_metrics(evoked_paths, epochs_paths=None, response_window=(0.
     response_window : tuple of (float, float)
         Response window for RMS SNR / band power, matching the
         participant-level ``--response-window`` default.
+    by_type_paths : dict[str, dict[str, pathlib.Path]], optional
+        ``{subject: {condition_label: per-type Evoked path}}``. Required
+        for the polarity-sum measures; a subject needs exactly two
+        conditions, otherwise those columns are NaN.
+    harmonics : dict, optional
+        Keyword arguments for :func:`ffrprep.analysis.harmonic_amplitudes`
+        (``f0``, ``n_harmonics``, ``bin_hz``, ``tmin``, ``tmax``). Adds
+        ``rms_snr_polarity_sum``, ``f0_uv`` and ``upper_harmonics_uv``.
+    stimulus : dict, optional
+        ``{"path": wav, "stim_window": (t0, t1), "resp_window": (t0, t1)}``
+        plus optionally ``"lag_range_ms": (lo, hi)`` and
+        ``"lag_resp_window": (t0, t1)``. Adds ``stim2resp_r``,
+        ``stim2resp_z``, ``stim2resp_lag_ms`` (and ``stim2resp_lim_*`` when
+        a lag range is given). The stimulus is resampled to the EEG rate.
+    n_trials_presented : int, optional
+        Trials presented per recording; when given, ``usable_pct`` =
+        100 * kept trials / presented is added.
 
     Returns
     -------
     metrics : pandas.DataFrame
         One row per subject with columns ``subject``, ``n_avg``,
-        ``rms_snr``, ``band_power_90_110hz``, ``response_consistency``.
+        ``rms_snr``, ``band_power_90_110hz``, ``response_consistency`` and
+        the optional columns described above.
     """
     epochs_paths = epochs_paths or {}
+    by_type_paths = by_type_paths or {}
     resp_lower, resp_upper = response_window
+    use_sum = harmonics is not None or stimulus is not None
+    stim_cache = {}
     rows = []
     for subject in sorted(evoked_paths):
         evoked = _read_evoked_with_baseline(evoked_paths[subject])
-        row = {
-            "subject": subject,
-            "n_avg": int(evoked.nave),
+        row = {"subject": subject, "n_avg": int(evoked.nave)}
+        if n_trials_presented:
+            row["usable_pct"] = 100.0 * int(evoked.nave) / float(n_trials_presented)
+        row.update({
             "rms_snr": None,
             "band_power_90_110hz": compute_power(
                 evoked, f_low=90, f_high=110, t_low=resp_lower, t_high=resp_upper,
             ),
             "response_consistency": None,
-        }
+        })
         if evoked.baseline is not None:
             row["rms_snr"] = rms_snr(evoked, response_lower=resp_lower, response_upper=resp_upper)
 
@@ -224,8 +313,92 @@ def compute_subject_metrics(evoked_paths, epochs_paths=None, response_window=(0.
         if consistencies:
             row["response_consistency"] = sum(consistencies) / len(consistencies)
 
+        if use_sum:
+            summed = _load_polarity_sum(by_type_paths.get(subject))
+            if summed is None:
+                print(
+                    f"Warning: sub-{subject} does not have exactly two per-trial-type "
+                    "evoked files; polarity-sum metrics are left empty."
+                )
+            row.update(_polarity_sum_metrics(
+                summed, harmonics, stimulus, response_window, stim_cache,
+            ))
+
         rows.append(row)
     return pd.DataFrame(rows)
+
+
+def _polarity_sum_metrics(summed, harmonics, stimulus, response_window, stim_cache):
+    """Columns derived from the polarity-summed response (NaN when unavailable)."""
+    nan = float("nan")
+    columns = {"rms_snr_polarity_sum": nan}
+    if harmonics is not None:
+        columns.update({"f0_uv": nan, "upper_harmonics_uv": nan})
+    if stimulus is not None:
+        columns.update({"stim2resp_r": nan, "stim2resp_z": nan, "stim2resp_lag_ms": nan})
+        if stimulus.get("lag_range_ms") is not None:
+            columns.update({
+                "stim2resp_lim_r": nan, "stim2resp_lim_z": nan, "stim2resp_lim_lag_ms": nan,
+            })
+    if summed is None:
+        return columns
+
+    if summed.baseline is not None:
+        columns["rms_snr_polarity_sum"] = rms_snr(
+            summed, response_lower=response_window[0], response_upper=response_window[1],
+        )
+    if harmonics is not None:
+        result = harmonic_amplitudes(summed, **harmonics)
+        columns["f0_uv"] = result["f0"]
+        columns["upper_harmonics_uv"] = result["upper_harmonics"]
+    if stimulus is not None:
+        sfreq = float(summed.info["sfreq"])
+        if sfreq not in stim_cache:
+            wav, wav_sfreq = load_wav_mono(stimulus["path"])
+            stim_cache[sfreq] = resample_signal(wav, wav_sfreq, sfreq)
+        stim = stim_cache[sfreq]
+        columns.update(_stim_to_resp_columns(summed, stim, stimulus))
+        if stimulus.get("lag_range_ms") is not None:
+            lim_spec = {
+                "stim_window": stimulus["stim_window"],
+                "resp_window": stimulus.get("lag_resp_window", stimulus["resp_window"]),
+                "lag_range_ms": stimulus["lag_range_ms"],
+            }
+            columns.update(_stim_to_resp_columns(summed, stim, lim_spec, prefix="stim2resp_lim"))
+    return columns
+
+
+def merge_covariates(metrics, covariate_paths):
+    """Left-join subject-level covariate TSVs onto a metrics table.
+
+    Each TSV needs a ``participant_id`` column (``sub-<label>``, as in a
+    BIDS ``participants.tsv`` or ``phenotype/*.tsv``). Columns already
+    present in ``metrics`` are not overwritten. Missing files are skipped
+    with a warning.
+
+    Returns
+    -------
+    pandas.DataFrame
+        ``metrics`` with the covariate columns appended.
+    """
+    merged = metrics.copy()
+    key = "sub-" + merged["subject"].astype(str)
+    for path in covariate_paths or []:
+        path = Path(path)
+        if not path.exists():
+            print(f"Warning: covariate file not found, skipping: {path}")
+            continue
+        table = pd.read_csv(path, sep="\t", dtype={"participant_id": str})
+        if "participant_id" not in table.columns:
+            print(f"Warning: {path} has no 'participant_id' column, skipping.")
+            continue
+        new_columns = [c for c in table.columns if c != "participant_id" and c not in merged.columns]
+        if not new_columns:
+            continue
+        lookup = table.drop_duplicates("participant_id").set_index("participant_id")[new_columns]
+        for column in new_columns:
+            merged[column] = key.map(lookup[column])
+    return merged
 
 
 def _sort_key(key):
@@ -321,6 +494,59 @@ def _write_group_dataset_description(group_dir):
         json.dump(dataset_desc, f, indent=2)
 
 
+def _metric_options_from_args(args):
+    """Translate group-level CLI args into ``compute_subject_metrics`` options.
+
+    Every attribute is read with ``getattr`` so callers that build a bare
+    namespace (tests, scripts) keep working; unset options leave the
+    corresponding metrics off.
+    """
+    harmonics = None
+    f0 = getattr(args, "f0", None)
+    if f0:
+        tmin, tmax = getattr(args, "harmonic_window", None) or (0.060, 0.180)
+        harmonics = {
+            "f0": float(f0),
+            "n_harmonics": int(getattr(args, "n_harmonics", None) or 10),
+            "bin_hz": float(getattr(args, "harmonic_bin_hz", None) or 60.0),
+            "tmin": float(tmin),
+            "tmax": float(tmax),
+        }
+
+    stimulus = None
+    stimulus_path = getattr(args, "stimulus", None)
+    if stimulus_path:
+        stimulus = {
+            "path": Path(stimulus_path),
+            "stim_window": tuple(getattr(args, "xcorr_stim_window", None) or (0.050, 0.170)),
+            "resp_window": tuple(getattr(args, "xcorr_resp_window", None) or (0.060, 0.180)),
+        }
+        lag_range = getattr(args, "xcorr_lag_range", None)
+        if lag_range:
+            stimulus["lag_range_ms"] = tuple(lag_range)
+            lag_resp_window = getattr(args, "xcorr_lag_resp_window", None)
+            if lag_resp_window:
+                stimulus["lag_resp_window"] = tuple(lag_resp_window)
+
+    return {
+        "harmonics": harmonics,
+        "stimulus": stimulus,
+        "n_trials_presented": getattr(args, "n_trials_presented", None),
+    }
+
+
+def _covariate_paths_from_args(args):
+    """``participants.tsv`` (if present next to bids_dir) plus ``--covariates``."""
+    paths = []
+    bids_dir = getattr(args, "bids_dir", None)
+    if bids_dir:
+        participants = Path(bids_dir) / "participants.tsv"
+        if participants.exists():
+            paths.append(participants)
+    paths.extend(Path(p) for p in (getattr(args, "covariates", None) or []))
+    return paths
+
+
 def run_group_level(args):
     """
     Run the group-level aggregation step (BIDS-App ``analysis_level=group``).
@@ -333,12 +559,19 @@ def run_group_level(args):
     returns the list of output paths written.
 
     This step only aggregates outputs participant-level ffrprep has
-    already computed; it does not run any group-level statistics.
+    already computed; it does not run any group-level statistics. When
+    ``args.f0`` / ``args.stimulus`` are set, the metrics table also gets
+    harmonic-amplitude and stimulus-to-response columns computed from the
+    sum of the per-trial-type averages, and subject-level covariates from
+    ``<bids_dir>/participants.tsv`` and ``args.covariates`` are joined onto
+    the saved TSV (never used for inference here).
     """
     output_dir = Path(args.output_dir)
     response_window = tuple(getattr(args, "response_window", None) or (0.100, 0.200))
     participant_label = getattr(args, "participant_label", None)
     task_filter = getattr(args, "task", None)
+    metric_options = _metric_options_from_args(args)
+    covariate_paths = _covariate_paths_from_args(args)
 
     inputs = discover_group_inputs(output_dir, participant_label=participant_label, task=task_filter)
 
@@ -363,8 +596,13 @@ def run_group_level(args):
         written.append(evoked_path)
 
         epochs_paths = inputs["epochs"].get((task, session, run), {})
-        metrics = compute_subject_metrics(evoked_paths, epochs_paths, response_window=response_window)
-        metrics_path = save_group_metrics(output_dir, task, session, run, metrics)
+        metrics = compute_subject_metrics(
+            evoked_paths, epochs_paths, response_window=response_window,
+            by_type_paths=inputs["by_type"].get((task, session, run), {}),
+            **metric_options,
+        )
+        metrics_with_covariates = merge_covariates(metrics, covariate_paths)
+        metrics_path = save_group_metrics(output_dir, task, session, run, metrics_with_covariates)
         written.append(metrics_path)
 
         sections = [

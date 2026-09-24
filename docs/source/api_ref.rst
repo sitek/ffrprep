@@ -112,6 +112,7 @@ Reference API
    discover_group_inputs
    compute_grand_average
    compute_subject_metrics
+   merge_covariates
    save_group_outputs
    save_group_metrics
    run_group_level

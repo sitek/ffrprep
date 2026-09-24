@@ -425,6 +425,41 @@ def test_workflow_inputs_carry_filter_method_and_reject_mode(tmp_path):
         assert inputs.reject_mode == "abs"
 
 
+def test_group_level_option_defaults_leave_extra_metrics_off():
+    args = get_parser().parse_args(["/b", "/o", "group"])
+    assert args.f0 is None
+    assert args.stimulus is None
+    assert args.n_harmonics == 10
+    assert args.harmonic_bin_hz == 60.0
+    assert args.harmonic_window == [0.06, 0.18]
+    assert args.xcorr_stim_window == [0.05, 0.17]
+    assert args.xcorr_resp_window == [0.06, 0.18]
+    assert args.xcorr_lag_range is None
+    assert args.n_trials_presented is None
+    assert args.covariates is None
+
+
+def test_group_level_options_parse_and_reach_group_module():
+    from ffrprep.group import _covariate_paths_from_args, _metric_options_from_args
+
+    args = get_parser().parse_args([
+        "/bids", "/out", "group",
+        "--f0", "100", "--harmonic-window", "0.06", "0.18", "--n-harmonics", "8",
+        "--stimulus", "/stim/da.wav", "--xcorr-lag-range", "6.9", "10.9",
+        "--xcorr-lag-resp-window", "0.05", "0.2", "--n-trials-presented", "6000",
+        "--covariates", "/pheno/a.tsv", "/pheno/b.tsv",
+    ])
+    options = _metric_options_from_args(args)
+    assert options["harmonics"] == {
+        "f0": 100.0, "n_harmonics": 8, "bin_hz": 60.0, "tmin": 0.06, "tmax": 0.18,
+    }
+    assert options["stimulus"]["path"] == Path("/stim/da.wav")
+    assert options["stimulus"]["lag_range_ms"] == (6.9, 10.9)
+    assert options["stimulus"]["lag_resp_window"] == (0.05, 0.2)
+    assert options["n_trials_presented"] == 6000
+    assert _covariate_paths_from_args(args) == [Path("/pheno/a.tsv"), Path("/pheno/b.tsv")]
+
+
 def test_no_report_flag_defaults_off_and_can_be_enabled():
     parser = get_parser()
     base = ["/path/to/bids", "/path/to/output", "participant"]

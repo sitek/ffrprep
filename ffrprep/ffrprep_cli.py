@@ -1807,6 +1807,125 @@ def get_parser():
         default=[0.100, 0.200],
     )
 
+    # Group-level options
+    group_group = parser.add_argument_group(
+        "Group-level options",
+        "Used with the 'group' analysis level. They add optional columns to "
+        "the group metrics table; nothing here performs statistical inference.",
+    )
+    group_group.add_argument(
+        "--f0",
+        type=float,
+        default=None,
+        help=(
+            "Stimulus fundamental frequency in Hz. When set, the group metrics "
+            "table gains rms_snr_polarity_sum, f0_uv and upper_harmonics_uv "
+            "(band-averaged FFT amplitude at each harmonic, in microvolts) "
+            "computed on the SUM of the two per-trial-type averages."
+        ),
+    )
+    group_group.add_argument(
+        "--n-harmonics",
+        dest="n_harmonics",
+        type=int,
+        default=10,
+        help="Number of harmonics (including the fundamental) for --f0.",
+    )
+    group_group.add_argument(
+        "--harmonic-bin-hz",
+        dest="harmonic_bin_hz",
+        type=float,
+        default=60.0,
+        help="Full width in Hz of the band averaged around each harmonic.",
+    )
+    group_group.add_argument(
+        "--harmonic-window",
+        dest="harmonic_window",
+        nargs=2,
+        type=float,
+        metavar=("START", "END"),
+        default=[0.060, 0.180],
+        help="Response window in seconds for the harmonic FFT.",
+    )
+    group_group.add_argument(
+        "--stimulus",
+        type=Path,
+        default=None,
+        help=(
+            "WAV file of the stimulus (t=0 at stimulus onset). When set, the "
+            "group metrics table gains stim2resp_r / stim2resp_z / "
+            "stim2resp_lag_ms: the maximum stimulus-to-response "
+            "cross-correlation ('coeff' normalization, Fisher z) on the "
+            "polarity-summed response. The stimulus is resampled to the EEG "
+            "sampling rate."
+        ),
+    )
+    group_group.add_argument(
+        "--xcorr-stim-window",
+        dest="xcorr_stim_window",
+        nargs=2,
+        type=float,
+        metavar=("START", "END"),
+        default=[0.050, 0.170],
+        help="Stimulus segment in seconds for --stimulus.",
+    )
+    group_group.add_argument(
+        "--xcorr-resp-window",
+        dest="xcorr_resp_window",
+        nargs=2,
+        type=float,
+        metavar=("START", "END"),
+        default=[0.060, 0.180],
+        help="Response segment in seconds for --stimulus.",
+    )
+    group_group.add_argument(
+        "--xcorr-lag-range",
+        dest="xcorr_lag_range",
+        nargs=2,
+        type=float,
+        metavar=("MIN_MS", "MAX_MS"),
+        default=None,
+        help=(
+            "Additionally report the maximum correlation restricted to this "
+            "lag window in ms (columns stim2resp_lim_*). Positive lag = "
+            "response delayed relative to the stimulus, with both segments "
+            "aligned at their start."
+        ),
+    )
+    group_group.add_argument(
+        "--xcorr-lag-resp-window",
+        dest="xcorr_lag_resp_window",
+        nargs=2,
+        type=float,
+        metavar=("START", "END"),
+        default=None,
+        help=(
+            "Response segment in seconds for the lag-restricted correlation "
+            "(defaults to --xcorr-resp-window)."
+        ),
+    )
+    group_group.add_argument(
+        "--n-trials-presented",
+        dest="n_trials_presented",
+        type=int,
+        default=None,
+        help=(
+            "Trials presented per recording; adds usable_pct (kept trials / "
+            "presented) to the group metrics table."
+        ),
+    )
+    group_group.add_argument(
+        "--covariates",
+        nargs="+",
+        type=Path,
+        default=None,
+        help=(
+            "Extra subject-level TSV files (with a participant_id column) to "
+            "join onto the group metrics table, in addition to "
+            "<bids_dir>/participants.tsv."
+        ),
+    )
+
     # General options
     parser.add_argument(
         "--skip_bids_validation",
