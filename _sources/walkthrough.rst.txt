@@ -108,8 +108,8 @@ Now let's run the preprocessing stage on our example data:
         /data/bids_dataset/derivatives \
         participant \
         --stage preprocessing \
-        --high_pass 1.0 \
-        --low_pass 40.0 \
+        --high_pass 70.0 \
+        --low_pass 1000.0 \
         --ref_channels average \
         --baseline "-0.2,0" \
         --tmin -0.2 \
@@ -130,8 +130,8 @@ Now let's run the preprocessing stage on our example data:
         /data/bids_dataset/derivatives \
         participant \
         --stage preprocessing \
-        --high_pass 1.0 \
-        --low_pass 40.0 \
+        --high_pass 70.0 \
+        --low_pass 1000.0 \
         --ref_channels average \
         --baseline "-0.2,0" \
         --tmin -0.2 \
@@ -140,7 +140,7 @@ Now let's run the preprocessing stage on our example data:
 The preprocessing stage will:
 
 - Load raw EEG data from the BIDS dataset
-- Apply high-pass (1.0 Hz) and low-pass (40.0 Hz) filters
+- Apply high-pass (70.0 Hz) and low-pass (1000.0 Hz) filters
 - Re-reference to average reference
 - Extract epochs from -200ms to 600ms around events
 - Apply baseline correction from -200ms to 0ms
@@ -399,8 +399,8 @@ For convenience, here's how to run both preprocessing and analysis in one comman
         /data/bids_dataset/derivatives \
         participant \
         --stage both \
-        --high_pass 1.0 \
-        --low_pass 40.0 \
+        --high_pass 70.0 \
+        --low_pass 1000.0 \
         --ref_channels average \
         --n_procs 2
 
@@ -415,8 +415,8 @@ For convenience, here's how to run both preprocessing and analysis in one comman
         /data/bids_dataset/derivatives \
         participant \
         --stage both \
-        --high_pass 1.0 \
-        --low_pass 40.0 \
+        --high_pass 70.0 \
+        --low_pass 1000.0 \
         --ref_channels average \
         --n_procs 2
 
