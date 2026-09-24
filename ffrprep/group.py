@@ -181,8 +181,44 @@ def compute_grand_average(evoked_paths):
     """
     subjects = sorted(evoked_paths)
     evokeds = [_read_evoked_with_baseline(evoked_paths[subject]) for subject in subjects]
+    _harmonize_channel_names(evokeds, subjects)
     grand_average = mne.grand_average(evokeds)
     return grand_average, subjects
+
+
+def _harmonize_channel_names(evokeds, subjects):
+    """Give single-channel Evokeds a common channel name (in place).
+
+    Multi-site FFR cohorts often record one channel that different sites
+    label differently (e.g. ``A32`` vs ``Cz``); ``mne.grand_average``
+    refuses to combine those. When every Evoked has exactly one channel
+    the name carries no information, so all are renamed to the most
+    common one. Differing names across multi-channel Evokeds cannot be
+    aligned automatically and raise a ``ValueError``.
+    """
+    names = [tuple(ev.ch_names) for ev in evokeds]
+    if len(set(names)) <= 1:
+        return
+    if all(len(n) == 1 for n in names):
+        counts = {}
+        for (name,) in names:
+            counts[name] = counts.get(name, 0) + 1
+        target = max(sorted(counts), key=counts.get)
+        print(
+            f"Note: single-channel evokeds use different channel names {sorted(counts)}; "
+            f"treating them as the same channel and renaming to '{target}'."
+        )
+        for ev in evokeds:
+            if ev.ch_names[0] != target:
+                ev.rename_channels({ev.ch_names[0]: target})
+        return
+    first = names[0]
+    for subject, name in zip(subjects, names):
+        if name != first:
+            raise ValueError(
+                f"sub-{subject} has channels {list(name)} but sub-{subjects[0]} has "
+                f"{list(first)}; grand averaging needs identical channel sets."
+            )
 
 
 def _load_polarity_sum(cond_paths):

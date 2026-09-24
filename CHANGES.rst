@@ -71,6 +71,9 @@ Group-level analysis
   (and ``stim2resp_lim_*`` with ``--xcorr-lag-range``); ``--n-trials-presented``
   adds ``usable_pct``. ``discover_group_inputs`` now also returns the
   per-trial-type evoked files (``"by_type"``).
+- ``compute_grand_average`` renames single-channel evokeds that carry different
+  channel names across sites (e.g. ``A32`` vs ``Cz``) to a common name before
+  averaging; mismatched multi-channel sets raise a clear ``ValueError``.
 - The group metrics TSV joins subject-level covariates from
   ``<bids_dir>/participants.tsv`` and ``--covariates`` (``merge_covariates``);
   the report section switches to per-metric histograms for cohorts above

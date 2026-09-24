@@ -509,3 +509,35 @@ def test_metrics_section_uses_histograms_for_large_cohorts():
         "Per-subject metrics"
     )
     assert "f0 uv" in build_metrics_table_section(big, section_id="a", title="t")["summary"]
+
+
+def test_compute_grand_average_harmonizes_single_channel_names(tmp_path, capsys):
+    """Sites often name the one recorded channel differently (A32 vs Cz)."""
+    paths = {}
+    for subject, ch_name in (("01", "A32"), ("02", "A32"), ("03", "Cz")):
+        info = mne.create_info([ch_name], 1000.0, ch_types=["eeg"])
+        data = np.random.default_rng(int(subject)).normal(0, 1e-6, (1, 300))
+        evoked = mne.EvokedArray(data, info, tmin=-0.04, nave=10, verbose=False)
+        evoked.baseline = (-0.04, 0.0)
+        path = tmp_path / f"sub-{subject}_ave.fif"
+        evoked.save(path, overwrite=True)
+        paths[subject] = path
+
+    grand_average, subjects = compute_grand_average(paths)
+
+    assert subjects == ["01", "02", "03"]
+    assert grand_average.ch_names == ["A32"]  # most common name wins
+    assert "different channel names" in capsys.readouterr().out
+
+
+def test_compute_grand_average_rejects_mismatched_multichannel_names(tmp_path):
+    paths = {}
+    for subject, names in (("01", ["Cz", "Pz"]), ("02", ["Cz", "Fz"])):
+        info = mne.create_info(names, 1000.0, ch_types=["eeg"] * 2)
+        evoked = mne.EvokedArray(np.zeros((2, 100)), info, tmin=0.0, nave=5, verbose=False)
+        path = tmp_path / f"sub-{subject}_ave.fif"
+        evoked.save(path, overwrite=True)
+        paths[subject] = path
+
+    with pytest.raises(ValueError, match="identical channel sets"):
+        compute_grand_average(paths)
