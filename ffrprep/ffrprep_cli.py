@@ -16,6 +16,7 @@ from ffrprep.preproc import (
     get_sessions_tasks_runs,
     setup_derivatives_directories,
 )
+from ffrprep.group import run_group_level
 import ffrprep.reports as reports
 from importlib.metadata import version as _pkg_version
 import re
@@ -1991,9 +1992,11 @@ def run_ffrprep():
         print("Making sure the input data is BIDS compliant " "(warnings can be ignored in most cases).")
         validate_input_dir(exec_env, args.bids_dir, args.participant_label)
 
-    # Only run participant-level analysis for now
-    if args.analysis_level != "participant":
-        print("Currently only participant-level analysis is supported.")
+    # Group-level analysis aggregates already-computed participant-level
+    # derivatives from args.output_dir; it does not touch args.bids_dir
+    # or re-run any preprocessing/analysis.
+    if args.analysis_level == "group":
+        run_group_level(args)
         return
 
     # Parse processing parameters

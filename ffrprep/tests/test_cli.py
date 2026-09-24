@@ -498,22 +498,21 @@ def test_run_ffrprep_no_participants(mock_get_participants, mock_parser):
 
 
 @patch("ffrprep.ffrprep_cli.get_parser")
-def test_run_ffrprep_group_level_not_supported(mock_parser):
-    """Group level analysis returns early with a helpful message."""
+@patch("ffrprep.ffrprep_cli.run_group_level")
+def test_run_ffrprep_group_level_dispatches_to_run_group_level(mock_run_group_level, mock_parser):
+    """Group level analysis is delegated to ffrprep.group.run_group_level."""
     with tempfile.TemporaryDirectory() as tmp_dir:
         mock_args = MagicMock()
         mock_args.bids_dir = Path(tmp_dir) / "bids"
         mock_args.output_dir = Path(tmp_dir) / "output"
         mock_args.analysis_level = "group"
+        mock_args.skip_bids_validation = True
 
         mock_parser.return_value.parse_args.return_value = mock_args
 
-        with patch("builtins.print") as mock_print:
-            run_ffrprep()
+        run_ffrprep()
 
-        mock_print.assert_any_call(
-            "Currently only participant-level analysis is supported."
-        )
+        mock_run_group_level.assert_called_once_with(mock_args)
 
 
 @patch("ffrprep.ffrprep_cli.get_parser")

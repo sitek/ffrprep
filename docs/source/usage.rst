@@ -239,6 +239,39 @@ To keep the split on but restrict it to a subset of trial types
       --n_procs 4
 
 
+Example 5 - Group-level aggregation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Once participant-level ffrprep has been run for two or more subjects
+into the same ``output_dir``, running the ``group`` analysis level
+against that same ``output_dir`` aggregates their derivatives — it
+does not read ``bids_dir`` or re-run any preprocessing/analysis.
+
+.. code-block:: bash
+
+    docker run --rm \
+      -v /local/bids_dataset:/data:rw \
+      ksitek/ffrprep:latest \
+      /data \
+      /data/derivatives \
+      group
+
+For each (task, session, run) with at least two contributing
+subjects, this writes a grand-average evoked response, a per-subject
+scalar-metrics table (RMS SNR, band power, response consistency,
+recomputed from each subject's saved evoked/epochs), and a single
+``group_report.html``, all under
+``/data/derivatives/ffrprep-group/``. ``--participant_label`` and
+``--task`` restrict which subjects/tasks are aggregated, same as at
+the participant level.
+
+This step only aggregates outputs participant-level ffrprep has
+already computed — it does not perform any group-level statistics
+(no hypothesis tests, no GLM). Downstream statistical analysis is
+left to the user, using their tool of choice (e.g. MNE-Python
+directly on the saved grand-average/per-subject derivatives).
+
+
 .. _parallelization:
 
 Parallelization and cluster usage

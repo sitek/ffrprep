@@ -506,7 +506,7 @@
         <nav id="toc" aria-label="Table of contents">
             <div class="sidebar-header">
                 <p class="brand">ffrprep</p>
-                <p class="subject-id">sub-{{ subject }}</p>
+                <p class="subject-id">{{ entity_label }}</p>
             </div>
             <h2>Contents</h2>
             <ul>
@@ -524,7 +524,7 @@
         <main>
             <header class="report-header">
                 <h1>{{ title }}</h1>
-                <p class="report-meta">Subject: sub-{{ subject }}</p>
+                <p class="report-meta">{{ meta_label }}</p>
             </header>
 
             {% if overview %}
