@@ -1784,6 +1784,17 @@ def get_parser():
         help=("Assume the input dataset is BIDS compliant " "and skip the validation."),
     )
     parser.add_argument(
+        "--no-report",
+        dest="no_report",
+        action="store_true",
+        default=False,
+        help=(
+            "Skip HTML report generation (preprocessing and analysis). "
+            "Derivatives are still written. Useful for bulk runs over "
+            "many subjects, where report figures dominate runtime."
+        ),
+    )
+    parser.add_argument(
         "--n_procs", type=int, default=1,
         help=(
             "Number of parallel (task, run) workers per subject. "
@@ -2147,7 +2158,8 @@ def run_ffrprep():
                 ]
                 _dispatch(_concat_iteration, payloads,
                           n_procs=args.n_procs, kind_label="concat")
-                _build_preproc_report(args, derivatives_info, subject)
+                if not args.no_report:
+                    _build_preproc_report(args, derivatives_info, subject)
             else:
                 # One worker per (task, run) — fully independent iterations.
                 payloads = [
@@ -2161,7 +2173,8 @@ def run_ffrprep():
                 ]
                 _dispatch(_preproc_iteration, payloads,
                           n_procs=args.n_procs, kind_label="preproc")
-                _build_preproc_report(args, derivatives_info, subject)
+                if not args.no_report:
+                    _build_preproc_report(args, derivatives_info, subject)
 
         if args.stage in ["analysis", "both"]:
             print("\n" + "=" * 60)
@@ -2194,7 +2207,8 @@ def run_ffrprep():
             _dispatch(_analysis_iteration, payloads,
                       n_procs=args.n_procs, kind_label="analysis")
             print(f"Analysis completed. Outputs saved to: {derivatives_info['analysis_subject_dir']}")
-            _build_analysis_report(args, derivatives_info, subject)
+            if not args.no_report:
+                _build_analysis_report(args, derivatives_info, subject)
 
     print("\n" + "=" * 60)
     print("ffrprep processing completed successfully!")
