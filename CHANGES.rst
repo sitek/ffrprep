@@ -29,6 +29,10 @@ CLI
   peak-to-peak criterion. The preprocessing sidecar records
   ``RejectionMode`` (``peak-to-peak`` / ``absolute-amplitude``) next to
   ``RejectionThresholds``.
+- Fixed: ``--reject-eeg 0`` now disables automatic rejection as its help
+  text documents (``parse_reject``). It previously built a ``{"eeg": 0.0}``
+  threshold, which rejects every epoch. Negative thresholds are now an
+  argument error.
 - New flag ``--no-report``: skip HTML report generation (preprocessing
   and analysis) while still writing all derivatives. Intended for bulk
   runs over many subjects, where report figures dominate runtime.
@@ -98,6 +102,18 @@ Preprocessing
   ``-`` into the ``desc`` entity. Alphanumeric labels (``positive``,
   ``10``) are unchanged, and sidecars still record the raw trial-type
   name in ``Condition`` / ``DifferenceOf``.
+- Fixed: the preprocessing sidecar's ``Sources`` / ``RawSources`` now name the
+  raw recording that actually exists (EDF, BDF, BrainVision, EEGLAB or FIF,
+  including the session directory and every run of a concatenated output).
+  They were hard-coded to ``_eeg.bdf``; when no raw file is found the fields
+  are omitted instead of recording a path that does not exist.
+- Fixed: the preprocessing sidecar's ``EpochCountTotal`` / ``EpochCountRejected``
+  are now per trial type. They were derived from ``len(epochs.drop_log)``,
+  which spans every event (the other condition's trials and non-analysed
+  markers included), so a two-polarity recording reported ~2x the trials
+  and charged each rejected trial to every file. ``epoch_data`` now records
+  per-condition counts while the events array is still aligned with the
+  drop log; epochs built elsewhere fall back to the previous behaviour.
 - ``epoch_data`` accepts ``trial_types=`` to narrow the discovered
   event_id mapping to a subset; raises ``ValueError`` if a
   requested name is absent so typos surface immediately.

@@ -657,9 +657,9 @@ def filter_data(eeg_data=None, high_pass=None, low_pass=None, filter_method="fir
 
     Examples
     --------
-    Filter an EEG data object with a band-pass filter (1-40 Hz).
+    Filter an EEG data object with a band-pass filter (70-1000 Hz).
 
-    >>> filtered_data = filter_data(eeg_data, high_pass=1.0, low_pass=40.0)
+    >>> filtered_data = filter_data(eeg_data, high_pass=70.0, low_pass=1000.0)
 
     Filter an EEG data object with a high-pass filter (0.1 Hz).
 
@@ -993,6 +993,17 @@ def epoch_data(
         # Read back by _save_one_preproc_epochs for the JSON sidecar
         # (MNE's own ``reject`` attribute is None in this mode).
         epoched_data.ffrprep_reject_abs = abs_threshold
+
+    # Per-condition trial counts for the sidecar. Local import: this
+    # function runs as a Nipype Function node, where module globals are
+    # not available.
+    from ffrprep.preproc import _epoch_counts_by_condition
+
+    epoched_data.ffrprep_epoch_counts = (
+        _epoch_counts_by_condition(events, epoched_data, chosen_event_id)
+        if chosen_event_id
+        else None
+    )
 
     return epoched_data, (tmin, tmax)
 
@@ -1798,6 +1809,39 @@ def _build_preproc_filename(subject, session, task, run, condition=None):
     return "_".join(parts)
 
 
+def _epoch_counts_by_condition(events, epochs, event_id):
+    """Per-condition ``{"total", "rejected", "kept"}`` epoch counts.
+
+    Must be computed on the *parent* Epochs: ``epochs.drop_log`` has one
+    entry per row of the events array passed to ``mne.Epochs``, and rows
+    of other conditions (and events outside ``event_id``, e.g. markers)
+    appear as ``("IGNORED",)`` in every ``epochs[condition]`` subset, while
+    a dropped epoch keeps its reject reason in *all* subsets — so a subset
+    cannot say which condition a rejected trial belonged to. Here the
+    original events array is still row-aligned with the log. Returns
+    None when the alignment cannot be established.
+    """
+    import numpy as np
+
+    events = np.asarray(events)
+    drop_log = epochs.drop_log
+    if events.ndim != 2 or len(drop_log) != len(events):
+        return None
+    codes = events[:, 2]
+    counts = {}
+    for name, code in event_id.items():
+        rows = np.flatnonzero(codes == code)
+        rejected = sum(
+            1 for row in rows if drop_log[row] and tuple(drop_log[row]) != ("IGNORED",)
+        )
+        counts[str(name)] = {
+            "total": int(rows.size),
+            "rejected": int(rejected),
+            "kept": int(rows.size - rejected),
+        }
+    return counts
+
+
 def _write_preproc_dataset_description(preprocessing_dir):
     """Write ``dataset_description.json`` at the preprocessing root once."""
     import json as _json
@@ -1819,8 +1863,52 @@ def _write_preproc_dataset_description(preprocessing_dir):
         _json.dump(dataset_desc, f, indent=2)
 
 
+_RAW_EEG_SUFFIXES = (".edf", ".bdf", ".vhdr", ".set", ".fif")
+
+
+def _find_raw_sources(bids_root, subject, task, session=None, run=None):
+    """Dataset-relative paths of the raw EEG recording(s) behind an output.
+
+    Looks in ``sub-<subject>[/ses-<session>]/eeg`` for
+    ``<entities>_eeg`` with any supported extension (EDF, BDF,
+    BrainVision, EEGLAB, FIF). ``run`` may be a list for concatenated
+    runs, in which case one path per run is returned. Returns an empty
+    list when nothing matches, so callers omit provenance rather than
+    record a file that does not exist.
+    """
+    from pathlib import Path
+
+    if bids_root is None:
+        return []
+    root = Path(bids_root)
+    eeg_dir = root / f"sub-{subject}"
+    if session:
+        eeg_dir = eeg_dir / f"ses-{session}"
+    eeg_dir = eeg_dir / "eeg"
+    if not eeg_dir.is_dir():
+        return []
+
+    runs = list(run) if isinstance(run, (list, tuple)) else [run]
+    found = []
+    for run_label in runs:
+        parts = [f"sub-{subject}"]
+        if session:
+            parts.append(f"ses-{session}")
+        parts.append(f"task-{task}")
+        if run_label is not None:
+            parts.append(f"run-{run_label}")
+        stem = "_".join(parts) + "_eeg"
+        for suffix in _RAW_EEG_SUFFIXES:
+            candidate = eeg_dir / f"{stem}{suffix}"
+            if candidate.exists():
+                found.append(candidate.relative_to(root).as_posix())
+                break
+    return found
+
+
 def _save_one_preproc_epochs(
     epochs, output_path, subject, task, session, run, condition=None,
+    raw_sources=None,
 ):
     """Persist a single Epochs object + matching JSON sidecar.
 
@@ -1847,6 +1935,18 @@ def _save_one_preproc_epochs(
     n_total_epochs = len(epochs.drop_log)
     n_accepted = len(epochs)
     n_rejected_epochs = n_total_epochs - n_accepted
+    # ``epochs.drop_log`` covers every event (other conditions and markers
+    # included) and cannot attribute a rejected trial to a condition, so
+    # prefer the per-condition counts recorded by epoch_data.
+    recorded = getattr(epochs, "ffrprep_epoch_counts", None)
+    if recorded:
+        if condition is not None:
+            selected = [recorded[str(condition)]] if str(condition) in recorded else []
+        else:
+            selected = list(recorded.values())
+        if selected:
+            n_total_epochs = sum(c["total"] for c in selected)
+            n_rejected_epochs = sum(c["rejected"] for c in selected)
     reject_thresholds = getattr(epochs, "reject", None)
     baseline_window = getattr(epochs, "baseline", None)
 
@@ -1869,8 +1969,6 @@ def _save_one_preproc_epochs(
     )
     new_epochs.save(output_path, overwrite=True)
 
-    filename = output_path.name
-    raw_basename = filename.split("_desc-")[0] + "_eeg.bdf"
     sidecar = {
         "Description": "FFR preprocessed epochs (referenced, filtered, baseline-corrected).",
         "GeneratedBy": [
@@ -1879,8 +1977,6 @@ def _save_one_preproc_epochs(
                 "Description": "Frequency-following response preprocessing pipeline",
             }
         ],
-        "Sources": [f"bids:raw:sub-{subject}/eeg/{raw_basename}"],
-        "RawSources": [f"sub-{subject}/eeg/{raw_basename}"],
         "TaskName": task,
         "SamplingFrequency": float(info["sfreq"]),
         "EpochCount": int(len(new_epochs)),
@@ -1898,6 +1994,9 @@ def _save_one_preproc_epochs(
             ),
         },
     }
+    if raw_sources:
+        sidecar["Sources"] = [f"bids:raw:{path}" for path in raw_sources]
+        sidecar["RawSources"] = list(raw_sources)
     abs_reject = getattr(epochs, "ffrprep_reject_abs", None)
     if abs_reject is not None:
         sidecar["RejectionMode"] = "absolute-amplitude"
@@ -1959,6 +2058,7 @@ def save_preprocessing_outputs(epochs, bids_root, subject, task, session=None, r
     )
     subject_dir = derivatives_info["preprocessing_subject_dir"]
     _write_preproc_dataset_description(derivatives_info["preprocessing_dir"])
+    raw_sources = _find_raw_sources(bids_root, subject, task, session=session, run=run)
 
     if isinstance(epochs, dict):
         out_paths = []
@@ -1970,7 +2070,7 @@ def save_preprocessing_outputs(epochs, bids_root, subject, task, session=None, r
             _save_one_preproc_epochs(
                 epochs_obj, output_path,
                 subject, task, session, run,
-                condition=condition,
+                condition=condition, raw_sources=raw_sources,
             )
             out_paths.append(output_path)
         return out_paths
@@ -1979,6 +2079,7 @@ def save_preprocessing_outputs(epochs, bids_root, subject, task, session=None, r
     output_path = subject_dir / filename
     _save_one_preproc_epochs(
         epochs, output_path, subject, task, session, run,
+        raw_sources=raw_sources,
     )
     return output_path
 

@@ -13,6 +13,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from ffrprep.ffrprep_cli import (
+    parse_reject,
     _resolve_condition_labels,
     _restore_epochs_baseline,
     get_parser,
@@ -25,6 +26,30 @@ from ffrprep.ffrprep_cli import (
 # ---------------------------------------------------------------------------
 # Argument parser
 # ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize(
+    "reject_eeg, no_auto_reject, expected",
+    [
+        (75e-6, False, {"eeg": 75e-6}),
+        (0.0, False, None),          # documented: 0 disables rejection
+        (0, False, None),
+        (75e-6, True, None),         # --no-auto-reject wins
+        (None, False, None),
+        (35e-6, False, {"eeg": 35e-6}),
+    ],
+)
+def test_parse_reject(reject_eeg, no_auto_reject, expected):
+    assert parse_reject(reject_eeg, no_auto_reject) == expected
+
+
+def test_reject_eeg_zero_parses_and_negative_is_rejected():
+    parser = get_parser()
+    base = ["/b", "/o", "participant"]
+    assert parser.parse_args(base + ["--reject-eeg", "0"]).reject_eeg == 0.0
+    assert parser.parse_args(base).reject_eeg == 75e-6
+    with pytest.raises(SystemExit):
+        parser.parse_args(base + ["--reject-eeg", "-1e-6"])
+
 
 def test_parser_creation():
     parser = get_parser()
@@ -56,8 +81,8 @@ def test_optional_arguments_defaults():
     ])
     assert args.stage == "both"
     assert args.ref_channels is None
-    assert args.high_pass == 1.0
-    assert args.low_pass == 40.0
+    assert args.high_pass == 70.0
+    assert args.low_pass == 1000.0
     assert args.baseline == [-0.2, 0.0]
     assert args.tmin == -0.2
     assert args.tmax == 0.6
@@ -296,8 +321,8 @@ def test_run_ffrprep_both_stages(
         mock_args.participant_label = None
         mock_args.baseline = "-0.2,0"
         mock_args.ref_channels = "average"
-        mock_args.high_pass = 1.0
-        mock_args.low_pass = 40.0
+        mock_args.high_pass = 70.0
+        mock_args.low_pass = 1000.0
         mock_args.tmin = -0.2
         mock_args.tmax = 0.6
         mock_args.by_event_type = False
