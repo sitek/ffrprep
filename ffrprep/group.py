@@ -452,7 +452,7 @@ def add_qc_flags(metrics, min_usable_pct=None, min_snr=None):
     return flagged
 
 
-def merge_covariates(metrics, covariate_paths):
+def merge_covariates(metrics, covariate_paths, return_sources=False):
     """Left-join subject-level covariate TSVs onto a metrics table.
 
     Each TSV needs a ``participant_id`` column (``sub-<label>``, as in a
@@ -463,9 +463,12 @@ def merge_covariates(metrics, covariate_paths):
     Returns
     -------
     pandas.DataFrame
-        ``metrics`` with the covariate columns appended.
+        ``metrics`` with the covariate columns appended. With
+        ``return_sources=True`` a ``(table, sources)`` tuple, where
+        ``sources`` maps each appended column to the file it came from.
     """
     merged = metrics.copy()
+    sources = {}
     key = "sub-" + merged["subject"].astype(str)
     for path in covariate_paths or []:
         path = Path(path)
@@ -482,7 +485,144 @@ def merge_covariates(metrics, covariate_paths):
         lookup = table.drop_duplicates("participant_id").set_index("participant_id")[new_columns]
         for column in new_columns:
             merged[column] = key.map(lookup[column])
-    return merged
+            sources[column] = path
+    return (merged, sources) if return_sources else merged
+
+
+def _covariate_sidecar_entry(path, column):
+    """The ``column`` entry of the JSON sidecar next to a covariate TSV, or ``None``."""
+    sidecar = Path(path).with_suffix(".json")
+    if not sidecar.exists():
+        return None
+    try:
+        entry = json.loads(sidecar.read_text()).get(column)
+    except (OSError, ValueError):
+        return None
+    return entry if isinstance(entry, dict) else None
+
+
+def build_metrics_dictionary(
+    columns,
+    *,
+    response_window=(0.100, 0.200),
+    harmonics=None,
+    stimulus=None,
+    n_trials_presented=None,
+    min_usable_pct=None,
+    min_snr=None,
+    covariate_sources=None,
+):
+    """Build a BIDS-style data dictionary for the group metrics TSV.
+
+    Parameters
+    ----------
+    columns : sequence of str
+        Column names of the saved metrics table, in order.
+    response_window, harmonics, stimulus, n_trials_presented, min_usable_pct, min_snr
+        The options the metrics were computed with (as returned by
+        ``_metric_options_from_args``); descriptions embed the actual
+        windows and thresholds so the dictionary documents the run.
+    covariate_sources : dict, optional
+        ``{column: path}`` from ``merge_covariates(..., return_sources=True)``.
+        A covariate's description (and levels/units) is copied from the JSON
+        sidecar next to its TSV (``participants.json``, ``phenotype/*.json``)
+        when present.
+
+    Returns
+    -------
+    dict
+        ``{column: {"Description": ..., "Units": ...}}`` with one entry per
+        column, in the order of ``columns``. Unknown columns get a stub entry.
+    """
+    resp = f"{response_window[0] * 1e3:g}-{response_window[1] * 1e3:g} ms"
+    info = {
+        "subject": {"Description": "Participant label (without the 'sub-' prefix)"},
+        "n_avg": {"Description": "Number of trials averaged in the combined evoked (kept after rejection)",
+                  "Units": "trials"},
+        "usable_pct": {
+            "Description": f"100 * n_avg / {n_trials_presented} trials presented"
+            if n_trials_presented else "100 * n_avg / trials presented",
+            "Units": "%",
+        },
+        "rms_snr": {
+            "Description": f"RMS of the response window ({resp}) divided by RMS of the baseline, "
+                           "combined evoked response",
+            "Units": "ratio",
+        },
+        "band_power_90_110hz": {
+            "Description": f"Mean 90-110 Hz power in the response window ({resp}), combined evoked response",
+            "Units": "V^2",
+        },
+        "response_consistency": {
+            "Description": "Mean pairwise trial-to-trial correlation of the preprocessed epochs "
+                           "(averaged over runs; empty when a recording has fewer than 10 epochs)",
+            "Units": "r",
+        },
+        "rms_snr_polarity_sum": {
+            "Description": f"RMS of the response window ({resp}) divided by RMS of the baseline, "
+                           "sum of the two per-trial-type averages",
+            "Units": "ratio",
+        },
+        "qc_usable_pct_ok": {
+            "Description": f"usable_pct >= {min_usable_pct:g}" if min_usable_pct is not None
+            else "usable_pct passes the threshold",
+            "Levels": {"True": "passes", "False": "fails or missing"},
+        },
+        "qc_snr_ok": {
+            "Description": f"SNR (rms_snr_polarity_sum when present, else rms_snr) >= {min_snr:g}"
+            if min_snr is not None else "SNR passes the threshold",
+            "Levels": {"True": "passes", "False": "fails or missing"},
+        },
+        "qc_include": {
+            "Description": "All requested QC checks pass; subjects are flagged, never removed",
+            "Levels": {"True": "include", "False": "flagged"},
+        },
+        "qc_reason": {"Description": "Failed QC checks ('n/a' when none)"},
+    }
+    if harmonics:
+        window = f"{harmonics['tmin'] * 1e3:g}-{harmonics['tmax'] * 1e3:g} ms"
+        band = f"+/-{harmonics['bin_hz'] / 2:g} Hz"
+        info["f0_uv"] = {
+            "Description": f"Mean FFT amplitude (2|FFT|/L) within {band} of {harmonics['f0']:g} Hz, "
+                           f"{window}, sum of the two per-trial-type averages",
+            "Units": "uV",
+        }
+        info["upper_harmonics_uv"] = {
+            "Description": f"Sum over harmonics 2..{harmonics['n_harmonics']} of the mean FFT amplitude "
+                           f"within {band} of k*{harmonics['f0']:g} Hz, {window}, sum of the two "
+                           "per-trial-type averages",
+            "Units": "uV",
+        }
+    if stimulus:
+        stim_win = f"{stimulus['stim_window'][0] * 1e3:g}-{stimulus['stim_window'][1] * 1e3:g} ms"
+        resp_win = f"{stimulus['resp_window'][0] * 1e3:g}-{stimulus['resp_window'][1] * 1e3:g} ms"
+        base = (f"cross-correlation ('coeff' normalization) of the stimulus ({stim_win}) with the "
+                f"polarity-summed response ({resp_win})")
+        info["stim2resp_r"] = {"Description": f"Maximum {base} over all lags", "Units": "r"}
+        info["stim2resp_z"] = {"Description": "Fisher z transform (arctanh) of stim2resp_r", "Units": "z"}
+        info["stim2resp_lag_ms"] = {
+            "Description": "Lag of the maximum stimulus-to-response correlation "
+                           "(positive = response delayed)", "Units": "ms",
+        }
+        lag_range = stimulus.get("lag_range_ms")
+        if lag_range:
+            lim = f"restricted to lags of {lag_range[0]:g} to {lag_range[1]:g} ms"
+            info["stim2resp_lim_r"] = {"Description": f"Maximum {base}, {lim}", "Units": "r"}
+            info["stim2resp_lim_z"] = {"Description": "Fisher z transform of stim2resp_lim_r", "Units": "z"}
+            info["stim2resp_lim_lag_ms"] = {
+                "Description": f"Lag of the maximum lag-restricted correlation ({lim})", "Units": "ms",
+            }
+
+    dictionary = {}
+    for column in columns:
+        entry = info.get(column)
+        if entry is None and column in (covariate_sources or {}):
+            path = covariate_sources[column]
+            entry = _covariate_sidecar_entry(path, column) or {
+                "Description": f"Joined from {Path(path).name}",
+            }
+        dictionary[column] = entry or {"Description": "No description available"}
+    return dictionary
 
 
 def _sort_key(key):
@@ -550,8 +690,12 @@ def save_group_outputs(derivatives_root, task, session, run, grand_average, subj
     return evoked_path
 
 
-def save_group_metrics(derivatives_root, task, session, run, metrics):
-    """Save a per-subject metrics table to a group-level TSV file."""
+def save_group_metrics(derivatives_root, task, session, run, metrics, dictionary=None):
+    """Save a per-subject metrics table to a group-level TSV file.
+
+    When ``dictionary`` (see :func:`build_metrics_dictionary`) is given it
+    is written as ``<base>_metrics.json`` next to the TSV.
+    """
     derivatives_root = Path(derivatives_root)
     group_dir = derivatives_root / "ffrprep-group"
     group_dir.mkdir(parents=True, exist_ok=True)
@@ -560,6 +704,8 @@ def save_group_metrics(derivatives_root, task, session, run, metrics):
     base = _basename(task, session, run)
     metrics_path = group_dir / f"{base}_metrics.tsv"
     metrics.to_csv(metrics_path, sep="\t", index=False)
+    if dictionary is not None:
+        metrics_path.with_suffix(".json").write_text(json.dumps(dictionary, indent=2) + "\n")
     return metrics_path
 
 
@@ -700,9 +846,21 @@ def run_group_level(args):
             **metric_options,
         )
         metrics = add_qc_flags(metrics, min_usable_pct=min_usable_pct, min_snr=min_snr)
-        metrics_with_covariates = merge_covariates(metrics, covariate_paths)
-        metrics_path = save_group_metrics(output_dir, task, session, run, metrics_with_covariates)
-        written.append(metrics_path)
+        metrics_with_covariates, covariate_sources = merge_covariates(
+            metrics, covariate_paths, return_sources=True,
+        )
+        dictionary = build_metrics_dictionary(
+            metrics_with_covariates.columns,
+            response_window=response_window,
+            min_usable_pct=min_usable_pct,
+            min_snr=min_snr,
+            covariate_sources=covariate_sources,
+            **metric_options,
+        )
+        metrics_path = save_group_metrics(
+            output_dir, task, session, run, metrics_with_covariates, dictionary=dictionary,
+        )
+        written.extend([metrics_path, metrics_path.with_suffix(".json")])
 
         sections = [
             reports.build_evoked_section(

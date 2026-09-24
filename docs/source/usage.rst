@@ -291,6 +291,12 @@ downstream whether to filter on ``qc_include``. ``--min-usable-pct`` needs
 ``--n-trials-presented``; ``--min-snr`` uses ``rms_snr_polarity_sum`` when
 ``--f0`` is set and the combined-evoked ``rms_snr`` otherwise.
 
+Next to ``*_metrics.tsv`` the group step writes ``*_metrics.json``, a
+BIDS-style data dictionary with a description and units for every column. It
+records the windows, harmonic settings and QC thresholds the run used, and
+copies the descriptions of joined covariates from the ``.json`` next to their
+TSV (for example ``participants.json``) when there is one.
+
 This step only aggregates outputs participant-level ffrprep has
 already computed — it does not perform any group-level statistics
 (no hypothesis tests, no GLM). Downstream statistical analysis is

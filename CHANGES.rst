@@ -86,6 +86,14 @@ Group-level analysis
   ``qc_snr_ok``, ``qc_include`` and ``qc_reason`` columns (``add_qc_flags``).
   Subjects are flagged, never dropped: the table and the grand averages keep
   every subject, and the report summary shows how many were flagged.
+- The group metrics TSV now has a BIDS-style data dictionary,
+  ``task-<task>[_run-<run>]_metrics.json``, beside it (``build_metrics_dictionary``):
+  a description and units for every column, with the actual windows and
+  thresholds of the run embedded. Covariate columns take their description,
+  levels and units from the JSON sidecar next to the covariate TSV
+  (``participants.json``, ``phenotype/*.json``) when one exists.
+  ``merge_covariates`` gains ``return_sources`` and ``save_group_metrics``
+  a ``dictionary`` argument.
 - ``compute_grand_average`` renames single-channel evokeds that carry different
   channel names across sites (e.g. ``A32`` vs ``Cz``) to a common name before
   averaging; mismatched multi-channel sets raise a clear ``ValueError``.

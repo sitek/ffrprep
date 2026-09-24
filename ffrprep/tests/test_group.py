@@ -13,6 +13,7 @@ import pytest
 
 from ffrprep.group import (
     add_qc_flags,
+    build_metrics_dictionary,
     compute_grand_average,
     compute_subject_metrics,
     discover_group_inputs,
@@ -627,3 +628,127 @@ def test_run_group_level_min_usable_pct_without_trials_presented_is_an_error(tmp
     )
     with pytest.raises(ValueError, match="n-trials-presented"):
         run_group_level(args)
+
+
+# ---------------------------------------------------------------------------
+# metrics data dictionary
+# ---------------------------------------------------------------------------
+
+_HARMONICS = {"f0": 100.0, "n_harmonics": 10, "bin_hz": 60.0, "tmin": 0.06, "tmax": 0.18}
+_STIMULUS = {"path": "da.wav", "stim_window": (0.05, 0.17), "resp_window": (0.06, 0.18)}
+
+
+def test_metrics_dictionary_has_one_entry_per_column_in_order():
+    columns = ["subject", "n_avg", "usable_pct", "rms_snr", "band_power_90_110hz", "response_consistency",
+               "rms_snr_polarity_sum", "f0_uv", "upper_harmonics_uv", "stim2resp_r", "stim2resp_z",
+               "stim2resp_lag_ms", "qc_usable_pct_ok", "qc_include", "qc_reason", "mystery"]
+    dictionary = build_metrics_dictionary(
+        columns, response_window=(0.0, 0.213), harmonics=_HARMONICS, stimulus=_STIMULUS,
+        n_trials_presented=6000, min_usable_pct=60,
+    )
+    assert list(dictionary) == columns
+    assert all("Description" in entry for entry in dictionary.values())
+    assert dictionary["f0_uv"]["Units"] == "uV"
+    assert dictionary["usable_pct"]["Units"] == "%"
+    assert dictionary["stim2resp_lag_ms"]["Units"] == "ms"
+    assert dictionary["mystery"]["Description"] == "No description available"
+
+
+def test_metrics_dictionary_descriptions_embed_the_run_parameters():
+    dictionary = build_metrics_dictionary(
+        ["usable_pct", "rms_snr", "f0_uv", "upper_harmonics_uv", "stim2resp_r", "stim2resp_lim_r",
+         "qc_usable_pct_ok", "qc_snr_ok"],
+        response_window=(0.0, 0.213), harmonics=_HARMONICS,
+        stimulus={**_STIMULUS, "lag_range_ms": (6.9, 10.9)},
+        n_trials_presented=6000, min_usable_pct=60, min_snr=1.5,
+    )
+    assert "6000 trials presented" in dictionary["usable_pct"]["Description"]
+    assert "0-213 ms" in dictionary["rms_snr"]["Description"]
+    assert "+/-30 Hz of 100 Hz" in dictionary["f0_uv"]["Description"]
+    assert "60-180 ms" in dictionary["f0_uv"]["Description"]
+    assert "2..10" in dictionary["upper_harmonics_uv"]["Description"]
+    assert "50-170 ms" in dictionary["stim2resp_r"]["Description"]
+    assert "6.9 to 10.9 ms" in dictionary["stim2resp_lim_r"]["Description"]
+    assert dictionary["qc_usable_pct_ok"]["Description"] == "usable_pct >= 60"
+    assert dictionary["qc_snr_ok"]["Description"].endswith(">= 1.5")
+
+
+def test_metrics_dictionary_omits_optional_metrics_that_were_off():
+    dictionary = build_metrics_dictionary(["subject", "f0_uv"], response_window=(0.1, 0.2))
+    assert dictionary["f0_uv"]["Description"] == "No description available"
+
+
+def test_metrics_dictionary_copies_covariate_descriptions_from_sibling_json(tmp_path):
+    (tmp_path / "participants.tsv").write_text("participant_id\tgroup\tage\n")
+    (tmp_path / "participants.json").write_text(json.dumps({
+        "group": {"Description": "Musicianship group", "Levels": {"Mus": "musician"}},
+    }))
+    dictionary = build_metrics_dictionary(
+        ["group", "age"],
+        covariate_sources={"group": tmp_path / "participants.tsv", "age": tmp_path / "participants.tsv"},
+    )
+    assert dictionary["group"] == {"Description": "Musicianship group", "Levels": {"Mus": "musician"}}
+    assert dictionary["age"] == {"Description": "Joined from participants.tsv"}
+
+
+def test_merge_covariates_reports_the_source_file_of_each_new_column(tmp_path):
+    import pandas as pd
+
+    from ffrprep.group import merge_covariates
+
+    metrics = pd.DataFrame({"subject": ["01", "02"], "age": [1, 2]})
+    first = tmp_path / "participants.tsv"
+    first.write_text("participant_id\tage\tgroup\nsub-01\t9\tMus\nsub-02\t9\tNMus\n")
+    second = tmp_path / "pheno.tsv"
+    second.write_text("participant_id\tgroup\tdp\nsub-01\tX\t1.5\nsub-02\tX\t0.5\n")
+
+    merged, sources = merge_covariates(metrics, [first, second], return_sources=True)
+
+    assert sources == {"group": first, "dp": second}
+    assert list(merged.columns) == ["subject", "age", "group", "dp"]
+    assert merge_covariates(metrics, [first]).equals(merged[["subject", "age", "group"]])
+
+
+def test_save_group_metrics_writes_dictionary_beside_the_tsv(tmp_path):
+    import pandas as pd
+
+    metrics = pd.DataFrame({"subject": ["01"], "n_avg": [5]})
+    dictionary = {"subject": {"Description": "s"}, "n_avg": {"Description": "n", "Units": "trials"}}
+    path = save_group_metrics(tmp_path, "da", None, "01", metrics, dictionary=dictionary)
+
+    assert path.name == "task-da_run-01_metrics.tsv"
+    assert json.loads(path.with_suffix(".json").read_text()) == dictionary
+    plain = save_group_metrics(tmp_path / "other", "da", None, "01", metrics)
+    assert not plain.with_suffix(".json").exists()
+
+
+def test_run_group_level_writes_dictionary_covering_every_tsv_column(tmp_path):
+    import pandas as pd
+
+    bids_dir = tmp_path / "bids"
+    bids_dir.mkdir()
+    (bids_dir / "participants.tsv").write_text(
+        "participant_id\tgroup\nsub-01\tMus\nsub-02\tNMus\nsub-03\tVar\n"
+    )
+    (bids_dir / "participants.json").write_text(
+        json.dumps({"group": {"Description": "Musicianship group"}})
+    )
+    out = tmp_path / "out"
+    for i, subject in enumerate(["01", "02", "03"], start=1):
+        _write_da_subject(out, subject, amplitude_uv=float(i), seed=i)
+    stim_path = tmp_path / "stim.wav"
+    _write_stimulus_wav(stim_path)
+    args = SimpleNamespace(
+        output_dir=out, bids_dir=bids_dir, participant_label=None, task=None,
+        response_window=(0.0, 0.213), f0=100.0, stimulus=stim_path,
+        n_trials_presented=6000, min_usable_pct=60, min_snr=1.5,
+    )
+    written = run_group_level(args)
+
+    group_dir = out / "ffrprep-group"
+    table = pd.read_csv(group_dir / "task-da_run-01_metrics.tsv", sep="\t")
+    dictionary = json.loads((group_dir / "task-da_run-01_metrics.json").read_text())
+    assert list(dictionary) == list(table.columns)
+    assert dictionary["group"]["Description"] == "Musicianship group"
+    assert "No description available" not in {v["Description"] for v in dictionary.values()}
+    assert group_dir / "task-da_run-01_metrics.json" in written

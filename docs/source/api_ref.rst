@@ -113,6 +113,7 @@ Reference API
    compute_grand_average
    compute_subject_metrics
    add_qc_flags
+   build_metrics_dictionary
    merge_covariates
    save_group_outputs
    save_group_metrics
