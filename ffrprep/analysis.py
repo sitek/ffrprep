@@ -494,7 +494,6 @@ def plot_pitch_and_conf(results):
     ax_bot.grid(True)
 
     fig.tight_layout()
-    plt.show()
 
 
 def compute_phase_consistency(
