@@ -28,6 +28,13 @@ CLI
 Preprocessing
 -------------
 
+- Fixed: the preprocessing sidecar's ``EpochCountTotal`` / ``EpochCountRejected``
+  are now per trial type. They were derived from ``len(epochs.drop_log)``,
+  which spans every event (the other condition's trials and non-analysed
+  markers included), so a two-polarity recording reported ~2x the trials
+  and charged each rejected trial to every file. ``epoch_data`` now records
+  per-condition counts while the events array is still aligned with the
+  drop log; epochs built elsewhere fall back to the previous behaviour.
 - ``epoch_data`` accepts ``trial_types=`` to narrow the discovered
   event_id mapping to a subset; raises ``ValueError`` if a
   requested name is absent so typos surface immediately.

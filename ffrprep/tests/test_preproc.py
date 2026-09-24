@@ -590,6 +590,83 @@ def test_epoch_data_trial_types_unknown_raises(tmp_path):
         )
 
 
+def _raw_with_two_conditions_marker_and_one_spike(tmp_path):
+    """8 trials (4 'a' / 4 'b') + 1 marker; the first 'a' trial has a 45 uV spike."""
+    import numpy as np
+    import pandas as pd
+    from mne import create_info
+    from mne.io import RawArray
+
+    sfreq = 1000.0
+    rng = np.random.default_rng(2)
+    data = rng.normal(0, 0.5e-6, int(sfreq * 12))
+    data[int(1.0 * sfreq) + 50] += 45e-6
+    raw = RawArray(data[np.newaxis, :], create_info(["Cz"], sfreq, ["eeg"]), verbose=False)
+    events_path = tmp_path / "events.tsv"
+    pd.DataFrame({
+        "onset": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 10.0],
+        "duration": [0.0] * 9,
+        "trial_type": ["a", "b", "a", "b", "a", "b", "a", "b", "marker"],
+    }).to_csv(events_path, sep="\t", index=False)
+    return raw, events_path
+
+
+def _sidecar_counts(path):
+    with open(path.with_suffix(".json")) as f:
+        sidecar = json.load(f)
+    return (
+        sidecar["EpochCount"], sidecar["EpochCountRejected"], sidecar["EpochCountTotal"],
+    )
+
+
+def test_epoch_count_sidecar_is_per_condition_not_whole_recording(tmp_path):
+    """Regression: totals used len(drop_log), i.e. every event incl. other
+    conditions and markers, and a rejected trial was charged to all files."""
+    raw, events_path = _raw_with_two_conditions_marker_and_one_spike(tmp_path)
+    epochs, _ = epoch_data(
+        raw, baseline=[-0.05, 0.0], events_file=str(events_path),
+        tmin=-0.05, tmax=0.2, reject={"eeg": 30e-6}, trial_types=["a", "b"],
+        verbose=False,
+    )
+    bids_root = tmp_path / "bids"
+    bids_root.mkdir()
+    out_paths = save_preprocessing_outputs(
+        {cond: epochs[cond] for cond in epochs.event_id},
+        bids_root, subject="01", task="t", run="01",
+    )
+    by_name = {p.name: p for p in out_paths}
+
+    a_path = next(v for k, v in by_name.items() if "preprocA_" in k)
+    b_path = next(v for k, v in by_name.items() if "preprocB_" in k)
+    assert _sidecar_counts(a_path) == (3, 1, 4)   # kept, rejected, total
+    assert _sidecar_counts(b_path) == (4, 0, 4)   # the 'a' rejection is not charged to 'b'
+
+
+def test_epoch_count_sidecar_for_unsplit_output_ignores_markers(tmp_path):
+    raw, events_path = _raw_with_two_conditions_marker_and_one_spike(tmp_path)
+    epochs, _ = epoch_data(
+        raw, baseline=[-0.05, 0.0], events_file=str(events_path),
+        tmin=-0.05, tmax=0.2, reject={"eeg": 30e-6}, trial_types=["a", "b"],
+        verbose=False,
+    )
+    bids_root = tmp_path / "bids"
+    bids_root.mkdir()
+    out_path = save_preprocessing_outputs(
+        epochs, bids_root, subject="01", task="t", run="01",
+    )
+    assert _sidecar_counts(out_path) == (7, 1, 8)  # 9 events, minus the marker
+
+
+def test_epoch_count_sidecar_falls_back_without_recorded_counts(tmp_path):
+    """Epochs built outside epoch_data keep the previous drop_log-based counts."""
+    epochs_dict, bids_root = _two_condition_epochs_dict(tmp_path)
+    out_paths = save_preprocessing_outputs(
+        epochs_dict, bids_root, subject="01", task="active", run=1,
+    )
+    kept, rejected, total = _sidecar_counts(out_paths[0])
+    assert kept == 3 and total == kept + rejected
+
+
 def test_create_preprocessing_workflow(tmp_path):
     """Test the create_preprocessing_workflow function."""
     # Test that the workflow can be created without errors
