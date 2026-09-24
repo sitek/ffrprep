@@ -67,7 +67,9 @@ parallel workers per subject) with the published Docker image:
 Outputs land under
 ``/path/to/your/bids_dataset/derivatives/ffrprep-preprocessing/``
 and ``…/ffrprep-analysis/``, each carrying a
-``sub-XX_<stage>_report.html`` per subject. See
+``sub-XX_<stage>_report.html`` per subject. Running the ``group``
+analysis level on the same output directory afterwards writes a grand
+average and a per-subject metrics table to ``…/ffrprep-group/``. See
 :ref:`installation` for image pinning and a Singularity build, and
 :ref:`usage` for the full list of CLI flags plus worked examples
 (per-trial-type analysis, explicit difference pairs, cluster

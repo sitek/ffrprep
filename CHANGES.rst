@@ -86,6 +86,10 @@ Group-level analysis
   ``qc_snr_ok``, ``qc_include`` and ``qc_reason`` columns (``add_qc_flags``).
   Subjects are flagged, never dropped: the table and the grand averages keep
   every subject, and the report summary shows how many were flagged.
+- Docs: the pipeline details page now covers the group-level metrics, covariates,
+  QC flags and output files, the ``--skip-existing`` / ``--clean-work-dir`` /
+  ``--no-keep-epochs`` behaviour, and the ``RejectionMode`` and ``Sources``
+  sidecar fields.
 - The group metrics TSV now has a BIDS-style data dictionary,
   ``task-<task>[_run-<run>]_metrics.json``, beside it (``build_metrics_dictionary``):
   a description and units for every column, with the actual windows and
