@@ -28,6 +28,11 @@ CLI
 Preprocessing
 -------------
 
+- Fixed: the preprocessing sidecar's ``Sources`` / ``RawSources`` now name the
+  raw recording that actually exists (EDF, BDF, BrainVision, EEGLAB or FIF,
+  including the session directory and every run of a concatenated output).
+  They were hard-coded to ``_eeg.bdf``; when no raw file is found the fields
+  are omitted instead of recording a path that does not exist.
 - ``epoch_data`` accepts ``trial_types=`` to narrow the discovered
   event_id mapping to a subset; raises ``ValueError`` if a
   requested name is absent so typos surface immediately.
