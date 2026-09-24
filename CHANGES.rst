@@ -19,6 +19,10 @@ CLI
 - New flag ``--difference-pairs A:B [C:D …]`` to compute difference
   evokeds across explicit pairs. For 2-type datasets the difference
   is auto-emitted; for 3+ types this flag is required to opt in.
+- Fixed: ``--reject-eeg 0`` now disables automatic rejection as its help
+  text documents (``parse_reject``). It previously built a ``{"eeg": 0.0}``
+  threshold, which rejects every epoch. Negative thresholds are now an
+  argument error.
 - New flag ``--no-report``: skip HTML report generation (preprocessing
   and analysis) while still writing all derivatives. Intended for bulk
   runs over many subjects, where report figures dominate runtime.
@@ -39,6 +43,11 @@ Preprocessing
   ``-`` into the ``desc`` entity. Alphanumeric labels (``positive``,
   ``10``) are unchanged, and sidecars still record the raw trial-type
   name in ``Condition`` / ``DifferenceOf``.
+- Fixed: the preprocessing sidecar's ``Sources`` / ``RawSources`` now name the
+  raw recording that actually exists (EDF, BDF, BrainVision, EEGLAB or FIF,
+  including the session directory and every run of a concatenated output).
+  They were hard-coded to ``_eeg.bdf``; when no raw file is found the fields
+  are omitted instead of recording a path that does not exist.
 - Fixed: the preprocessing sidecar's ``EpochCountTotal`` / ``EpochCountRejected``
   are now per trial type. They were derived from ``len(epochs.drop_log)``,
   which spans every event (the other condition's trials and non-analysed
