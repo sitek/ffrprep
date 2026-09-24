@@ -3,7 +3,6 @@ from numpy import mean, sqrt, square
 import mne
 from statsmodels.tsa.stattools import acf as _sm_acf
 from scipy import signal
-from scipy.stats import pearsonr
 import matplotlib.pyplot as plt
 
 
@@ -1002,14 +1001,15 @@ def response_consistency(epochs, tmin=None, tmax=None, picks="eeg"):
     else:
         data = data[:, 0, :]
 
-    r_vals = []
-
-    for i in range(data.shape[0]):
-        for j in range(i + 1, data.shape[0]):
-            r, _ = pearsonr(data[i], data[j])
-            r_vals.append(r)
-
-    r_vals = np.array(r_vals)
+    n_epochs = data.shape[0]
+    if n_epochs < 2:
+        r_vals = np.array([])
+    else:
+        # One (n_epochs x n_epochs) correlation matrix instead of
+        # n_epochs**2 / 2 scipy.stats.pearsonr calls; the upper triangle
+        # is in the same row-major (i < j) order the pairwise loop used.
+        r_matrix = np.corrcoef(data)
+        r_vals = r_matrix[np.triu_indices(n_epochs, k=1)]
     mean_r = np.mean(r_vals)
 
     return mean_r, r_vals
