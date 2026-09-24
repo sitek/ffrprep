@@ -31,6 +31,11 @@ CLI
 Preprocessing
 -------------
 
+- Fixed: the preprocessing sidecar's ``Sources`` / ``RawSources`` now name the
+  raw recording that actually exists (EDF, BDF, BrainVision, EEGLAB or FIF,
+  including the session directory and every run of a concatenated output).
+  They were hard-coded to ``_eeg.bdf``; when no raw file is found the fields
+  are omitted instead of recording a path that does not exist.
 - Fixed: the preprocessing sidecar's ``EpochCountTotal`` / ``EpochCountRejected``
   are now per trial type. They were derived from ``len(epochs.drop_log)``,
   which spans every event (the other condition's trials and non-analysed

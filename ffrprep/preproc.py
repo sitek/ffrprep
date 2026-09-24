@@ -1763,8 +1763,52 @@ def _write_preproc_dataset_description(preprocessing_dir):
         _json.dump(dataset_desc, f, indent=2)
 
 
+_RAW_EEG_SUFFIXES = (".edf", ".bdf", ".vhdr", ".set", ".fif")
+
+
+def _find_raw_sources(bids_root, subject, task, session=None, run=None):
+    """Dataset-relative paths of the raw EEG recording(s) behind an output.
+
+    Looks in ``sub-<subject>[/ses-<session>]/eeg`` for
+    ``<entities>_eeg`` with any supported extension (EDF, BDF,
+    BrainVision, EEGLAB, FIF). ``run`` may be a list for concatenated
+    runs, in which case one path per run is returned. Returns an empty
+    list when nothing matches, so callers omit provenance rather than
+    record a file that does not exist.
+    """
+    from pathlib import Path
+
+    if bids_root is None:
+        return []
+    root = Path(bids_root)
+    eeg_dir = root / f"sub-{subject}"
+    if session:
+        eeg_dir = eeg_dir / f"ses-{session}"
+    eeg_dir = eeg_dir / "eeg"
+    if not eeg_dir.is_dir():
+        return []
+
+    runs = list(run) if isinstance(run, (list, tuple)) else [run]
+    found = []
+    for run_label in runs:
+        parts = [f"sub-{subject}"]
+        if session:
+            parts.append(f"ses-{session}")
+        parts.append(f"task-{task}")
+        if run_label is not None:
+            parts.append(f"run-{run_label}")
+        stem = "_".join(parts) + "_eeg"
+        for suffix in _RAW_EEG_SUFFIXES:
+            candidate = eeg_dir / f"{stem}{suffix}"
+            if candidate.exists():
+                found.append(candidate.relative_to(root).as_posix())
+                break
+    return found
+
+
 def _save_one_preproc_epochs(
     epochs, output_path, subject, task, session, run, condition=None,
+    raw_sources=None,
 ):
     """Persist a single Epochs object + matching JSON sidecar.
 
@@ -1825,8 +1869,6 @@ def _save_one_preproc_epochs(
     )
     new_epochs.save(output_path, overwrite=True)
 
-    filename = output_path.name
-    raw_basename = filename.split("_desc-")[0] + "_eeg.bdf"
     sidecar = {
         "Description": "FFR preprocessed epochs (referenced, filtered, baseline-corrected).",
         "GeneratedBy": [
@@ -1835,8 +1877,6 @@ def _save_one_preproc_epochs(
                 "Description": "Frequency-following response preprocessing pipeline",
             }
         ],
-        "Sources": [f"bids:raw:sub-{subject}/eeg/{raw_basename}"],
-        "RawSources": [f"sub-{subject}/eeg/{raw_basename}"],
         "TaskName": task,
         "SamplingFrequency": float(info["sfreq"]),
         "EpochCount": int(len(new_epochs)),
@@ -1854,6 +1894,9 @@ def _save_one_preproc_epochs(
             ),
         },
     }
+    if raw_sources:
+        sidecar["Sources"] = [f"bids:raw:{path}" for path in raw_sources]
+        sidecar["RawSources"] = list(raw_sources)
     if reject_thresholds:
         sidecar["RejectionThresholds"] = {
             k: float(v) for k, v in reject_thresholds.items()
@@ -1910,6 +1953,7 @@ def save_preprocessing_outputs(epochs, bids_root, subject, task, session=None, r
     )
     subject_dir = derivatives_info["preprocessing_subject_dir"]
     _write_preproc_dataset_description(derivatives_info["preprocessing_dir"])
+    raw_sources = _find_raw_sources(bids_root, subject, task, session=session, run=run)
 
     if isinstance(epochs, dict):
         out_paths = []
@@ -1921,7 +1965,7 @@ def save_preprocessing_outputs(epochs, bids_root, subject, task, session=None, r
             _save_one_preproc_epochs(
                 epochs_obj, output_path,
                 subject, task, session, run,
-                condition=condition,
+                condition=condition, raw_sources=raw_sources,
             )
             out_paths.append(output_path)
         return out_paths
@@ -1930,6 +1974,7 @@ def save_preprocessing_outputs(epochs, bids_root, subject, task, session=None, r
     output_path = subject_dir / filename
     _save_one_preproc_epochs(
         epochs, output_path, subject, task, session, run,
+        raw_sources=raw_sources,
     )
     return output_path
 

@@ -1228,6 +1228,66 @@ def _two_condition_epochs_dict(tmp_path):
     return {"Pos": epochs["Pos"], "Neg": epochs["Neg"]}, bids_root
 
 
+def _touch_raw(bids_root, relative):
+    path = bids_root / relative
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.touch()
+
+
+@pytest.mark.parametrize("suffix", [".edf", ".bdf", ".vhdr", ".set"])
+def test_sidecar_sources_use_the_real_raw_file_extension(tmp_path, suffix):
+    epochs_dict, bids_root = _two_condition_epochs_dict(tmp_path)
+    relative = f"sub-01/eeg/sub-01_task-active_run-1_eeg{suffix}"
+    _touch_raw(bids_root, relative)
+
+    out_paths = save_preprocessing_outputs(
+        epochs_dict, bids_root, subject="01", task="active", run=1,
+    )
+    for path in out_paths:
+        with open(path.with_suffix(".json")) as f:
+            sidecar = json.load(f)
+        assert sidecar["RawSources"] == [relative]
+        assert sidecar["Sources"] == [f"bids:raw:{relative}"]
+
+
+def test_sidecar_sources_include_the_session_directory(tmp_path):
+    epochs_dict, bids_root = _two_condition_epochs_dict(tmp_path)
+    relative = "sub-01/ses-a/eeg/sub-01_ses-a_task-active_run-1_eeg.edf"
+    _touch_raw(bids_root, relative)
+
+    out_paths = save_preprocessing_outputs(
+        epochs_dict, bids_root, subject="01", task="active", session="a", run=1,
+    )
+    with open(out_paths[0].with_suffix(".json")) as f:
+        assert json.load(f)["RawSources"] == [relative]
+
+
+def test_sidecar_sources_list_every_concatenated_run(tmp_path):
+    epochs_dict, bids_root = _two_condition_epochs_dict(tmp_path)
+    for run in ("1", "2"):
+        _touch_raw(bids_root, f"sub-01/eeg/sub-01_task-active_run-{run}_eeg.bdf")
+
+    out_paths = save_preprocessing_outputs(
+        epochs_dict, bids_root, subject="01", task="active", run=["1", "2"],
+    )
+    with open(out_paths[0].with_suffix(".json")) as f:
+        assert json.load(f)["RawSources"] == [
+            "sub-01/eeg/sub-01_task-active_run-1_eeg.bdf",
+            "sub-01/eeg/sub-01_task-active_run-2_eeg.bdf",
+        ]
+
+
+def test_sidecar_omits_sources_when_no_raw_file_is_found(tmp_path):
+    """Never record a raw path that does not exist (the old code assumed .bdf)."""
+    epochs_dict, bids_root = _two_condition_epochs_dict(tmp_path)
+    out_paths = save_preprocessing_outputs(
+        epochs_dict, bids_root, subject="01", task="active", run=1,
+    )
+    with open(out_paths[0].with_suffix(".json")) as f:
+        sidecar = json.load(f)
+    assert "Sources" not in sidecar and "RawSources" not in sidecar
+
+
 def test_save_preprocessing_outputs_dict_returns_list_of_paths(tmp_path):
     """Dict input → list of Paths, one per condition."""
     epochs_dict, bids_root = _two_condition_epochs_dict(tmp_path)
