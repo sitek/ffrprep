@@ -143,6 +143,17 @@ Analysis
     Python loop of ``scipy.stats.pearsonr`` calls (same values and
     pair ordering; ~0.3 s vs ~9 min for 3000 epochs x 4147 samples).
   - ``compute_fft``: amplitude spectrum helper.
+  - ``harmonic_amplitudes``: FFT amplitude (zero-padded, single-sided,
+    microvolts) of a response window, averaged in a ``bin_hz``-wide
+    band around each harmonic of ``f0``; returns the per-harmonic values,
+    the fundamental, and the summed upper harmonics. Defaults follow the
+    /da/ measure of Whiteford et al. (2025) (60-180 ms, 100 Hz, 10
+    harmonics, 60 Hz bins).
+  - ``stim_to_resp_xcorr``: maximum stimulus-to-response correlation in
+    MATLAB ``xcorr(..., 'coeff')`` form (no mean removal) with an
+    optional lag window, returning ``(r, Fisher z, lag_ms)``.
+  - ``load_wav_mono`` / ``resample_signal``: WAV reader and polyphase
+    resampler used to bring a stimulus to the EEG sampling rate.
 
 - Analysis worker granularity changed from per-file to
   per-(task, run) group. ``_collect_analysis_groups`` stitches
