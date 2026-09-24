@@ -81,8 +81,8 @@ def test_optional_arguments_defaults():
     ])
     assert args.stage == "both"
     assert args.ref_channels is None
-    assert args.high_pass == 1.0
-    assert args.low_pass == 40.0
+    assert args.high_pass == 70.0
+    assert args.low_pass == 1000.0
     assert args.baseline == [-0.2, 0.0]
     assert args.tmin == -0.2
     assert args.tmax == 0.6
@@ -321,8 +321,8 @@ def test_run_ffrprep_both_stages(
         mock_args.participant_label = None
         mock_args.baseline = "-0.2,0"
         mock_args.ref_channels = "average"
-        mock_args.high_pass = 1.0
-        mock_args.low_pass = 40.0
+        mock_args.high_pass = 70.0
+        mock_args.low_pass = 1000.0
         mock_args.tmin = -0.2
         mock_args.tmax = 0.6
         mock_args.by_event_type = False
@@ -346,6 +346,7 @@ def test_run_ffrprep_both_stages(
         mock_args.l_freq = None
         mock_args.h_freq = None
         mock_args.n_procs = 1
+        mock_args.no_report = False
 
         mock_parser.return_value.parse_args.return_value = mock_args
         mock_get_participants.return_value = ["01"]
@@ -394,6 +395,85 @@ def test_run_ffrprep_both_stages(
         mock_analysis_wf.assert_called_once()
         mock_preproc_workflow.run.assert_called_once()
         mock_analysis_workflow.run.assert_called_once()
+
+
+def test_no_report_flag_defaults_off_and_can_be_enabled():
+    parser = get_parser()
+    base = ["/path/to/bids", "/path/to/output", "participant"]
+    assert parser.parse_args(base).no_report is False
+    assert parser.parse_args(base + ["--no-report"]).no_report is True
+
+
+@pytest.mark.parametrize("no_report", [True, False])
+@patch("ffrprep.ffrprep_cli._build_analysis_report")
+@patch("ffrprep.ffrprep_cli._build_preproc_report")
+@patch("ffrprep.ffrprep_cli._dispatch")
+@patch("ffrprep.ffrprep_cli.get_parser")
+@patch("ffrprep.ffrprep_cli.validate_input_dir")
+@patch("ffrprep.ffrprep_cli.get_participants")
+@patch("ffrprep.ffrprep_cli.get_sessions_tasks_runs")
+@patch("ffrprep.ffrprep_cli.setup_derivatives_directories")
+def test_run_ffrprep_no_report_skips_html_reports(
+    mock_setup_dirs, mock_get_sessions, mock_get_participants, mock_validate,
+    mock_parser, mock_dispatch, mock_preproc_report, mock_analysis_report,
+    no_report,
+):
+    """--no-report skips both HTML reports but still runs the workflows."""
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        mock_args = MagicMock()
+        mock_args.bids_dir = Path(tmp_dir) / "bids"
+        mock_args.output_dir = Path(tmp_dir) / "output"
+        mock_args.analysis_level = "participant"
+        mock_args.stage = "both"
+        mock_args.skip_bids_validation = True
+        mock_args.participant_label = None
+        mock_args.baseline = "-0.2,0"
+        mock_args.ref_channels = "average"
+        mock_args.high_pass = 1.0
+        mock_args.low_pass = 40.0
+        mock_args.tmin = -0.2
+        mock_args.tmax = 0.6
+        mock_args.work_dir = None
+        mock_args.task = None
+        mock_args.run = None
+        mock_args.concat_runs = False
+        mock_args.no_filter = False
+        mock_args.no_auto_reject = False
+        mock_args.save_each_node = False
+        mock_args.events_file = None
+        mock_args.picks = None
+        mock_args.event_id = None
+        mock_args.reject_eeg = 75e-6
+        mock_args.on_missing = "warn"
+        mock_args.l_freq = None
+        mock_args.h_freq = None
+        mock_args.n_procs = 1
+        mock_args.no_report = no_report
+
+        mock_parser.return_value.parse_args.return_value = mock_args
+        mock_get_participants.return_value = ["01"]
+        mock_get_sessions.return_value = {
+            "sessions": [None], "tasks": ["passive"], "runs": [1],
+        }
+
+        derivatives_root = Path(tmp_dir) / "derivatives"
+        preproc_dir = derivatives_root / "ffrprep-preprocessing" / "sub-01"
+        preproc_dir.mkdir(parents=True)
+        (preproc_dir / "sub-01_task-passive_run-1_desc-preproc_epo.fif").touch()
+        mock_setup_dirs.return_value = {
+            "derivatives_root": derivatives_root,
+            "preprocessing_dir": derivatives_root / "ffrprep-preprocessing",
+            "preprocessing_subject_dir": preproc_dir,
+            "analysis_dir": derivatives_root / "ffrprep-analysis",
+            "analysis_subject_dir": derivatives_root / "ffrprep-analysis" / "sub-01",
+        }
+
+        run_ffrprep()
+
+        assert mock_dispatch.call_count == 2  # preprocessing + analysis
+        expected_calls = 0 if no_report else 1
+        assert mock_preproc_report.call_count == expected_calls
+        assert mock_analysis_report.call_count == expected_calls
 
 
 @patch("ffrprep.ffrprep_cli.get_parser")

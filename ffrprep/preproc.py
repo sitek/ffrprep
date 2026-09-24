@@ -647,9 +647,9 @@ def filter_data(eeg_data=None, high_pass=None, low_pass=None):
 
     Examples
     --------
-    Filter an EEG data object with a band-pass filter (1-40 Hz).
+    Filter an EEG data object with a band-pass filter (70-1000 Hz).
 
-    >>> filtered_data = filter_data(eeg_data, high_pass=1.0, low_pass=40.0)
+    >>> filtered_data = filter_data(eeg_data, high_pass=70.0, low_pass=1000.0)
 
     Filter an EEG data object with a high-pass filter (0.1 Hz).
 
@@ -933,6 +933,17 @@ def epoch_data(
     # drop_bad() will apply rejection heuristics and return the filtered
     # Epochs object; keep this separate for clarity and easier debugging.
     epoched_data = epoched_data.drop_bad()
+
+    # Per-condition trial counts for the sidecar. Local import: this
+    # function runs as a Nipype Function node, where module globals are
+    # not available.
+    from ffrprep.preproc import _epoch_counts_by_condition
+
+    epoched_data.ffrprep_epoch_counts = (
+        _epoch_counts_by_condition(events, epoched_data, chosen_event_id)
+        if chosen_event_id
+        else None
+    )
 
     return epoched_data, (tmin, tmax)
 
@@ -1698,6 +1709,39 @@ def _build_preproc_filename(subject, session, task, run, condition=None):
     return "_".join(parts)
 
 
+def _epoch_counts_by_condition(events, epochs, event_id):
+    """Per-condition ``{"total", "rejected", "kept"}`` epoch counts.
+
+    Must be computed on the *parent* Epochs: ``epochs.drop_log`` has one
+    entry per row of the events array passed to ``mne.Epochs``, and rows
+    of other conditions (and events outside ``event_id``, e.g. markers)
+    appear as ``("IGNORED",)`` in every ``epochs[condition]`` subset, while
+    a dropped epoch keeps its reject reason in *all* subsets — so a subset
+    cannot say which condition a rejected trial belonged to. Here the
+    original events array is still row-aligned with the log. Returns
+    None when the alignment cannot be established.
+    """
+    import numpy as np
+
+    events = np.asarray(events)
+    drop_log = epochs.drop_log
+    if events.ndim != 2 or len(drop_log) != len(events):
+        return None
+    codes = events[:, 2]
+    counts = {}
+    for name, code in event_id.items():
+        rows = np.flatnonzero(codes == code)
+        rejected = sum(
+            1 for row in rows if drop_log[row] and tuple(drop_log[row]) != ("IGNORED",)
+        )
+        counts[str(name)] = {
+            "total": int(rows.size),
+            "rejected": int(rejected),
+            "kept": int(rows.size - rejected),
+        }
+    return counts
+
+
 def _write_preproc_dataset_description(preprocessing_dir):
     """Write ``dataset_description.json`` at the preprocessing root once."""
     import json as _json
@@ -1747,6 +1791,18 @@ def _save_one_preproc_epochs(
     n_total_epochs = len(epochs.drop_log)
     n_accepted = len(epochs)
     n_rejected_epochs = n_total_epochs - n_accepted
+    # ``epochs.drop_log`` covers every event (other conditions and markers
+    # included) and cannot attribute a rejected trial to a condition, so
+    # prefer the per-condition counts recorded by epoch_data.
+    recorded = getattr(epochs, "ffrprep_epoch_counts", None)
+    if recorded:
+        if condition is not None:
+            selected = [recorded[str(condition)]] if str(condition) in recorded else []
+        else:
+            selected = list(recorded.values())
+        if selected:
+            n_total_epochs = sum(c["total"] for c in selected)
+            n_rejected_epochs = sum(c["rejected"] for c in selected)
     reject_thresholds = getattr(epochs, "reject", None)
     baseline_window = getattr(epochs, "baseline", None)
 
