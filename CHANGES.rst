@@ -81,6 +81,11 @@ Group-level analysis
   (and ``stim2resp_lim_*`` with ``--xcorr-lag-range``); ``--n-trials-presented``
   adds ``usable_pct``. ``discover_group_inputs`` now also returns the
   per-trial-type evoked files (``"by_type"``).
+- QC flags on the group metrics table: ``--min-usable-pct`` (needs
+  ``--n-trials-presented``) and ``--min-snr`` add ``qc_usable_pct_ok`` /
+  ``qc_snr_ok``, ``qc_include`` and ``qc_reason`` columns (``add_qc_flags``).
+  Subjects are flagged, never dropped: the table and the grand averages keep
+  every subject, and the report summary shows how many were flagged.
 - ``compute_grand_average`` renames single-channel evokeds that carry different
   channel names across sites (e.g. ``A32`` vs ``Cz``) to a common name before
   averaging; mismatched multi-channel sets raise a clear ``ValueError``.

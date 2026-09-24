@@ -283,6 +283,14 @@ table so downstream statistics have group, age, etc. alongside the metrics:
       --stimulus /path/to/da.wav --xcorr-stim-window 0.05 0.17 \
       --xcorr-resp-window 0.06 0.18 --n-trials-presented 6000
 
+``--min-usable-pct`` and ``--min-snr`` add quality-control flag columns
+(``qc_usable_pct_ok``, ``qc_snr_ok``, ``qc_include`` and a ``qc_reason`` text
+column) to the table. Subjects below a threshold are **flagged, not removed**:
+the table and the grand averages still contain them, and you decide
+downstream whether to filter on ``qc_include``. ``--min-usable-pct`` needs
+``--n-trials-presented``; ``--min-snr`` uses ``rms_snr_polarity_sum`` when
+``--f0`` is set and the combined-evoked ``rms_snr`` otherwise.
+
 This step only aggregates outputs participant-level ffrprep has
 already computed — it does not perform any group-level statistics
 (no hypothesis tests, no GLM). Downstream statistical analysis is

@@ -467,6 +467,15 @@ def test_group_level_option_defaults_leave_extra_metrics_off():
     assert args.covariates is None
 
 
+def test_qc_threshold_flags_default_off_and_parse():
+    parser = get_parser()
+    base = ["/path/to/bids", "/path/to/output", "group"]
+    args = parser.parse_args(base)
+    assert args.min_usable_pct is None and args.min_snr is None
+    args = parser.parse_args(base + ["--min-usable-pct", "60", "--min-snr", "1.5"])
+    assert args.min_usable_pct == 60.0 and args.min_snr == 1.5
+
+
 def test_group_level_options_parse_and_reach_group_module():
     from ffrprep.group import _covariate_paths_from_args, _metric_options_from_args
 

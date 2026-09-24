@@ -1989,6 +1989,28 @@ def get_parser():
         ),
     )
     group_group.add_argument(
+        "--min-usable-pct",
+        dest="min_usable_pct",
+        type=float,
+        default=None,
+        help=(
+            "QC threshold on usable_pct (needs --n-trials-presented). Adds "
+            "qc_usable_pct_ok, qc_include and qc_reason columns; flagged "
+            "subjects are kept in the table and grand averages."
+        ),
+    )
+    group_group.add_argument(
+        "--min-snr",
+        dest="min_snr",
+        type=float,
+        default=None,
+        help=(
+            "QC threshold on RMS SNR (polarity-sum when available). Adds "
+            "qc_snr_ok, qc_include and qc_reason columns; flagged subjects "
+            "are kept in the table and grand averages."
+        ),
+    )
+    group_group.add_argument(
         "--covariates",
         nargs="+",
         type=Path,

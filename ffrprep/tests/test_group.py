@@ -12,6 +12,7 @@ import numpy as np
 import pytest
 
 from ffrprep.group import (
+    add_qc_flags,
     compute_grand_average,
     compute_subject_metrics,
     discover_group_inputs,
@@ -541,3 +542,88 @@ def test_compute_grand_average_rejects_mismatched_multichannel_names(tmp_path):
 
     with pytest.raises(ValueError, match="identical channel sets"):
         compute_grand_average(paths)
+
+
+# ---------------------------------------------------------------------------
+# QC flag columns
+# ---------------------------------------------------------------------------
+
+def _qc_frame():
+    import pandas as pd
+
+    return pd.DataFrame({
+        "subject": ["a", "b", "c", "d"],
+        "usable_pct": [90.0, 60.0, 59.9, np.nan],
+        "rms_snr_polarity_sum": [3.0, 1.5, 1.49, 2.0],
+        "rms_snr": [9.0, 9.0, 9.0, 9.0],
+    })
+
+
+def test_add_qc_flags_is_a_no_op_without_thresholds():
+    frame = _qc_frame()
+    assert add_qc_flags(frame) is frame
+
+
+def test_add_qc_flags_thresholds_are_inclusive_and_nan_fails():
+    flagged = add_qc_flags(_qc_frame(), min_usable_pct=60, min_snr=1.5)
+
+    assert list(flagged["qc_usable_pct_ok"]) == [True, True, False, False]
+    assert list(flagged["qc_snr_ok"]) == [True, True, False, True]
+    assert list(flagged["qc_include"]) == [True, True, False, False]
+    assert list(flagged["qc_reason"]) == [
+        "n/a",
+        "n/a",
+        "usable_pct<60; rms_snr_polarity_sum<1.5",
+        "usable_pct<60",
+    ]
+    assert len(flagged) == 4  # rows are flagged, never dropped
+
+
+def test_add_qc_flags_single_threshold_adds_only_its_column():
+    flagged = add_qc_flags(_qc_frame(), min_snr=1.5)
+    assert "qc_snr_ok" in flagged and "qc_usable_pct_ok" not in flagged
+    assert list(flagged["qc_include"]) == [True, True, False, True]
+
+
+def test_add_qc_flags_falls_back_to_combined_snr_column():
+    frame = _qc_frame().drop(columns="rms_snr_polarity_sum")
+    flagged = add_qc_flags(frame, min_snr=10)
+    assert not flagged["qc_include"].any()
+    assert flagged["qc_reason"].iloc[0] == "rms_snr<10"
+
+
+def test_add_qc_flags_min_usable_pct_needs_usable_pct_column():
+    frame = _qc_frame().drop(columns="usable_pct")
+    with pytest.raises(ValueError, match="n-trials-presented"):
+        add_qc_flags(frame, min_usable_pct=60)
+
+
+def test_run_group_level_writes_qc_flag_columns_and_keeps_all_subjects(tmp_path):
+    import pandas as pd
+
+    out = tmp_path / "out"
+    for i, subject in enumerate(["01", "02", "03"], start=1):
+        _write_da_subject(out, subject, amplitude_uv=float(i), seed=i)
+    args = SimpleNamespace(
+        output_dir=out, participant_label=None, task=None, response_window=(0.0, 0.213),
+        n_trials_presented=6000, min_usable_pct=101, min_snr=None,  # nave=6000 -> usable 100%
+    )
+    run_group_level(args)
+
+    table = pd.read_csv(out / "ffrprep-group" / "task-da_run-01_metrics.tsv", sep="\t", dtype={"subject": str})
+    assert list(table["subject"]) == ["01", "02", "03"]
+    assert not table["qc_include"].any()
+    assert set(table["qc_reason"]) == {"usable_pct<101"}
+    assert "QC flagged" in (out / "ffrprep-group" / "group_report.html").read_text()
+
+
+def test_run_group_level_min_usable_pct_without_trials_presented_is_an_error(tmp_path):
+    out = tmp_path / "out"
+    for subject in ["01", "02"]:
+        _write_da_subject(out, subject, amplitude_uv=1.0, seed=int(subject))
+    args = SimpleNamespace(
+        output_dir=out, participant_label=None, task=None, response_window=(0.0, 0.213),
+        min_usable_pct=60,
+    )
+    with pytest.raises(ValueError, match="n-trials-presented"):
+        run_group_level(args)

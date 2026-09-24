@@ -410,6 +410,48 @@ def _polarity_sum_metrics(summed, harmonics, stimulus, response_window, stim_cac
     return columns
 
 
+def add_qc_flags(metrics, min_usable_pct=None, min_snr=None):
+    """Flag recordings that fail quality thresholds; never drop rows.
+
+    Adds boolean ``qc_usable_pct_ok`` (``usable_pct >= min_usable_pct``)
+    and/or ``qc_snr_ok`` (polarity-sum RMS SNR, else the combined-evoked
+    ``rms_snr``, ``>= min_snr``) columns for each threshold given, plus
+    ``qc_include`` (all checks pass) and ``qc_reason`` (the failed checks,
+    ``n/a`` when none). A missing value (NaN) fails its check. The metrics
+    table keeps every subject and the grand averages are unchanged, so
+    downstream analyses choose whether to filter on ``qc_include``.
+
+    Returns ``metrics`` unchanged when no threshold is given.
+    """
+    if min_usable_pct is None and min_snr is None:
+        return metrics
+
+    flagged = metrics.copy()
+    ok_columns = []
+    reasons = [[] for _ in range(len(flagged))]
+
+    def _check(column, threshold, ok_name, label):
+        values = flagged[column]
+        passed = (values >= threshold).fillna(False).astype(bool)
+        flagged[ok_name] = passed
+        ok_columns.append(ok_name)
+        for i, ok in enumerate(passed):
+            if not ok:
+                reasons[i].append(f"{label}<{threshold:g}")
+
+    if min_usable_pct is not None:
+        if "usable_pct" not in flagged:
+            raise ValueError("--min-usable-pct needs --n-trials-presented (no usable_pct column)")
+        _check("usable_pct", min_usable_pct, "qc_usable_pct_ok", "usable_pct")
+    if min_snr is not None:
+        snr_column = "rms_snr_polarity_sum" if "rms_snr_polarity_sum" in flagged else "rms_snr"
+        _check(snr_column, min_snr, "qc_snr_ok", snr_column)
+
+    flagged["qc_include"] = flagged[ok_columns].all(axis=1)
+    flagged["qc_reason"] = ["; ".join(r) or "n/a" for r in reasons]
+    return flagged
+
+
 def merge_covariates(metrics, covariate_paths):
     """Left-join subject-level covariate TSVs onto a metrics table.
 
@@ -536,6 +578,14 @@ def _write_group_dataset_description(group_dir):
         json.dump(dataset_desc, f, indent=2)
 
 
+def _qc_summary(metrics):
+    """Report summary entry for the QC flags (empty when no threshold was set)."""
+    if "qc_include" not in metrics:
+        return {}
+    n_flagged = int((~metrics["qc_include"]).sum())
+    return {"QC flagged": f"{n_flagged} of {len(metrics)}"}
+
+
 def _metric_options_from_args(args):
     """Translate group-level CLI args into ``compute_subject_metrics`` options.
 
@@ -606,7 +656,9 @@ def run_group_level(args):
     harmonic-amplitude and stimulus-to-response columns computed from the
     sum of the per-trial-type averages, and subject-level covariates from
     ``<bids_dir>/participants.tsv`` and ``args.covariates`` are joined onto
-    the saved TSV (never used for inference here).
+    the saved TSV (never used for inference here). ``args.min_usable_pct`` /
+    ``args.min_snr`` add ``qc_*`` flag columns (see :func:`add_qc_flags`);
+    flagged subjects stay in the table and the grand averages.
     """
     output_dir = Path(args.output_dir)
     response_window = tuple(getattr(args, "response_window", None) or (0.100, 0.200))
@@ -614,6 +666,10 @@ def run_group_level(args):
     task_filter = getattr(args, "task", None)
     metric_options = _metric_options_from_args(args)
     covariate_paths = _covariate_paths_from_args(args)
+    min_usable_pct = getattr(args, "min_usable_pct", None)
+    min_snr = getattr(args, "min_snr", None)
+    if min_usable_pct is not None and not metric_options["n_trials_presented"]:
+        raise ValueError("--min-usable-pct needs --n-trials-presented")
 
     inputs = discover_group_inputs(output_dir, participant_label=participant_label, task=task_filter)
 
@@ -643,6 +699,7 @@ def run_group_level(args):
             by_type_paths=inputs["by_type"].get((task, session, run), {}),
             **metric_options,
         )
+        metrics = add_qc_flags(metrics, min_usable_pct=min_usable_pct, min_snr=min_snr)
         metrics_with_covariates = merge_covariates(metrics, covariate_paths)
         metrics_path = save_group_metrics(output_dir, task, session, run, metrics_with_covariates)
         written.append(metrics_path)
@@ -656,9 +713,10 @@ def run_group_level(args):
                 response_window=response_window,
             ),
             reports.build_metrics_table_section(
-                metrics,
+                metrics.drop(columns=[c for c in metrics.columns if c.startswith("qc_")]),
                 section_id=f"{label}-metrics",
                 title="Per-subject metrics",
+                extra_summary=_qc_summary(metrics),
             ),
         ]
 

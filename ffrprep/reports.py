@@ -359,7 +359,7 @@ def build_evoked_section(
     }
 
 
-def build_metrics_table_section(metrics, *, section_id, title, max_table_rows=40):
+def build_metrics_table_section(metrics, *, section_id, title, max_table_rows=40, extra_summary=None):
     """Build a section descriptor summarizing a group-level metrics table.
 
     ``metrics`` is a per-(task, run) DataFrame such as
@@ -370,7 +370,8 @@ def build_metrics_table_section(metrics, *, section_id, title, max_table_rows=40
     full per-subject table is rendered as a figure; for larger cohorts
     (where a table would be unreadably tall) the figure shows one
     histogram per metric instead and the per-subject values live in the
-    accompanying ``_metrics.tsv``.
+    accompanying ``_metrics.tsv``. ``extra_summary`` (a dict of label to
+    text) adds entries to the summary table, e.g. the QC-flag count.
     """
     numeric_columns = [
         column for column in metrics.select_dtypes("number").columns if column != "n_avg"
@@ -381,6 +382,7 @@ def build_metrics_table_section(metrics, *, section_id, title, max_table_rows=40
         if values.empty:
             continue
         summary[column.replace("_", " ")] = f"{values.mean():.3g} \u00b1 {values.std():.3g}"
+    summary.update(extra_summary or {})
 
     if len(metrics) > max_table_rows and numeric_columns:
         n_panels = len(numeric_columns)
