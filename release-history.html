@@ -46,13 +46,13 @@
   
   
   
-    <title>Release History &#8212; ffrprep 0.1.dev1+g0e79021c2 documentation</title>
+    <title>Release History &#8212; ffrprep 0.1.dev1+gcbe4d9aa9 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
     <link rel="stylesheet" type="text/css" href="_static/material.css?v=79c92029" />
     <link rel="stylesheet" type="text/css" href="_static/plot_directive.css" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <script src="_static/documentation_options.js?v=faf3d6fa"></script>
+    <script src="_static/documentation_options.js?v=1d9acbc3"></script>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -85,7 +85,7 @@
   <nav class="md-header-nav md-grid">
     <div class="md-flex navheader">
       <div class="md-flex__cell md-flex__cell--shrink">
-        <a href="index.html" title="ffrprep 0.1.dev1+g0e79021c2 documentation"
+        <a href="index.html" title="ffrprep 0.1.dev1+gcbe4d9aa9 documentation"
            class="md-header-nav__button md-logo">
           
             &nbsp;
@@ -171,7 +171,7 @@
   <nav class="md-tabs" data-md-component="tabs">
     <div class="md-tabs__inner md-grid">
       <ul class="md-tabs__list">
-          <li class="md-tabs__item"><a href="index.html" class="md-tabs__link">ffrprep 0.1.dev1+g0e79021c2 documentation</a></li>
+          <li class="md-tabs__item"><a href="index.html" class="md-tabs__link">ffrprep 0.1.dev1+gcbe4d9aa9 documentation</a></li>
       </ul>
     </div>
   </nav>
@@ -183,13 +183,13 @@
               <div class="md-sidebar__inner">
                 <nav class="md-nav md-nav--primary" data-md-level="0">
   <label class="md-nav__title md-nav__title--site" for="__drawer">
-    <a href="index.html" title="ffrprep 0.1.dev1+g0e79021c2 documentation" class="md-nav__button md-logo">
+    <a href="index.html" title="ffrprep 0.1.dev1+gcbe4d9aa9 documentation" class="md-nav__button md-logo">
       
         <img src="_static/" alt=" logo" width="48" height="48">
       
     </a>
     <a href="index.html"
-       title="ffrprep 0.1.dev1+g0e79021c2 documentation">ffrprep</a>
+       title="ffrprep 0.1.dev1+gcbe4d9aa9 documentation">ffrprep</a>
   </label>
     <div class="md-nav__source">
       <a href="https://github.com/sitek/ffrprep" title="Go to repository" class="md-source" data-md-source="github">
@@ -381,6 +381,14 @@ analyses (e.g. <code class="docutils literal notranslate"><span class="pre">corr
 <section id="preprocessing">
 <h3 id="preprocessing">Preprocessing<a class="headerlink" href="#preprocessing" title="Link to this heading">¶</a></h3>
 <ul class="simple">
+<li><p>Per-trial-type filenames now use BIDS-valid alphanumeric labels:
+<code class="docutils literal notranslate"><span class="pre">_bids_label</span></code> drops non-alphanumeric separators and capitalizes
+each token, so a <code class="docutils literal notranslate"><span class="pre">da_pol-1</span></code> trial type is written as
+<code class="docutils literal notranslate"><span class="pre">_desc-preprocDaPol1_epo.fif</span></code> / <code class="docutils literal notranslate"><span class="pre">_desc-evokedDaPol1.fif</span></code> /
+<code class="docutils literal notranslate"><span class="pre">_desc-evokedDiffDaPol1VsDaPol2.fif</span></code> instead of leaking <code class="docutils literal notranslate"><span class="pre">_</span></code> and
+<code class="docutils literal notranslate"><span class="pre">-</span></code> into the <code class="docutils literal notranslate"><span class="pre">desc</span></code> entity. Alphanumeric labels (<code class="docutils literal notranslate"><span class="pre">positive</span></code>,
+<code class="docutils literal notranslate"><span class="pre">10</span></code>) are unchanged, and sidecars still record the raw trial-type
+name in <code class="docutils literal notranslate"><span class="pre">Condition</span></code> / <code class="docutils literal notranslate"><span class="pre">DifferenceOf</span></code>.</p></li>
 <li><p>Fixed: the preprocessing sidecar’s <code class="docutils literal notranslate"><span class="pre">Sources</span></code> / <code class="docutils literal notranslate"><span class="pre">RawSources</span></code> now name the
 raw recording that actually exists (EDF, BDF, BrainVision, EEGLAB or FIF,
 including the session directory and every run of a concatenated output).

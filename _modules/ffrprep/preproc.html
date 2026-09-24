@@ -45,13 +45,13 @@
   
   
   
-    <title>ffrprep.preproc &#8212; ffrprep 0.1.dev1+g0e79021c2 documentation</title>
+    <title>ffrprep.preproc &#8212; ffrprep 0.1.dev1+gcbe4d9aa9 documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
     <link rel="stylesheet" type="text/css" href="../../_static/material.css?v=79c92029" />
     <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
-    <script src="../../_static/documentation_options.js?v=faf3d6fa"></script>
+    <script src="../../_static/documentation_options.js?v=1d9acbc3"></script>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -82,7 +82,7 @@
   <nav class="md-header-nav md-grid">
     <div class="md-flex navheader">
       <div class="md-flex__cell md-flex__cell--shrink">
-        <a href="../../index.html" title="ffrprep 0.1.dev1+g0e79021c2 documentation"
+        <a href="../../index.html" title="ffrprep 0.1.dev1+gcbe4d9aa9 documentation"
            class="md-header-nav__button md-logo">
           
             &nbsp;
@@ -168,7 +168,7 @@
   <nav class="md-tabs" data-md-component="tabs">
     <div class="md-tabs__inner md-grid">
       <ul class="md-tabs__list">
-          <li class="md-tabs__item"><a href="../../index.html" class="md-tabs__link">ffrprep 0.1.dev1+g0e79021c2 documentation</a></li>
+          <li class="md-tabs__item"><a href="../../index.html" class="md-tabs__link">ffrprep 0.1.dev1+gcbe4d9aa9 documentation</a></li>
           <li class="md-tabs__item"><a href="../index.html" class="md-tabs__link">Module code</a></li>
       </ul>
     </div>
@@ -181,13 +181,13 @@
               <div class="md-sidebar__inner">
                 <nav class="md-nav md-nav--primary" data-md-level="0">
   <label class="md-nav__title md-nav__title--site" for="__drawer">
-    <a href="../../index.html" title="ffrprep 0.1.dev1+g0e79021c2 documentation" class="md-nav__button md-logo">
+    <a href="../../index.html" title="ffrprep 0.1.dev1+gcbe4d9aa9 documentation" class="md-nav__button md-logo">
       
         <img src="../../_static/" alt=" logo" width="48" height="48">
       
     </a>
     <a href="../../index.html"
-       title="ffrprep 0.1.dev1+g0e79021c2 documentation">ffrprep</a>
+       title="ffrprep 0.1.dev1+gcbe4d9aa9 documentation">ffrprep</a>
   </label>
     <div class="md-nav__source">
       <a href="https://github.com/sitek/ffrprep" title="Go to repository" class="md-source" data-md-source="github">
@@ -2003,6 +2003,22 @@
     <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">found_files</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">found_files</span>
 
 
+<span class="k">def</span><span class="w"> </span><span class="nf">_bids_label</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Return ``value`` as a BIDS-valid alphanumeric label fragment.</span>
+
+<span class="sd">    BIDS entity values may only contain letters and digits, so trial</span>
+<span class="sd">    types such as ``da_pol-1`` would otherwise leak ``_`` / ``-`` into</span>
+<span class="sd">    ``desc-`` and break entity parsing. Each alphanumeric run is</span>
+<span class="sd">    capitalized and the separators dropped (``da_pol-1`` -&gt; ``DaPol1``);</span>
+<span class="sd">    purely alphanumeric labels come out exactly as ``str.capitalize()``</span>
+<span class="sd">    produced them (``positive`` -&gt; ``Positive``).</span>
+<span class="sd">    """</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+
+    <span class="n">parts</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="sa">r</span><span class="s2">"[^A-Za-z0-9]+"</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">))</span>
+    <span class="k">return</span> <span class="s2">""</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">part</span><span class="o">.</span><span class="n">capitalize</span><span class="p">()</span> <span class="k">for</span> <span class="n">part</span> <span class="ow">in</span> <span class="n">parts</span> <span class="k">if</span> <span class="n">part</span><span class="p">)</span>
+
+
 <span class="k">def</span><span class="w"> </span><span class="nf">_build_preproc_filename</span><span class="p">(</span><span class="n">subject</span><span class="p">,</span> <span class="n">session</span><span class="p">,</span> <span class="n">task</span><span class="p">,</span> <span class="n">run</span><span class="p">,</span> <span class="n">condition</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""Build the BIDS basename for a saved preprocessing epochs file.</span>
 
@@ -2020,7 +2036,7 @@
         <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"run-</span><span class="si">{</span><span class="n">run</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
     <span class="n">desc</span> <span class="o">=</span> <span class="s2">"desc-preproc"</span>
     <span class="k">if</span> <span class="n">condition</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">desc</span> <span class="o">+=</span> <span class="nb">str</span><span class="p">(</span><span class="n">condition</span><span class="p">)</span><span class="o">.</span><span class="n">capitalize</span><span class="p">()</span>
+        <span class="n">desc</span> <span class="o">+=</span> <span class="n">_bids_label</span><span class="p">(</span><span class="n">condition</span><span class="p">)</span>
     <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">desc</span><span class="si">}</span><span class="s2">_epo.fif"</span><span class="p">)</span>
     <span class="k">return</span> <span class="s2">"_"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span>
 
@@ -2484,7 +2500,7 @@
 
     <span class="n">by_type</span> <span class="o">=</span> <span class="n">payload</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"by_type"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
     <span class="k">for</span> <span class="n">condition</span><span class="p">,</span> <span class="n">evoked_obj</span> <span class="ow">in</span> <span class="n">by_type</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-        <span class="n">cond</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">condition</span><span class="p">)</span><span class="o">.</span><span class="n">capitalize</span><span class="p">()</span>
+        <span class="n">cond</span> <span class="o">=</span> <span class="n">_bids_label</span><span class="p">(</span><span class="n">condition</span><span class="p">)</span>
         <span class="n">path</span> <span class="o">=</span> <span class="n">subject_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">filename_base</span><span class="si">}</span><span class="s2">_desc-</span><span class="si">{</span><span class="n">analysis_type</span><span class="si">}{</span><span class="n">cond</span><span class="si">}</span><span class="s2">.fif"</span>
         <span class="n">evoked_obj</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
         <span class="n">_write_evoked_sidecar</span><span class="p">(</span>
@@ -2505,7 +2521,7 @@
 
     <span class="n">diff</span> <span class="o">=</span> <span class="n">payload</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"diff"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
     <span class="k">for</span> <span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">),</span> <span class="n">evoked_obj</span> <span class="ow">in</span> <span class="n">diff</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-        <span class="n">a_cap</span><span class="p">,</span> <span class="n">b_cap</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">a</span><span class="p">)</span><span class="o">.</span><span class="n">capitalize</span><span class="p">(),</span> <span class="nb">str</span><span class="p">(</span><span class="n">b</span><span class="p">)</span><span class="o">.</span><span class="n">capitalize</span><span class="p">()</span>
+        <span class="n">a_cap</span><span class="p">,</span> <span class="n">b_cap</span> <span class="o">=</span> <span class="n">_bids_label</span><span class="p">(</span><span class="n">a</span><span class="p">),</span> <span class="n">_bids_label</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
         <span class="n">path</span> <span class="o">=</span> <span class="n">subject_dir</span> <span class="o">/</span> <span class="p">(</span>
             <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">filename_base</span><span class="si">}</span><span class="s2">_desc-</span><span class="si">{</span><span class="n">analysis_type</span><span class="si">}</span><span class="s2">Diff</span><span class="si">{</span><span class="n">a_cap</span><span class="si">}</span><span class="s2">Vs</span><span class="si">{</span><span class="n">b_cap</span><span class="si">}</span><span class="s2">.fif"</span>
         <span class="p">)</span>
