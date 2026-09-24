@@ -45,13 +45,13 @@
   
   
   
-    <title>ffrprep.preproc &#8212; ffrprep 0.1.dev1+g1ca625f17 documentation</title>
+    <title>ffrprep.preproc &#8212; ffrprep 0.1.dev1+g73a3e148a documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
     <link rel="stylesheet" type="text/css" href="../../_static/material.css?v=79c92029" />
     <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
-    <script src="../../_static/documentation_options.js?v=e7bc21f6"></script>
+    <script src="../../_static/documentation_options.js?v=8fe79f6f"></script>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -82,7 +82,7 @@
   <nav class="md-header-nav md-grid">
     <div class="md-flex navheader">
       <div class="md-flex__cell md-flex__cell--shrink">
-        <a href="../../index.html" title="ffrprep 0.1.dev1+g1ca625f17 documentation"
+        <a href="../../index.html" title="ffrprep 0.1.dev1+g73a3e148a documentation"
            class="md-header-nav__button md-logo">
           
             &nbsp;
@@ -168,7 +168,7 @@
   <nav class="md-tabs" data-md-component="tabs">
     <div class="md-tabs__inner md-grid">
       <ul class="md-tabs__list">
-          <li class="md-tabs__item"><a href="../../index.html" class="md-tabs__link">ffrprep 0.1.dev1+g1ca625f17 documentation</a></li>
+          <li class="md-tabs__item"><a href="../../index.html" class="md-tabs__link">ffrprep 0.1.dev1+g73a3e148a documentation</a></li>
           <li class="md-tabs__item"><a href="../index.html" class="md-tabs__link">Module code</a></li>
       </ul>
     </div>
@@ -181,13 +181,13 @@
               <div class="md-sidebar__inner">
                 <nav class="md-nav md-nav--primary" data-md-level="0">
   <label class="md-nav__title md-nav__title--site" for="__drawer">
-    <a href="../../index.html" title="ffrprep 0.1.dev1+g1ca625f17 documentation" class="md-nav__button md-logo">
+    <a href="../../index.html" title="ffrprep 0.1.dev1+g73a3e148a documentation" class="md-nav__button md-logo">
       
         <img src="../../_static/" alt=" logo" width="48" height="48">
       
     </a>
     <a href="../../index.html"
-       title="ffrprep 0.1.dev1+g1ca625f17 documentation">ffrprep</a>
+       title="ffrprep 0.1.dev1+g73a3e148a documentation">ffrprep</a>
   </label>
     <div class="md-nav__source">
       <a href="https://github.com/sitek/ffrprep" title="Go to repository" class="md-source" data-md-source="github">
@@ -2079,8 +2079,52 @@
         <span class="n">_json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">dataset_desc</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
 
 
+<span class="n">_RAW_EEG_SUFFIXES</span> <span class="o">=</span> <span class="p">(</span><span class="s2">".edf"</span><span class="p">,</span> <span class="s2">".bdf"</span><span class="p">,</span> <span class="s2">".vhdr"</span><span class="p">,</span> <span class="s2">".set"</span><span class="p">,</span> <span class="s2">".fif"</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_find_raw_sources</span><span class="p">(</span><span class="n">bids_root</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">task</span><span class="p">,</span> <span class="n">session</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">run</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Dataset-relative paths of the raw EEG recording(s) behind an output.</span>
+
+<span class="sd">    Looks in ``sub-&lt;subject&gt;[/ses-&lt;session&gt;]/eeg`` for</span>
+<span class="sd">    ``&lt;entities&gt;_eeg`` with any supported extension (EDF, BDF,</span>
+<span class="sd">    BrainVision, EEGLAB, FIF). ``run`` may be a list for concatenated</span>
+<span class="sd">    runs, in which case one path per run is returned. Returns an empty</span>
+<span class="sd">    list when nothing matches, so callers omit provenance rather than</span>
+<span class="sd">    record a file that does not exist.</span>
+<span class="sd">    """</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+    <span class="k">if</span> <span class="n">bids_root</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[]</span>
+    <span class="n">root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">bids_root</span><span class="p">)</span>
+    <span class="n">eeg_dir</span> <span class="o">=</span> <span class="n">root</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">"sub-</span><span class="si">{</span><span class="n">subject</span><span class="si">}</span><span class="s2">"</span>
+    <span class="k">if</span> <span class="n">session</span><span class="p">:</span>
+        <span class="n">eeg_dir</span> <span class="o">=</span> <span class="n">eeg_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">"ses-</span><span class="si">{</span><span class="n">session</span><span class="si">}</span><span class="s2">"</span>
+    <span class="n">eeg_dir</span> <span class="o">=</span> <span class="n">eeg_dir</span> <span class="o">/</span> <span class="s2">"eeg"</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">eeg_dir</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+        <span class="k">return</span> <span class="p">[]</span>
+
+    <span class="n">runs</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">run</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">run</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">))</span> <span class="k">else</span> <span class="p">[</span><span class="n">run</span><span class="p">]</span>
+    <span class="n">found</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">run_label</span> <span class="ow">in</span> <span class="n">runs</span><span class="p">:</span>
+        <span class="n">parts</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">"sub-</span><span class="si">{</span><span class="n">subject</span><span class="si">}</span><span class="s2">"</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">session</span><span class="p">:</span>
+            <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"ses-</span><span class="si">{</span><span class="n">session</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"task-</span><span class="si">{</span><span class="n">task</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">run_label</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"run-</span><span class="si">{</span><span class="n">run_label</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="n">stem</span> <span class="o">=</span> <span class="s2">"_"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span> <span class="o">+</span> <span class="s2">"_eeg"</span>
+        <span class="k">for</span> <span class="n">suffix</span> <span class="ow">in</span> <span class="n">_RAW_EEG_SUFFIXES</span><span class="p">:</span>
+            <span class="n">candidate</span> <span class="o">=</span> <span class="n">eeg_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">stem</span><span class="si">}{</span><span class="n">suffix</span><span class="si">}</span><span class="s2">"</span>
+            <span class="k">if</span> <span class="n">candidate</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+                <span class="n">found</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">candidate</span><span class="o">.</span><span class="n">relative_to</span><span class="p">(</span><span class="n">root</span><span class="p">)</span><span class="o">.</span><span class="n">as_posix</span><span class="p">())</span>
+                <span class="k">break</span>
+    <span class="k">return</span> <span class="n">found</span>
+
+
 <span class="k">def</span><span class="w"> </span><span class="nf">_save_one_preproc_epochs</span><span class="p">(</span>
     <span class="n">epochs</span><span class="p">,</span> <span class="n">output_path</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">task</span><span class="p">,</span> <span class="n">session</span><span class="p">,</span> <span class="n">run</span><span class="p">,</span> <span class="n">condition</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">raw_sources</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">"""Persist a single Epochs object + matching JSON sidecar.</span>
 
@@ -2141,8 +2185,6 @@
     <span class="p">)</span>
     <span class="n">new_epochs</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">output_path</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
-    <span class="n">filename</span> <span class="o">=</span> <span class="n">output_path</span><span class="o">.</span><span class="n">name</span>
-    <span class="n">raw_basename</span> <span class="o">=</span> <span class="n">filename</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">"_desc-"</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="s2">"_eeg.bdf"</span>
     <span class="n">sidecar</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s2">"Description"</span><span class="p">:</span> <span class="s2">"FFR preprocessed epochs (referenced, filtered, baseline-corrected)."</span><span class="p">,</span>
         <span class="s2">"GeneratedBy"</span><span class="p">:</span> <span class="p">[</span>
@@ -2151,8 +2193,6 @@
                 <span class="s2">"Description"</span><span class="p">:</span> <span class="s2">"Frequency-following response preprocessing pipeline"</span><span class="p">,</span>
             <span class="p">}</span>
         <span class="p">],</span>
-        <span class="s2">"Sources"</span><span class="p">:</span> <span class="p">[</span><span class="sa">f</span><span class="s2">"bids:raw:sub-</span><span class="si">{</span><span class="n">subject</span><span class="si">}</span><span class="s2">/eeg/</span><span class="si">{</span><span class="n">raw_basename</span><span class="si">}</span><span class="s2">"</span><span class="p">],</span>
-        <span class="s2">"RawSources"</span><span class="p">:</span> <span class="p">[</span><span class="sa">f</span><span class="s2">"sub-</span><span class="si">{</span><span class="n">subject</span><span class="si">}</span><span class="s2">/eeg/</span><span class="si">{</span><span class="n">raw_basename</span><span class="si">}</span><span class="s2">"</span><span class="p">],</span>
         <span class="s2">"TaskName"</span><span class="p">:</span> <span class="n">task</span><span class="p">,</span>
         <span class="s2">"SamplingFrequency"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s2">"sfreq"</span><span class="p">]),</span>
         <span class="s2">"EpochCount"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">new_epochs</span><span class="p">)),</span>
@@ -2170,6 +2210,9 @@
             <span class="p">),</span>
         <span class="p">},</span>
     <span class="p">}</span>
+    <span class="k">if</span> <span class="n">raw_sources</span><span class="p">:</span>
+        <span class="n">sidecar</span><span class="p">[</span><span class="s2">"Sources"</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">"bids:raw:</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">"</span> <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">raw_sources</span><span class="p">]</span>
+        <span class="n">sidecar</span><span class="p">[</span><span class="s2">"RawSources"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">raw_sources</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">reject_thresholds</span><span class="p">:</span>
         <span class="n">sidecar</span><span class="p">[</span><span class="s2">"RejectionThresholds"</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
             <span class="n">k</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">reject_thresholds</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
@@ -2228,6 +2271,7 @@
     <span class="p">)</span>
     <span class="n">subject_dir</span> <span class="o">=</span> <span class="n">derivatives_info</span><span class="p">[</span><span class="s2">"preprocessing_subject_dir"</span><span class="p">]</span>
     <span class="n">_write_preproc_dataset_description</span><span class="p">(</span><span class="n">derivatives_info</span><span class="p">[</span><span class="s2">"preprocessing_dir"</span><span class="p">])</span>
+    <span class="n">raw_sources</span> <span class="o">=</span> <span class="n">_find_raw_sources</span><span class="p">(</span><span class="n">bids_root</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">task</span><span class="p">,</span> <span class="n">session</span><span class="o">=</span><span class="n">session</span><span class="p">,</span> <span class="n">run</span><span class="o">=</span><span class="n">run</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">epochs</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
         <span class="n">out_paths</span> <span class="o">=</span> <span class="p">[]</span>
@@ -2239,7 +2283,7 @@
             <span class="n">_save_one_preproc_epochs</span><span class="p">(</span>
                 <span class="n">epochs_obj</span><span class="p">,</span> <span class="n">output_path</span><span class="p">,</span>
                 <span class="n">subject</span><span class="p">,</span> <span class="n">task</span><span class="p">,</span> <span class="n">session</span><span class="p">,</span> <span class="n">run</span><span class="p">,</span>
-                <span class="n">condition</span><span class="o">=</span><span class="n">condition</span><span class="p">,</span>
+                <span class="n">condition</span><span class="o">=</span><span class="n">condition</span><span class="p">,</span> <span class="n">raw_sources</span><span class="o">=</span><span class="n">raw_sources</span><span class="p">,</span>
             <span class="p">)</span>
             <span class="n">out_paths</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">output_path</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">out_paths</span>
@@ -2248,6 +2292,7 @@
     <span class="n">output_path</span> <span class="o">=</span> <span class="n">subject_dir</span> <span class="o">/</span> <span class="n">filename</span>
     <span class="n">_save_one_preproc_epochs</span><span class="p">(</span>
         <span class="n">epochs</span><span class="p">,</span> <span class="n">output_path</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span> <span class="n">task</span><span class="p">,</span> <span class="n">session</span><span class="p">,</span> <span class="n">run</span><span class="p">,</span>
+        <span class="n">raw_sources</span><span class="o">=</span><span class="n">raw_sources</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="k">return</span> <span class="n">output_path</span></div>
 
