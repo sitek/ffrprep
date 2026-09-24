@@ -1572,10 +1572,10 @@ def get_parser():
         default=None,
     )
     preproc_group.add_argument(
-        "--high_pass", type=float, help="High-pass filter cutoff frequency in Hz.", default=1.0
+        "--high_pass", type=float, help="High-pass filter cutoff frequency in Hz.", default=70.0
     )
     preproc_group.add_argument(
-        "--low_pass", type=float, help="Low-pass filter cutoff frequency in Hz.", default=40.0
+        "--low_pass", type=float, help="Low-pass filter cutoff frequency in Hz.", default=1000.0
     )
     # New MNE-style arguments (l_freq/h_freq) to make mapping explicit.
     # These override the legacy --high_pass/--low_pass when provided.
@@ -1781,6 +1781,17 @@ def get_parser():
         "--skip_bids_validation",
         action="store_true",
         help=("Assume the input dataset is BIDS compliant " "and skip the validation."),
+    )
+    parser.add_argument(
+        "--no-report",
+        dest="no_report",
+        action="store_true",
+        default=False,
+        help=(
+            "Skip HTML report generation (preprocessing and analysis). "
+            "Derivatives are still written. Useful for bulk runs over "
+            "many subjects, where report figures dominate runtime."
+        ),
     )
     parser.add_argument(
         "--n_procs", type=int, default=1,
@@ -2144,7 +2155,8 @@ def run_ffrprep():
                 ]
                 _dispatch(_concat_iteration, payloads,
                           n_procs=args.n_procs, kind_label="concat")
-                _build_preproc_report(args, derivatives_info, subject)
+                if not args.no_report:
+                    _build_preproc_report(args, derivatives_info, subject)
             else:
                 # One worker per (task, run) — fully independent iterations.
                 payloads = [
@@ -2158,7 +2170,8 @@ def run_ffrprep():
                 ]
                 _dispatch(_preproc_iteration, payloads,
                           n_procs=args.n_procs, kind_label="preproc")
-                _build_preproc_report(args, derivatives_info, subject)
+                if not args.no_report:
+                    _build_preproc_report(args, derivatives_info, subject)
 
         if args.stage in ["analysis", "both"]:
             print("\n" + "=" * 60)
@@ -2191,7 +2204,8 @@ def run_ffrprep():
             _dispatch(_analysis_iteration, payloads,
                       n_procs=args.n_procs, kind_label="analysis")
             print(f"Analysis completed. Outputs saved to: {derivatives_info['analysis_subject_dir']}")
-            _build_analysis_report(args, derivatives_info, subject)
+            if not args.no_report:
+                _build_analysis_report(args, derivatives_info, subject)
 
     print("\n" + "=" * 60)
     print("ffrprep processing completed successfully!")

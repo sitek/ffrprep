@@ -225,10 +225,13 @@ def test_filter_data(tmp_path):
     from mne.io import RawArray
     from mne import create_info
 
-    # Create synthetic EEG data with multiple frequency components
+    # Create synthetic EEG data with multiple frequency components.
+    # sfreq must clear Nyquist for the 1000 Hz low-pass exercised below,
+    # with enough headroom that a stopband probe tone sits clear of the
+    # filter's transition band.
     n_channels = 8
-    n_times = 10000  # 10 seconds at 1000 Hz
-    sfreq = 1000.0
+    n_times = 40000  # 10 seconds at 4000 Hz
+    sfreq = 4000.0
 
     # Generate synthetic EEG-like data with known frequency content
     times = np.arange(n_times) / sfreq
@@ -236,10 +239,10 @@ def test_filter_data(tmp_path):
 
     for ch_idx in range(n_channels):
         # Mix of different frequency components
-        low_freq = np.sin(2 * np.pi * 0.5 * times) * 0.3  # 0.5 Hz
-        alpha = np.sin(2 * np.pi * 10 * times) * 0.5      # 10 Hz
-        beta = np.sin(2 * np.pi * 20 * times) * 0.3       # 20 Hz
-        high_freq = np.sin(2 * np.pi * 60 * times) * 0.4  # 60 Hz
+        low_freq = np.sin(2 * np.pi * 30 * times) * 0.3     # 30 Hz (below passband)
+        alpha = np.sin(2 * np.pi * 300 * times) * 0.5       # 300 Hz (in passband)
+        beta = np.sin(2 * np.pi * 700 * times) * 0.3        # 700 Hz (in passband)
+        high_freq = np.sin(2 * np.pi * 1700 * times) * 0.4  # 1700 Hz (above passband)
         noise = np.random.randn(n_times) * 0.1
         data_array[ch_idx, :] = low_freq + alpha + beta + high_freq + noise
 
@@ -251,8 +254,8 @@ def test_filter_data(tmp_path):
     # Create Raw object for testing
     data = RawArray(data_array, info)
 
-    # Apply basic filtering (1-40 Hz bandpass)
-    filtered_data = filter_data(eeg_data=data, high_pass=1.0, low_pass=40.0)
+    # Apply basic filtering (70-1000 Hz bandpass)
+    filtered_data = filter_data(eeg_data=data, high_pass=70.0, low_pass=1000.0)
 
     # Verify that filtered data is returned and is a proper MNE object
     assert filtered_data is not None, "Filtered data should be returned"
@@ -304,9 +307,9 @@ def test_filter_data(tmp_path):
     freqs, psd = signal.welch(channel_data, fs=sfreq, nperseg=nperseg)
 
     # Find power in different frequency bands
-    low_freq_mask = freqs < 1.0  # Below lowpass
-    pass_band_mask = (freqs >= 1.0) & (freqs <= 40.0)  # Within passband
-    high_freq_mask = freqs > 40.0  # Above highpass
+    low_freq_mask = freqs < 70.0  # Below highpass
+    pass_band_mask = (freqs >= 70.0) & (freqs <= 1000.0)  # Within passband
+    high_freq_mask = freqs > 1000.0  # Above lowpass
 
     # Calculate power in each band
     low_power = np.mean(psd[low_freq_mask]) if np.any(low_freq_mask) else 0
@@ -336,10 +339,11 @@ def test_epoch_data(tmp_path):
     import numpy as np
     from mne import create_info, io
 
-    # Create synthetic EEG data
+    # Create synthetic EEG data.
+    # sfreq must clear Nyquist for the 1000 Hz low-pass exercised below.
     n_channels = 8
-    n_times = 10000  # 10 seconds at 1000 Hz
-    sfreq = 1000.0
+    n_times = 25000  # 10 seconds at 2500 Hz
+    sfreq = 2500.0
 
     # Generate some synthetic EEG-like data with different frequency components
     times = np.arange(n_times) / sfreq
@@ -363,7 +367,7 @@ def test_epoch_data(tmp_path):
     # Apply basic preprocessing before epoching
     referenced_data = reference_data(raw_data, ref_channels=None)
     filtered_data = filter_data(
-        referenced_data, high_pass=1.0, low_pass=40.0
+        referenced_data, high_pass=70.0, low_pass=1000.0
     )
 
     # Test epoch_data function with different baseline configurations
@@ -590,6 +594,83 @@ def test_epoch_data_trial_types_unknown_raises(tmp_path):
         )
 
 
+def _raw_with_two_conditions_marker_and_one_spike(tmp_path):
+    """8 trials (4 'a' / 4 'b') + 1 marker; the first 'a' trial has a 45 uV spike."""
+    import numpy as np
+    import pandas as pd
+    from mne import create_info
+    from mne.io import RawArray
+
+    sfreq = 1000.0
+    rng = np.random.default_rng(2)
+    data = rng.normal(0, 0.5e-6, int(sfreq * 12))
+    data[int(1.0 * sfreq) + 50] += 45e-6
+    raw = RawArray(data[np.newaxis, :], create_info(["Cz"], sfreq, ["eeg"]), verbose=False)
+    events_path = tmp_path / "events.tsv"
+    pd.DataFrame({
+        "onset": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 10.0],
+        "duration": [0.0] * 9,
+        "trial_type": ["a", "b", "a", "b", "a", "b", "a", "b", "marker"],
+    }).to_csv(events_path, sep="\t", index=False)
+    return raw, events_path
+
+
+def _sidecar_counts(path):
+    with open(path.with_suffix(".json")) as f:
+        sidecar = json.load(f)
+    return (
+        sidecar["EpochCount"], sidecar["EpochCountRejected"], sidecar["EpochCountTotal"],
+    )
+
+
+def test_epoch_count_sidecar_is_per_condition_not_whole_recording(tmp_path):
+    """Regression: totals used len(drop_log), i.e. every event incl. other
+    conditions and markers, and a rejected trial was charged to all files."""
+    raw, events_path = _raw_with_two_conditions_marker_and_one_spike(tmp_path)
+    epochs, _ = epoch_data(
+        raw, baseline=[-0.05, 0.0], events_file=str(events_path),
+        tmin=-0.05, tmax=0.2, reject={"eeg": 30e-6}, trial_types=["a", "b"],
+        verbose=False,
+    )
+    bids_root = tmp_path / "bids"
+    bids_root.mkdir()
+    out_paths = save_preprocessing_outputs(
+        {cond: epochs[cond] for cond in epochs.event_id},
+        bids_root, subject="01", task="t", run="01",
+    )
+    by_name = {p.name: p for p in out_paths}
+
+    a_path = next(v for k, v in by_name.items() if "preprocA_" in k)
+    b_path = next(v for k, v in by_name.items() if "preprocB_" in k)
+    assert _sidecar_counts(a_path) == (3, 1, 4)   # kept, rejected, total
+    assert _sidecar_counts(b_path) == (4, 0, 4)   # the 'a' rejection is not charged to 'b'
+
+
+def test_epoch_count_sidecar_for_unsplit_output_ignores_markers(tmp_path):
+    raw, events_path = _raw_with_two_conditions_marker_and_one_spike(tmp_path)
+    epochs, _ = epoch_data(
+        raw, baseline=[-0.05, 0.0], events_file=str(events_path),
+        tmin=-0.05, tmax=0.2, reject={"eeg": 30e-6}, trial_types=["a", "b"],
+        verbose=False,
+    )
+    bids_root = tmp_path / "bids"
+    bids_root.mkdir()
+    out_path = save_preprocessing_outputs(
+        epochs, bids_root, subject="01", task="t", run="01",
+    )
+    assert _sidecar_counts(out_path) == (7, 1, 8)  # 9 events, minus the marker
+
+
+def test_epoch_count_sidecar_falls_back_without_recorded_counts(tmp_path):
+    """Epochs built outside epoch_data keep the previous drop_log-based counts."""
+    epochs_dict, bids_root = _two_condition_epochs_dict(tmp_path)
+    out_paths = save_preprocessing_outputs(
+        epochs_dict, bids_root, subject="01", task="active", run=1,
+    )
+    kept, rejected, total = _sidecar_counts(out_paths[0])
+    assert kept == 3 and total == kept + rejected
+
+
 def test_create_preprocessing_workflow(tmp_path):
     """Test the create_preprocessing_workflow function."""
     # Test that the workflow can be created without errors
@@ -738,8 +819,8 @@ def test_preprocessing_workflow_execution(tmp_path):
     workflow.inputs.inputnode.task_label = "passive"
     workflow.inputs.inputnode.run_label = 1
     workflow.inputs.inputnode.ref_channels = None  # Average reference
-    workflow.inputs.inputnode.high_pass = 1.0
-    workflow.inputs.inputnode.low_pass = 40.0
+    workflow.inputs.inputnode.high_pass = 70.0
+    workflow.inputs.inputnode.low_pass = 1000.0
     workflow.inputs.inputnode.baseline = -0.1
     workflow.inputs.inputnode.tmin = -0.2
     workflow.inputs.inputnode.tmax = 0.5
@@ -779,10 +860,11 @@ def test_output_structure_and_files(tmp_path):
     from mne import create_info
     from mne_bids import BIDSPath
 
-    # Create synthetic EEG data
+    # Create synthetic EEG data.
+    # sfreq must clear Nyquist for the 1000 Hz low-pass exercised below.
     n_channels = 8
-    n_times = 5000  # 5 seconds at 1000 Hz
-    sfreq = 1000.0
+    n_times = 12500  # 5 seconds at 2500 Hz
+    sfreq = 2500.0
 
     times = np.arange(n_times) / sfreq
     data_array = np.zeros((n_channels, n_times))
@@ -812,7 +894,7 @@ def test_output_structure_and_files(tmp_path):
 
     # Apply preprocessing steps
     referenced_data = reference_data(data, ref_channels=None)
-    filtered_data = filter_data(referenced_data, high_pass=1.0, low_pass=40.0)
+    filtered_data = filter_data(referenced_data, high_pass=70.0, low_pass=1000.0)
 
     # Use more lenient epoching for testing purposes
     from mne import Epochs
@@ -2322,13 +2404,13 @@ def test_filter_data_with_example_dataset(bids_dataset):
         run_label=1,
     )
 
-    filtered_data = filter_data(eeg_data=raw_data, high_pass=1.0, low_pass=40.0)
+    filtered_data = filter_data(eeg_data=raw_data, high_pass=70.0, low_pass=1000.0)
 
     assert len(filtered_data.ch_names) == len(raw_data.ch_names)
     assert filtered_data.n_times == raw_data.n_times
     assert filtered_data.info["sfreq"] == raw_data.info["sfreq"]
-    assert filtered_data.info["lowpass"] == 40.0
-    assert filtered_data.info["highpass"] == 1.0
+    assert filtered_data.info["lowpass"] == 1000.0
+    assert filtered_data.info["highpass"] == 70.0
 
 
 @pytest.mark.integration
@@ -2342,7 +2424,7 @@ def test_epoch_data_with_example_dataset(bids_dataset):
     )
 
     referenced_data = reference_data(raw_data, ref_channels=None)
-    filtered_data = filter_data(referenced_data, high_pass=1.0, low_pass=40.0)
+    filtered_data = filter_data(referenced_data, high_pass=70.0, low_pass=1000.0)
 
     epochs, time_window = epoch_data(
         eeg_data=filtered_data,
@@ -2376,7 +2458,7 @@ def test_make_evoked_with_example_dataset(bids_dataset):
     )
 
     referenced_data = reference_data(raw_data, ref_channels=None)
-    filtered_data = filter_data(referenced_data, high_pass=1.0, low_pass=40.0)
+    filtered_data = filter_data(referenced_data, high_pass=70.0, low_pass=1000.0)
     epochs, _time_window = epoch_data(
         eeg_data=filtered_data,
         baseline=-0.1,
@@ -2411,7 +2493,7 @@ def test_full_pipeline_with_example_dataset(bids_workspace):
     )
 
     referenced_data = reference_data(raw_data, ref_channels=None)
-    filtered_data = filter_data(referenced_data, high_pass=1.0, low_pass=40.0)
+    filtered_data = filter_data(referenced_data, high_pass=70.0, low_pass=1000.0)
     epochs, _time_window = epoch_data(
         eeg_data=filtered_data,
         baseline=-0.1,

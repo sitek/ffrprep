@@ -19,6 +19,9 @@ CLI
 - New flag ``--difference-pairs A:B [C:D …]`` to compute difference
   evokeds across explicit pairs. For 2-type datasets the difference
   is auto-emitted; for 3+ types this flag is required to opt in.
+- New flag ``--no-report``: skip HTML report generation (preprocessing
+  and analysis) while still writing all derivatives. Intended for bulk
+  runs over many subjects, where report figures dominate runtime.
 - New flag ``--with-stimuli`` on ``ffrprep-download example``
   (``BooleanOptionalAction``, default ``False``): additionally
   fetches the BIDS ``/stimuli/`` directory needed by stimulus-aware
@@ -36,6 +39,13 @@ Preprocessing
   ``-`` into the ``desc`` entity. Alphanumeric labels (``positive``,
   ``10``) are unchanged, and sidecars still record the raw trial-type
   name in ``Condition`` / ``DifferenceOf``.
+- Fixed: the preprocessing sidecar's ``EpochCountTotal`` / ``EpochCountRejected``
+  are now per trial type. They were derived from ``len(epochs.drop_log)``,
+  which spans every event (the other condition's trials and non-analysed
+  markers included), so a two-polarity recording reported ~2x the trials
+  and charged each rejected trial to every file. ``epoch_data`` now records
+  per-condition counts while the events array is still aligned with the
+  drop log; epochs built elsewhere fall back to the previous behaviour.
 - ``epoch_data`` accepts ``trial_types=`` to narrow the discovered
   event_id mapping to a subset; raises ``ValueError`` if a
   requested name is absent so typos surface immediately.
@@ -55,6 +65,16 @@ Preprocessing
 Analysis
 --------
 
+- Fixed: ``plot_pitch_and_conf`` no longer calls ``plt.show()``. On any
+  local (non-Docker) install where matplotlib defaults to an
+  interactive backend (e.g. ``macosx`` on a Mac, ``TkAgg``/``QtAgg`` on
+  many Linux desktops), this call blocked ``--stage analysis`` /
+  ``--stage both`` runs indefinitely waiting for a GUI window to
+  close, since ``evoked_qa`` invokes it during every analysis report
+  build. CI/Docker never hit this because tests force ``Agg`` and the
+  container images run headless. The figure was already captured via
+  ``plt.gcf()`` immediately after the call (see ``reports.evoked_qa``),
+  so nothing depended on the interactive display.
 - ``save_analysis_outputs`` accepts a structured payload
   ``{"by_type": dict, "combined": Evoked, "diff": dict}`` (any
   subset). Filenames:
@@ -82,6 +102,9 @@ Analysis
     plotting.
   - ``response_consistency``: mean pairwise Pearson correlation
     across epochs.
+    Computed with a single ``np.corrcoef`` matrix instead of a
+    Python loop of ``scipy.stats.pearsonr`` calls (same values and
+    pair ordering; ~0.3 s vs ~9 min for 3000 epochs x 4147 samples).
   - ``compute_fft``: amplitude spectrum helper.
 
 - Analysis worker granularity changed from per-file to
