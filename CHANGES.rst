@@ -19,6 +19,9 @@ CLI
 - New flag ``--difference-pairs A:B [C:D …]`` to compute difference
   evokeds across explicit pairs. For 2-type datasets the difference
   is auto-emitted; for 3+ types this flag is required to opt in.
+- New flag ``--no-report``: skip HTML report generation (preprocessing
+  and analysis) while still writing all derivatives. Intended for bulk
+  runs over many subjects, where report figures dominate runtime.
 - New flag ``--with-stimuli`` on ``ffrprep-download example``
   (``BooleanOptionalAction``, default ``False``): additionally
   fetches the BIDS ``/stimuli/`` directory needed by stimulus-aware
