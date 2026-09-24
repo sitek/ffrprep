@@ -372,6 +372,59 @@ def test_run_ffrprep_both_stages(
         mock_analysis_workflow.run.assert_called_once()
 
 
+def test_paper_exact_preprocessing_flags_default_to_mne_behaviour():
+    parser = get_parser()
+    base = ["/path/to/bids", "/path/to/output", "participant"]
+    args = parser.parse_args(base)
+    assert args.filter_method == "fir"
+    assert args.reject_mode == "ptp"
+
+    args = parser.parse_args(
+        base + ["--filter-method", "iir", "--reject-mode", "abs", "--reject-eeg", "35e-6"]
+    )
+    assert args.filter_method == "iir"
+    assert args.reject_mode == "abs"
+    assert args.reject_eeg == pytest.approx(35e-6)
+
+
+@pytest.mark.parametrize("flag, bad", [("--filter-method", "butter"), ("--reject-mode", "mean")])
+def test_paper_exact_preprocessing_flags_reject_unknown_choices(flag, bad):
+    parser = get_parser()
+    with pytest.raises(SystemExit):
+        parser.parse_args(["/b", "/o", "participant", flag, bad])
+
+
+def test_workflow_inputs_carry_filter_method_and_reject_mode(tmp_path):
+    """The CLI payload reaches the nipype inputnode (both node layouts)."""
+    from ffrprep.ffrprep_cli import _build_preproc_workflow, _make_preproc_payload
+
+    args_snap = {
+        "bids_dir": str(tmp_path / "bids"), "tmin": -0.04, "tmax": 0.213,
+        "picks": None, "on_missing": "warn", "event_id": None,
+        "events_file": None, "save_each_node": False, "work_dir": None,
+        "filter_method": "iir", "reject_mode": "abs",
+    }
+    deriv_snap = {
+        "derivatives_root": str(tmp_path / "deriv"),
+        "preprocessing_dir": str(tmp_path / "deriv" / "ffrprep-preprocessing"),
+        "preprocessing_subject_dir": str(tmp_path / "deriv" / "p" / "sub-01" / "eeg"),
+        "analysis_dir": str(tmp_path / "deriv" / "ffrprep-analysis"),
+        "analysis_subject_dir": str(tmp_path / "deriv" / "a" / "sub-01"),
+    }
+    for save_each_node in (False, True):
+        args_snap["save_each_node"] = save_each_node
+        payload = _make_preproc_payload(
+            args_snap, deriv_snap, "01", "da", "01", [], 70.0, 2000.0,
+            (-0.04, 0.0), {"eeg": 35e-6},
+        )
+        assert payload["filter_method"] == "iir"
+        assert payload["reject_mode"] == "abs"
+        wf = _build_preproc_workflow(payload)
+        inputs = wf.get_node("inputnode").inputs
+        assert inputs.filter_method == "iir"
+        assert inputs.reject_mode == "abs"
+
+
 def test_no_report_flag_defaults_off_and_can_be_enabled():
     parser = get_parser()
     base = ["/path/to/bids", "/path/to/output", "participant"]

@@ -590,6 +590,164 @@ def test_epoch_data_trial_types_unknown_raises(tmp_path):
         )
 
 
+def _single_channel_raw(sfreq=16384.0, seconds=8.0, seed=0):
+    import numpy as np
+    from mne import create_info
+    from mne.io import RawArray
+
+    rng = np.random.default_rng(seed)
+    n = int(sfreq * seconds)
+    t = np.arange(n) / sfreq
+    data = (
+        rng.normal(0, 1e-6, n)
+        + 5e-6 * np.sin(2 * np.pi * 100.0 * t)
+        + 3e-6 * np.sin(2 * np.pi * 20.0 * t)
+    )[np.newaxis, :]
+    return RawArray(data, create_info(["Cz"], sfreq, ch_types=["eeg"]), verbose=False)
+
+
+def test_filter_data_default_is_fir_and_matches_explicit_fir():
+    import numpy as np
+
+    raw = _single_channel_raw(sfreq=2000.0, seconds=4.0)
+    default = filter_data(raw, high_pass=70.0, low_pass=500.0)
+    explicit = filter_data(raw, high_pass=70.0, low_pass=500.0, filter_method="fir")
+    np.testing.assert_array_equal(default.get_data(), explicit.get_data())
+
+
+def test_filter_data_iir_matches_scipy_butter_filtfilt():
+    """iir = order-1 Butterworth HP then LP, each zero-phase (filtfilt)."""
+    import numpy as np
+    from scipy import signal
+
+    sfreq = 16384.0
+    raw = _single_channel_raw(sfreq=sfreq, seconds=6.0)
+    filtered = filter_data(raw, high_pass=70.0, low_pass=2000.0, filter_method="iir")
+
+    x = raw.get_data()[0]
+    hp = signal.butter(1, 70.0 / (sfreq / 2), "high", output="sos")
+    lp = signal.butter(1, 2000.0 / (sfreq / 2), "low", output="sos")
+    expected = signal.sosfiltfilt(lp, signal.sosfiltfilt(hp, x))
+
+    interior = slice(int(sfreq), -int(sfreq))  # skip edge-padding differences
+    np.testing.assert_allclose(
+        filtered.get_data()[0][interior], expected[interior], rtol=0, atol=1e-12,
+    )
+    # And it actually filtered: the 20 Hz component is strongly attenuated.
+    assert np.std(filtered.get_data()[0][interior]) < np.std(x[interior])
+
+
+def test_filter_data_iir_supports_single_sided_and_leaves_input_untouched():
+    import numpy as np
+
+    raw = _single_channel_raw(sfreq=2000.0, seconds=4.0)
+    before = raw.get_data().copy()
+    high_only = filter_data(raw, high_pass=70.0, low_pass=None, filter_method="iir")
+    low_only = filter_data(raw, high_pass=None, low_pass=200.0, filter_method="iir")
+    np.testing.assert_array_equal(raw.get_data(), before)
+    assert not np.allclose(high_only.get_data(), before)
+    assert not np.allclose(low_only.get_data(), before)
+
+
+def test_filter_data_unknown_method_raises():
+    raw = _single_channel_raw(sfreq=1000.0, seconds=2.0)
+    with pytest.raises(ValueError, match="filter_method"):
+        filter_data(raw, high_pass=1.0, low_pass=40.0, filter_method="butter")
+
+
+def _raw_and_events_for_rejection(tmp_path):
+    """Three-epoch recording: clean, spike (+45 uV), +/-20 uV square wave."""
+    import numpy as np
+    import pandas as pd
+    from mne import create_info
+    from mne.io import RawArray
+
+    sfreq = 1000.0
+    n = int(sfreq * 6)
+    rng = np.random.default_rng(1)
+    data = rng.normal(0, 0.5e-6, n)
+    # epoch 2 (onset 2.0 s): single +45 uV sample after stimulus onset
+    data[int(2.0 * sfreq) + 50] += 45e-6
+    # epoch 3 (onset 3.0 s): +/-20 uV square wave -> ptp = 40 uV, max|x| = 20 uV
+    seg = slice(int(3.0 * sfreq) + 10, int(3.0 * sfreq) + 110)
+    data[seg] += 20e-6 * np.sign(np.sin(np.linspace(0, 8 * np.pi, 100)))
+    raw = RawArray(data[np.newaxis, :], create_info(["Cz"], sfreq, ["eeg"]), verbose=False)
+    events_path = tmp_path / "events.tsv"
+    pd.DataFrame({
+        "onset": [1.0, 2.0, 3.0],
+        "duration": [0.0] * 3,
+        "trial_type": ["a", "a", "a"],
+    }).to_csv(events_path, sep="\t", index=False)
+    return raw, events_path
+
+
+def test_epoch_data_ptp_rejection_default_rejects_square_wave(tmp_path):
+    raw, events_path = _raw_and_events_for_rejection(tmp_path)
+    epochs, _ = epoch_data(
+        raw, baseline=[-0.05, 0.0], events_file=str(events_path),
+        tmin=-0.05, tmax=0.2, reject={"eeg": 35e-6}, verbose=False,
+    )
+    assert len(epochs) == 1  # spike (ptp 45) and square wave (ptp 40) both dropped
+
+
+def test_epoch_data_abs_rejection_keeps_epoch_whose_ptp_only_exceeds(tmp_path):
+    raw, events_path = _raw_and_events_for_rejection(tmp_path)
+    epochs, _ = epoch_data(
+        raw, baseline=[-0.05, 0.0], events_file=str(events_path),
+        tmin=-0.05, tmax=0.2, reject={"eeg": 35e-6}, reject_mode="abs",
+        verbose=False,
+    )
+    # Only the +45 uV spike reaches |x| >= 35 uV; the +/-20 uV wave stays.
+    assert len(epochs) == 2
+    reasons = [r for r in epochs.drop_log if r]
+    assert reasons == [("ABS_AMP",)]
+    assert epochs.ffrprep_reject_abs == pytest.approx(35e-6)
+
+
+def test_epoch_data_abs_mode_without_reject_is_a_noop(tmp_path):
+    raw, events_path = _raw_and_events_for_rejection(tmp_path)
+    epochs, _ = epoch_data(
+        raw, baseline=[-0.05, 0.0], events_file=str(events_path),
+        tmin=-0.05, tmax=0.2, reject=None, reject_mode="abs", verbose=False,
+    )
+    assert len(epochs) == 3
+
+
+def test_epoch_data_unknown_reject_mode_raises(tmp_path):
+    raw, events_path = _raw_and_events_for_rejection(tmp_path)
+    with pytest.raises(ValueError, match="reject_mode"):
+        epoch_data(
+            raw, baseline=[-0.05, 0.0], events_file=str(events_path),
+            tmin=-0.05, tmax=0.2, reject={"eeg": 35e-6}, reject_mode="mean",
+            verbose=False,
+        )
+
+
+@pytest.mark.parametrize(
+    "reject_mode, reject, expected_mode",
+    [
+        ("abs", {"eeg": 35e-6}, "absolute-amplitude"),
+        ("ptp", {"eeg": 75e-6}, "peak-to-peak"),
+    ],
+)
+def test_sidecar_records_rejection_mode(tmp_path, reject_mode, reject, expected_mode):
+    raw, events_path = _raw_and_events_for_rejection(tmp_path)
+    epochs, _ = epoch_data(
+        raw, baseline=[-0.05, 0.0], events_file=str(events_path),
+        tmin=-0.05, tmax=0.2, reject=reject, reject_mode=reject_mode, verbose=False,
+    )
+    bids_root = tmp_path / "bids"
+    bids_root.mkdir()
+    out = save_preprocessing_outputs(
+        epochs, bids_root, subject="01", task="da", run="01",
+    )
+    out = out if isinstance(out, list) else [out]
+    with open(out[0].with_suffix(".json")) as f:
+        sidecar = json.load(f)
+    assert sidecar["RejectionMode"] == expected_mode
+    assert sidecar["RejectionThresholds"] == {"eeg": pytest.approx(reject["eeg"])}
+
+
 def test_create_preprocessing_workflow(tmp_path):
     """Test the create_preprocessing_workflow function."""
     # Test that the workflow can be created without errors

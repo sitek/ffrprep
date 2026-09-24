@@ -132,7 +132,9 @@ Preprocessing Workflow Nodes
 *Default Parameters:*
    - **High-pass:** 1.0 Hz (removes slow drifts, preserves FFR frequencies)
    - **Low-pass:** 40.0 Hz (removes EMG and high-frequency noise)
-   - **Filter design:** Zero-phase FIR with automatic transition bandwidth
+   - **Filter design:** Zero-phase FIR with automatic transition bandwidth.
+     ``--filter-method iir`` switches to zero-phase first-order
+     Butterworth high-pass + low-pass passes (12 dB/octave overall).
 
 *Outputs:* Filtered EEG data
 
@@ -158,7 +160,8 @@ amplitude-based rejection.
      around stimulus onset
    - **Baseline:** ``--baseline -0.2 0`` seconds (pre-stimulus)
    - **Rejection:** ``--reject-eeg 75e-6`` (75 µV peak-to-peak); pass
-     ``--no-auto-reject`` to disable
+     ``--no-auto-reject`` to disable, or ``--reject-mode abs`` to drop
+     epochs whose absolute amplitude reaches the threshold at any sample
 
 *Outputs:* Epoched EEG data and the post-rejection drop log.
 

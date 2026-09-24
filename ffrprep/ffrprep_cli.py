@@ -221,6 +221,8 @@ def _make_preproc_payload(args_snap, deriv_snap, subject, task_label, run_label,
         "ref_channels": ref_channels,
         "high_pass": effective_l,
         "low_pass": effective_h,
+        "filter_method": args_snap.get("filter_method", "fir"),
+        "reject_mode": args_snap.get("reject_mode", "ptp"),
         "baseline": baseline,
         "tmin": args_snap.get("tmin"),
         "tmax": args_snap.get("tmax"),
@@ -308,6 +310,8 @@ def _make_concat_payload(args_snap, deriv_snap, subject, task_label, runs,
         "ref_channels": ref_channels,
         "high_pass": effective_l,
         "low_pass": effective_h,
+        "filter_method": args_snap.get("filter_method", "fir"),
+        "reject_mode": args_snap.get("reject_mode", "ptp"),
         "baseline": baseline,
         "tmin": args_snap.get("tmin"),
         "tmax": args_snap.get("tmax"),
@@ -524,6 +528,8 @@ def _build_preproc_workflow(payload):
     target.ref_channels = payload["ref_channels"]
     target.high_pass = payload["high_pass"]
     target.low_pass = payload["low_pass"]
+    target.filter_method = payload.get("filter_method", "fir")
+    target.reject_mode = payload.get("reject_mode", "ptp")
     target.baseline = payload["baseline"]
     target.tmin = payload["tmin"]
     target.tmax = payload["tmax"]
@@ -1663,10 +1669,34 @@ def get_parser():
         "--reject-eeg",
         type=float,
         help=(
-            "Peak-to-peak rejection threshold for EEG channels in Volts. "
+            "Rejection threshold for EEG channels in Volts (peak-to-peak "
+            "by default; see --reject-mode). "
             "Set to 0 to disable automatic rejection."
         ),
         default=75e-6,
+    )
+    preproc_group.add_argument(
+        "--reject-mode",
+        choices=["ptp", "abs"],
+        default="ptp",
+        help=(
+            "How --reject-eeg is applied: 'ptp' = MNE peak-to-peak "
+            "criterion (default); 'abs' = drop epochs whose absolute "
+            "amplitude reaches the threshold at any sample (max|x| >= "
+            "threshold), e.g. --reject-mode abs --reject-eeg 35e-6."
+        ),
+    )
+    preproc_group.add_argument(
+        "--filter-method",
+        choices=["fir", "iir"],
+        default="fir",
+        help=(
+            "Band-pass filter design: 'fir' = MNE zero-phase FIR with "
+            "automatic transition bandwidth (default); 'iir' = zero-phase "
+            "first-order Butterworth high-pass then low-pass (12 dB/octave "
+            "overall, forward-backward), as used in some published FFR "
+            "pipelines."
+        ),
     )
     preproc_group.add_argument(
         "--no-auto-reject",

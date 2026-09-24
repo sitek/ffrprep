@@ -19,6 +19,16 @@ CLI
 - New flag ``--difference-pairs A:B [C:D …]`` to compute difference
   evokeds across explicit pairs. For 2-type datasets the difference
   is auto-emitted; for 3+ types this flag is required to opt in.
+- New flag ``--filter-method {fir,iir}`` (default ``fir``): ``iir`` applies
+  zero-phase (forward-backward) first-order Butterworth high-pass and
+  low-pass filters (12 dB/octave overall), matching the ``butter`` /
+  ``filtfilt`` band-pass used in some published FFR pipelines.
+- New flag ``--reject-mode {ptp,abs}`` (default ``ptp``): ``abs`` drops
+  epochs whose absolute amplitude reaches ``--reject-eeg`` at any sample
+  (``max|x| >= threshold``, drop reason ``ABS_AMP``) instead of MNE's
+  peak-to-peak criterion. The preprocessing sidecar records
+  ``RejectionMode`` (``peak-to-peak`` / ``absolute-amplitude``) next to
+  ``RejectionThresholds``.
 - New flag ``--no-report``: skip HTML report generation (preprocessing
   and analysis) while still writing all derivatives. Intended for bulk
   runs over many subjects, where report figures dominate runtime.
