@@ -48,6 +48,17 @@ per-(task, run) iterations within a subject via ``--n_procs N``;
 multi-node / cluster scaling is one ffrprep invocation per subject
 under your scheduler of choice.
 
+Running the ``group`` analysis level against an ``output_dir`` that
+already holds participant-level derivatives aggregates them across
+subjects: a grand-average evoked response, a per-subject metrics
+table, and a group HTML report per (task, run). The table can also
+hold F0 and harmonic amplitudes, stimulus-to-response correlation,
+covariates from ``participants.tsv`` and QC flag columns, and comes
+with a ``_metrics.json`` data dictionary. This is aggregation
+only, in the spirit of a "prep" tool — no group-level statistics are
+computed; see the `Usage guide
+<https://sitek.github.io/ffrprep/usage.html>`_ for details.
+
 
 Installation
 ============

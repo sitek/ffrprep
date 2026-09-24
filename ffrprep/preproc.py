@@ -441,7 +441,8 @@ def reference_raw_file(input_raw_path, ref_channels, output_dir, subject=None, t
 
 
 def filter_raw_file(
-    input_raw_path, high_pass, low_pass, output_dir, subject=None, task=None, session=None, run=None
+    input_raw_path, high_pass, low_pass, output_dir, subject=None, task=None, session=None, run=None,
+    filter_method="fir",
 ):
     """
     Load a raw FIF file, apply filtering, save filtered FIF. Returns path.
@@ -455,7 +456,9 @@ def filter_raw_file(
     from ffrprep.preproc import filter_data as _filter_data
     from ffrprep.preproc import save_raw_helper as _save_raw_helper
 
-    filtered = _filter_data(raw, high_pass=high_pass, low_pass=low_pass)
+    filtered = _filter_data(
+        raw, high_pass=high_pass, low_pass=low_pass, filter_method=filter_method,
+    )
 
     # Derive identifiers from filename as in reference_raw_file
     import re
@@ -625,7 +628,7 @@ def reference_data(eeg_data=None, ref_channels=None):
     return eeg_data
 
 
-def filter_data(eeg_data=None, high_pass=None, low_pass=None):
+def filter_data(eeg_data=None, high_pass=None, low_pass=None, filter_method="fir"):
     """
     Apply frequency filters to the provided EEG data object.
 
@@ -639,6 +642,13 @@ def filter_data(eeg_data=None, high_pass=None, low_pass=None):
     low_pass : float
         Upper passband edge (in Hertz).
         Default = None.
+    filter_method : {"fir", "iir"}
+        ``"fir"`` (default) uses MNE's zero-phase FIR design with automatic
+        transition bandwidths. ``"iir"`` applies zero-phase (forward-
+        backward) first-order Butterworth filters, a high-pass then a
+        low-pass, so the band-pass rolls off at 12 dB/octave overall.
+        This mirrors the ``butter``/``filtfilt`` pipeline used in some
+        published FFR analyses.
 
     Returns
     -------
@@ -664,7 +674,25 @@ def filter_data(eeg_data=None, high_pass=None, low_pass=None):
 
     # Apply filtering using MNE's filter method
     # l_freq is low-frequency cutoff (high-pass), h_freq is high-frequency cutoff (low-pass)  # noqa: E501
-    filtered_eeg.filter(l_freq=high_pass, h_freq=low_pass)
+    if filter_method == "fir":
+        filtered_eeg.filter(l_freq=high_pass, h_freq=low_pass)
+    elif filter_method == "iir":
+        # Fresh iir_params per call: MNE writes the designed filter back
+        # into the dict it is given.
+        if high_pass is not None:
+            filtered_eeg.filter(
+                l_freq=high_pass, h_freq=None, method="iir",
+                iir_params=dict(order=1, ftype="butter"), phase="zero",
+            )
+        if low_pass is not None:
+            filtered_eeg.filter(
+                l_freq=None, h_freq=low_pass, method="iir",
+                iir_params=dict(order=1, ftype="butter"), phase="zero",
+            )
+    else:
+        raise ValueError(
+            f"filter_method must be 'fir' or 'iir', got {filter_method!r}"
+        )
 
     # Return the filtered data
     return filtered_eeg
@@ -686,6 +714,7 @@ def epoch_data(
     run=None,
     trial_types=None,
     verbose=True,
+    reject_mode="ptp",
 ):
     """
     Epoch the provided EEG data object based on events.
@@ -706,6 +735,13 @@ def epoch_data(
         Start time before event (in seconds).
     tmax : float, optional
         End time after event (in seconds).
+    reject : dict, optional
+        Rejection thresholds in Volts, e.g. ``{"eeg": 75e-6}``.
+    reject_mode : {"ptp", "abs"}
+        How ``reject["eeg"]`` is interpreted. ``"ptp"`` (default) is MNE's
+        peak-to-peak criterion. ``"abs"`` drops any epoch whose absolute
+        amplitude reaches the threshold at any EEG sample (``max|x| >=
+        threshold``); dropped epochs are logged with reason ``ABS_AMP``.
     verbose : bool
         Whether to print verbose output.
 
@@ -917,6 +953,16 @@ def epoch_data(
             )
         chosen_event_id = {k: chosen_event_id[k] for k in requested}
 
+    if reject_mode not in ("ptp", "abs"):
+        raise ValueError(
+            f"reject_mode must be 'ptp' or 'abs', got {reject_mode!r}"
+        )
+    abs_threshold = None
+    epochs_reject = reject
+    if reject_mode == "abs" and reject:
+        abs_threshold = float(reject["eeg"])
+        epochs_reject = None
+
     epoched_data = Epochs(
         eeg_data,
         events=events,
@@ -927,12 +973,26 @@ def epoch_data(
         tmax=tmax,
         baseline=baseline_window,
         verbose=verbose,
-        reject=reject,
+        reject=epochs_reject,
     )
 
     # drop_bad() will apply rejection heuristics and return the filtered
     # Epochs object; keep this separate for clarity and easier debugging.
     epoched_data = epoched_data.drop_bad()
+
+    if abs_threshold is not None:
+        import numpy as np
+        from mne import pick_types
+
+        eeg_picks = pick_types(epoched_data.info, eeg=True)
+        if len(eeg_picks) and len(epoched_data):
+            amplitude = np.abs(epoched_data.get_data(picks=eeg_picks))
+            too_large = np.flatnonzero(amplitude.max(axis=(1, 2)) >= abs_threshold)
+            if too_large.size:
+                epoched_data.drop(too_large, reason="ABS_AMP", verbose=False)
+        # Read back by _save_one_preproc_epochs for the JSON sidecar
+        # (MNE's own ``reject`` attribute is None in this mode).
+        epoched_data.ffrprep_reject_abs = abs_threshold
 
     # Per-condition trial counts for the sidecar. Local import: this
     # function runs as a Nipype Function node, where module globals are
@@ -1137,6 +1197,8 @@ def create_preprocessing_workflow(name="ffrprep_preproc", disk_backed=False):
                 "ref_channels",
                 "high_pass",
                 "low_pass",
+                "filter_method",
+                "reject_mode",
                 "baseline",
                 "tmin",
                 "tmax",
@@ -1210,6 +1272,7 @@ def create_preprocessing_workflow(name="ffrprep_preproc", disk_backed=False):
                     "task",
                     "session",
                     "run",
+                    "filter_method",
                 ],
                 output_names=["filtered_raw_path"],
                 function=filter_raw_file,
@@ -1219,7 +1282,7 @@ def create_preprocessing_workflow(name="ffrprep_preproc", disk_backed=False):
     else:
         filter_node = Node(
             Function(
-                input_names=["eeg_data", "high_pass", "low_pass"],
+                input_names=["eeg_data", "high_pass", "low_pass", "filter_method"],
                 output_names=["filtered_data"],
                 function=filter_data,
             ),
@@ -1255,6 +1318,7 @@ def create_preprocessing_workflow(name="ffrprep_preproc", disk_backed=False):
                     "task",
                     "run",
                     "trial_types",
+                    "reject_mode",
                 ],
                 output_names=["epochs", "time_window"],
                 function=epoch_data,
@@ -1279,6 +1343,7 @@ def create_preprocessing_workflow(name="ffrprep_preproc", disk_backed=False):
                     "task",
                     "run",
                     "trial_types",
+                    "reject_mode",
                 ],
                 output_names=["epochs", "time_window"],
                 function=epoch_data,
@@ -1350,6 +1415,7 @@ def create_preprocessing_workflow(name="ffrprep_preproc", disk_backed=False):
                     [
                         ("high_pass", "high_pass"),
                         ("low_pass", "low_pass"),
+                        ("filter_method", "filter_method"),
                         ("output_dir", "output_dir"),
                         ("sub_label", "subject"),
                         ("task_label", "task"),
@@ -1374,6 +1440,7 @@ def create_preprocessing_workflow(name="ffrprep_preproc", disk_backed=False):
                         ("tmin", "tmin"),
                         ("tmax", "tmax"),
                         ("reject", "reject"),
+                        ("reject_mode", "reject_mode"),
                         ("picks", "picks"),
                         ("on_missing", "on_missing"),
                         ("event_id", "event_id"),
@@ -1434,7 +1501,15 @@ def create_preprocessing_workflow(name="ffrprep_preproc", disk_backed=False):
                 (inputnode, reference_node, [("ref_channels", "ref_channels")]),
                 # Connect reference to filter
                 (reference_node, filter_node, [("referenced_data", "eeg_data")]),
-                (inputnode, filter_node, [("high_pass", "high_pass"), ("low_pass", "low_pass")]),
+                (
+                    inputnode,
+                    filter_node,
+                    [
+                        ("high_pass", "high_pass"),
+                        ("low_pass", "low_pass"),
+                        ("filter_method", "filter_method"),
+                    ],
+                ),
                 # Connect filter to epoch
                 (filter_node, epoch_node, [("filtered_data", "eeg_data")]),
                 (
@@ -1445,6 +1520,7 @@ def create_preprocessing_workflow(name="ffrprep_preproc", disk_backed=False):
                         ("tmin", "tmin"),
                         ("tmax", "tmax"),
                         ("reject", "reject"),
+                        ("reject_mode", "reject_mode"),
                         ("picks", "picks"),
                         ("on_missing", "on_missing"),
                         ("event_id", "event_id"),
@@ -1584,7 +1660,7 @@ def create_analysis_workflow(name="ffrprep_analysis"):
 
 def setup_derivatives_directories(
     bids_root, subject,
-    create_preprocessing=True, create_analysis=True,
+    create_preprocessing=True, create_analysis=True, create_group=False,
     output_dir=None,
 ):
     """
@@ -1600,6 +1676,9 @@ def setup_derivatives_directories(
         Whether to create preprocessing derivatives directory.
     create_analysis : bool
         Whether to create analysis derivatives directory.
+    create_group : bool
+        Whether to create the group-level derivatives directory
+        (``ffrprep-group/``, not subject-scoped).
     output_dir : str or pathlib.Path, optional
         Explicit destination root for the ffrprep-preprocessing and
         ffrprep-analysis subtrees. When omitted, falls back to the
@@ -1636,12 +1715,17 @@ def setup_derivatives_directories(
     if create_analysis:
         analysis_subject_dir.mkdir(parents=True, exist_ok=True)
 
+    group_dir = derivatives_root / "ffrprep-group"
+    if create_group:
+        group_dir.mkdir(parents=True, exist_ok=True)
+
     return {
         "derivatives_root": derivatives_root,
         "preprocessing_dir": preproc_dir,
         "analysis_dir": analysis_dir,
         "preprocessing_subject_dir": preproc_subject_eeg_dir,
         "analysis_subject_dir": analysis_subject_dir,
+        "group_dir": group_dir,
     }
 
 
@@ -1913,7 +1997,12 @@ def _save_one_preproc_epochs(
     if raw_sources:
         sidecar["Sources"] = [f"bids:raw:{path}" for path in raw_sources]
         sidecar["RawSources"] = list(raw_sources)
-    if reject_thresholds:
+    abs_reject = getattr(epochs, "ffrprep_reject_abs", None)
+    if abs_reject is not None:
+        sidecar["RejectionMode"] = "absolute-amplitude"
+        sidecar["RejectionThresholds"] = {"eeg": float(abs_reject)}
+    elif reject_thresholds:
+        sidecar["RejectionMode"] = "peak-to-peak"
         sidecar["RejectionThresholds"] = {
             k: float(v) for k, v in reject_thresholds.items()
         }

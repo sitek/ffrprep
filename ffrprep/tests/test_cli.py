@@ -347,6 +347,9 @@ def test_run_ffrprep_both_stages(
         mock_args.h_freq = None
         mock_args.n_procs = 1
         mock_args.no_report = False
+        mock_args.skip_existing = False
+        mock_args.clean_work_dir = False
+        mock_args.keep_epochs = True
 
         mock_parser.return_value.parse_args.return_value = mock_args
         mock_get_participants.return_value = ["01"]
@@ -395,6 +398,103 @@ def test_run_ffrprep_both_stages(
         mock_analysis_wf.assert_called_once()
         mock_preproc_workflow.run.assert_called_once()
         mock_analysis_workflow.run.assert_called_once()
+
+
+def test_paper_exact_preprocessing_flags_default_to_mne_behaviour():
+    parser = get_parser()
+    base = ["/path/to/bids", "/path/to/output", "participant"]
+    args = parser.parse_args(base)
+    assert args.filter_method == "fir"
+    assert args.reject_mode == "ptp"
+
+    args = parser.parse_args(
+        base + ["--filter-method", "iir", "--reject-mode", "abs", "--reject-eeg", "35e-6"]
+    )
+    assert args.filter_method == "iir"
+    assert args.reject_mode == "abs"
+    assert args.reject_eeg == pytest.approx(35e-6)
+
+
+@pytest.mark.parametrize("flag, bad", [("--filter-method", "butter"), ("--reject-mode", "mean")])
+def test_paper_exact_preprocessing_flags_reject_unknown_choices(flag, bad):
+    parser = get_parser()
+    with pytest.raises(SystemExit):
+        parser.parse_args(["/b", "/o", "participant", flag, bad])
+
+
+def test_workflow_inputs_carry_filter_method_and_reject_mode(tmp_path):
+    """The CLI payload reaches the nipype inputnode (both node layouts)."""
+    from ffrprep.ffrprep_cli import _build_preproc_workflow, _make_preproc_payload
+
+    args_snap = {
+        "bids_dir": str(tmp_path / "bids"), "tmin": -0.04, "tmax": 0.213,
+        "picks": None, "on_missing": "warn", "event_id": None,
+        "events_file": None, "save_each_node": False, "work_dir": None,
+        "filter_method": "iir", "reject_mode": "abs",
+    }
+    deriv_snap = {
+        "derivatives_root": str(tmp_path / "deriv"),
+        "preprocessing_dir": str(tmp_path / "deriv" / "ffrprep-preprocessing"),
+        "preprocessing_subject_dir": str(tmp_path / "deriv" / "p" / "sub-01" / "eeg"),
+        "analysis_dir": str(tmp_path / "deriv" / "ffrprep-analysis"),
+        "analysis_subject_dir": str(tmp_path / "deriv" / "a" / "sub-01"),
+    }
+    for save_each_node in (False, True):
+        args_snap["save_each_node"] = save_each_node
+        payload = _make_preproc_payload(
+            args_snap, deriv_snap, "01", "da", "01", [], 70.0, 2000.0,
+            (-0.04, 0.0), {"eeg": 35e-6},
+        )
+        assert payload["filter_method"] == "iir"
+        assert payload["reject_mode"] == "abs"
+        wf = _build_preproc_workflow(payload)
+        inputs = wf.get_node("inputnode").inputs
+        assert inputs.filter_method == "iir"
+        assert inputs.reject_mode == "abs"
+
+
+def test_group_level_option_defaults_leave_extra_metrics_off():
+    args = get_parser().parse_args(["/b", "/o", "group"])
+    assert args.f0 is None
+    assert args.stimulus is None
+    assert args.n_harmonics == 10
+    assert args.harmonic_bin_hz == 60.0
+    assert args.harmonic_window == [0.06, 0.18]
+    assert args.xcorr_stim_window == [0.05, 0.17]
+    assert args.xcorr_resp_window == [0.06, 0.18]
+    assert args.xcorr_lag_range is None
+    assert args.n_trials_presented is None
+    assert args.covariates is None
+
+
+def test_qc_threshold_flags_default_off_and_parse():
+    parser = get_parser()
+    base = ["/path/to/bids", "/path/to/output", "group"]
+    args = parser.parse_args(base)
+    assert args.min_usable_pct is None and args.min_snr is None
+    args = parser.parse_args(base + ["--min-usable-pct", "60", "--min-snr", "1.5"])
+    assert args.min_usable_pct == 60.0 and args.min_snr == 1.5
+
+
+def test_group_level_options_parse_and_reach_group_module():
+    from ffrprep.group import _covariate_paths_from_args, _metric_options_from_args
+
+    args = get_parser().parse_args([
+        "/bids", "/out", "group",
+        "--f0", "100", "--harmonic-window", "0.06", "0.18", "--n-harmonics", "8",
+        "--stimulus", "/stim/da.wav", "--xcorr-lag-range", "6.9", "10.9",
+        "--xcorr-lag-resp-window", "0.05", "0.2", "--n-trials-presented", "6000",
+        "--covariates", "/pheno/a.tsv", "/pheno/b.tsv",
+    ])
+    options = _metric_options_from_args(args)
+    assert options["harmonics"] == {
+        "f0": 100.0, "n_harmonics": 8, "bin_hz": 60.0, "tmin": 0.06, "tmax": 0.18,
+    }
+    assert options["stimulus"]["path"] == Path("/stim/da.wav")
+    assert options["stimulus"]["lag_range_ms"] == (6.9, 10.9)
+    assert options["stimulus"]["lag_resp_window"] == (0.05, 0.2)
+    assert options["n_trials_presented"] == 6000
+    assert _covariate_paths_from_args(args) == [Path("/pheno/a.tsv"), Path("/pheno/b.tsv")]
 
 
 def test_no_report_flag_defaults_off_and_can_be_enabled():
@@ -449,6 +549,9 @@ def test_run_ffrprep_no_report_skips_html_reports(
         mock_args.h_freq = None
         mock_args.n_procs = 1
         mock_args.no_report = no_report
+        mock_args.skip_existing = False
+        mock_args.clean_work_dir = False
+        mock_args.keep_epochs = True
 
         mock_parser.return_value.parse_args.return_value = mock_args
         mock_get_participants.return_value = ["01"]
@@ -476,6 +579,182 @@ def test_run_ffrprep_no_report_skips_html_reports(
         assert mock_analysis_report.call_count == expected_calls
 
 
+def test_resume_and_cleanup_flags_default_to_previous_behaviour():
+    parser = get_parser()
+    args = parser.parse_args(["/path/to/bids", "/path/to/output", "participant"])
+    assert args.skip_existing is False
+    assert args.clean_work_dir is False
+    assert args.keep_epochs is True
+
+
+def test_resume_and_cleanup_flags_parse():
+    parser = get_parser()
+    args = parser.parse_args([
+        "/path/to/bids", "/path/to/output", "participant",
+        "--skip-existing", "--clean-work-dir", "--no-keep-epochs",
+    ])
+    assert args.skip_existing is True
+    assert args.clean_work_dir is True
+    assert args.keep_epochs is False
+
+
+def _resume_flow_args(tmp_dir, **overrides):
+    mock_args = MagicMock()
+    mock_args.bids_dir = Path(tmp_dir) / "bids"
+    mock_args.output_dir = Path(tmp_dir) / "output"
+    mock_args.analysis_level = "participant"
+    mock_args.stage = "both"
+    mock_args.skip_bids_validation = True
+    mock_args.participant_label = None
+    mock_args.baseline = "-0.2,0"
+    mock_args.ref_channels = "average"
+    mock_args.high_pass = 1.0
+    mock_args.low_pass = 40.0
+    mock_args.tmin = -0.2
+    mock_args.tmax = 0.6
+    mock_args.work_dir = None
+    mock_args.task = None
+    mock_args.run = None
+    mock_args.concat_runs = False
+    mock_args.no_filter = False
+    mock_args.no_auto_reject = False
+    mock_args.save_each_node = False
+    mock_args.events_file = None
+    mock_args.picks = None
+    mock_args.event_id = None
+    mock_args.reject_eeg = 75e-6
+    mock_args.on_missing = "warn"
+    mock_args.l_freq = None
+    mock_args.h_freq = None
+    mock_args.n_procs = 1
+    mock_args.no_report = False
+    mock_args.skip_existing = False
+    mock_args.clean_work_dir = False
+    mock_args.keep_epochs = True
+    for key, value in overrides.items():
+        setattr(mock_args, key, value)
+    return mock_args
+
+
+def _resume_flow_dirs(tmp_dir):
+    derivatives_root = Path(tmp_dir) / "derivatives"
+    preproc_dir = derivatives_root / "ffrprep-preprocessing" / "sub-01"
+    analysis_dir = derivatives_root / "ffrprep-analysis" / "sub-01"
+    preproc_dir.mkdir(parents=True)
+    analysis_dir.mkdir(parents=True)
+    return {
+        "derivatives_root": derivatives_root,
+        "preprocessing_dir": derivatives_root / "ffrprep-preprocessing",
+        "preprocessing_subject_dir": preproc_dir,
+        "analysis_dir": derivatives_root / "ffrprep-analysis",
+        "analysis_subject_dir": analysis_dir,
+    }
+
+
+@patch("ffrprep.ffrprep_cli._build_analysis_report")
+@patch("ffrprep.ffrprep_cli._build_preproc_report")
+@patch("ffrprep.ffrprep_cli._dispatch")
+@patch("ffrprep.ffrprep_cli.get_parser")
+@patch("ffrprep.ffrprep_cli.validate_input_dir")
+@patch("ffrprep.ffrprep_cli.get_participants")
+@patch("ffrprep.ffrprep_cli.get_sessions_tasks_runs")
+@patch("ffrprep.ffrprep_cli.setup_derivatives_directories")
+def test_run_ffrprep_skip_existing_with_removed_epochs_does_nothing(
+    mock_setup_dirs, mock_get_sessions, mock_get_participants, mock_validate,
+    mock_parser, mock_dispatch, mock_preproc_report, mock_analysis_report,
+    capsys,
+):
+    """Sidecars from an earlier --no-keep-epochs run mean nothing is left to do."""
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        mock_parser.return_value.parse_args.return_value = _resume_flow_args(
+            tmp_dir, skip_existing=True,
+        )
+        mock_get_participants.return_value = ["01"]
+        mock_get_sessions.return_value = {
+            "sessions": [None], "tasks": ["passive"], "runs": [1],
+        }
+        dirs = _resume_flow_dirs(tmp_dir)
+        mock_setup_dirs.return_value = dirs
+        # Finished earlier: sidecars only (epochs were deleted).
+        (dirs["preprocessing_subject_dir"]
+         / "sub-01_task-passive_run-1_desc-preproc_epo.json").write_text("{}")
+        (dirs["analysis_subject_dir"]
+         / "sub-01_task-passive_run-1_desc-evoked.json").write_text("{}")
+
+        run_ffrprep()
+
+        mock_dispatch.assert_not_called()
+        mock_preproc_report.assert_not_called()
+        mock_analysis_report.assert_not_called()
+        out = capsys.readouterr().out
+        assert "1/1 preprocessing iteration(s) already complete" in out
+        assert "analysis outputs already complete" in out
+
+
+@patch("ffrprep.ffrprep_cli._build_analysis_report")
+@patch("ffrprep.ffrprep_cli._build_preproc_report")
+@patch("ffrprep.ffrprep_cli._dispatch")
+@patch("ffrprep.ffrprep_cli.get_parser")
+@patch("ffrprep.ffrprep_cli.validate_input_dir")
+@patch("ffrprep.ffrprep_cli.get_participants")
+@patch("ffrprep.ffrprep_cli.get_sessions_tasks_runs")
+@patch("ffrprep.ffrprep_cli.setup_derivatives_directories")
+def test_run_ffrprep_no_keep_epochs_removes_fif_after_analysis(
+    mock_setup_dirs, mock_get_sessions, mock_get_participants, mock_validate,
+    mock_parser, mock_dispatch, mock_preproc_report, mock_analysis_report,
+    capsys,
+):
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        mock_parser.return_value.parse_args.return_value = _resume_flow_args(
+            tmp_dir, keep_epochs=False,
+        )
+        mock_get_participants.return_value = ["01"]
+        mock_get_sessions.return_value = {
+            "sessions": [None], "tasks": ["passive"], "runs": [1],
+        }
+        dirs = _resume_flow_dirs(tmp_dir)
+        mock_setup_dirs.return_value = dirs
+        fif = dirs["preprocessing_subject_dir"] / "sub-01_task-passive_run-1_desc-preproc_epo.fif"
+        sidecar = fif.with_suffix(".json")
+        fif.write_bytes(b"x" * 100)
+        sidecar.write_text("{}")
+
+        run_ffrprep()
+
+        assert not fif.exists()
+        assert sidecar.exists()
+        assert "--no-keep-epochs: removed 1 epochs file(s)" in capsys.readouterr().out
+
+
+@patch("ffrprep.ffrprep_cli._dispatch")
+@patch("ffrprep.ffrprep_cli.get_parser")
+@patch("ffrprep.ffrprep_cli.validate_input_dir")
+@patch("ffrprep.ffrprep_cli.get_participants")
+@patch("ffrprep.ffrprep_cli.get_sessions_tasks_runs")
+@patch("ffrprep.ffrprep_cli.setup_derivatives_directories")
+def test_run_ffrprep_no_keep_epochs_is_ignored_for_preprocessing_stage(
+    mock_setup_dirs, mock_get_sessions, mock_get_participants, mock_validate,
+    mock_parser, mock_dispatch, capsys,
+):
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        mock_parser.return_value.parse_args.return_value = _resume_flow_args(
+            tmp_dir, stage="preprocessing", keep_epochs=False, no_report=True,
+        )
+        mock_get_participants.return_value = ["01"]
+        mock_get_sessions.return_value = {
+            "sessions": [None], "tasks": ["passive"], "runs": [1],
+        }
+        dirs = _resume_flow_dirs(tmp_dir)
+        mock_setup_dirs.return_value = dirs
+        fif = dirs["preprocessing_subject_dir"] / "sub-01_task-passive_run-1_desc-preproc_epo.fif"
+        fif.write_bytes(b"x")
+
+        run_ffrprep()
+
+        assert fif.exists()
+        assert "--no-keep-epochs is ignored with --stage preprocessing" in capsys.readouterr().out
+
+
 @patch("ffrprep.ffrprep_cli.get_parser")
 @patch("ffrprep.ffrprep_cli.get_participants")
 def test_run_ffrprep_no_participants(mock_get_participants, mock_parser):
@@ -498,22 +777,21 @@ def test_run_ffrprep_no_participants(mock_get_participants, mock_parser):
 
 
 @patch("ffrprep.ffrprep_cli.get_parser")
-def test_run_ffrprep_group_level_not_supported(mock_parser):
-    """Group level analysis returns early with a helpful message."""
+@patch("ffrprep.ffrprep_cli.run_group_level")
+def test_run_ffrprep_group_level_dispatches_to_run_group_level(mock_run_group_level, mock_parser):
+    """Group level analysis is delegated to ffrprep.group.run_group_level."""
     with tempfile.TemporaryDirectory() as tmp_dir:
         mock_args = MagicMock()
         mock_args.bids_dir = Path(tmp_dir) / "bids"
         mock_args.output_dir = Path(tmp_dir) / "output"
         mock_args.analysis_level = "group"
+        mock_args.skip_bids_validation = True
 
         mock_parser.return_value.parse_args.return_value = mock_args
 
-        with patch("builtins.print") as mock_print:
-            run_ffrprep()
+        run_ffrprep()
 
-        mock_print.assert_any_call(
-            "Currently only participant-level analysis is supported."
-        )
+        mock_run_group_level.assert_called_once_with(mock_args)
 
 
 @patch("ffrprep.ffrprep_cli.get_parser")

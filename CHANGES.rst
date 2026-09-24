@@ -19,6 +19,16 @@ CLI
 - New flag ``--difference-pairs A:B [C:D …]`` to compute difference
   evokeds across explicit pairs. For 2-type datasets the difference
   is auto-emitted; for 3+ types this flag is required to opt in.
+- New flag ``--filter-method {fir,iir}`` (default ``fir``): ``iir`` applies
+  zero-phase (forward-backward) first-order Butterworth high-pass and
+  low-pass filters (12 dB/octave overall), matching the ``butter`` /
+  ``filtfilt`` band-pass used in some published FFR pipelines.
+- New flag ``--reject-mode {ptp,abs}`` (default ``ptp``): ``abs`` drops
+  epochs whose absolute amplitude reaches ``--reject-eeg`` at any sample
+  (``max|x| >= threshold``, drop reason ``ABS_AMP``) instead of MNE's
+  peak-to-peak criterion. The preprocessing sidecar records
+  ``RejectionMode`` (``peak-to-peak`` / ``absolute-amplitude``) next to
+  ``RejectionThresholds``.
 - Fixed: ``--reject-eeg 0`` now disables automatic rejection as its help
   text documents (``parse_reject``). It previously built a ``{"eeg": 0.0}``
   threshold, which rejects every epoch. Negative thresholds are now an
@@ -26,11 +36,83 @@ CLI
 - New flag ``--no-report``: skip HTML report generation (preprocessing
   and analysis) while still writing all derivatives. Intended for bulk
   runs over many subjects, where report figures dominate runtime.
+- New flags for resumable, disk-friendly bulk runs: ``--skip-existing``
+  (skip (task, run) iterations whose sidecar outputs already exist),
+  ``--clean-work-dir`` (delete each iteration's Nipype working files after
+  it succeeds; logs are kept) and ``--keep-epochs`` /
+  ``--no-keep-epochs`` (default keep; ``--no-keep-epochs`` deletes the
+  ``*_epo.fif`` files after analysis and keeps the JSON sidecars).
 - New flag ``--with-stimuli`` on ``ffrprep-download example``
   (``BooleanOptionalAction``, default ``False``): additionally
   fetches the BIDS ``/stimuli/`` directory needed by stimulus-aware
   analyses (e.g. ``corr_stim_to_resp``) and augments every
   ``events.tsv`` with the matching ``stim_file`` column.
+
+Group-level analysis
+--------------------
+
+- ``ffrprep <bids_dir> <output_dir> group`` now runs, replacing the
+  previous "Currently only participant-level analysis is supported."
+  stub. New module ``ffrprep.group`` aggregates already-computed
+  participant-level derivatives from ``output_dir`` — it does not
+  read ``bids_dir`` or re-run preprocessing/analysis:
+
+  - ``discover_group_inputs``: globs ``ffrprep-analysis/sub-*/`` and
+    ``ffrprep-preprocessing/sub-*/eeg/`` for combined evoked, diff
+    evoked, and preprocessing epochs files, grouped by
+    ``(task, session, run)``.
+  - ``compute_grand_average``: ``mne.grand_average`` across subjects
+    for each (task, session, run) with >= 2 contributing subjects.
+  - ``compute_subject_metrics``: recomputes RMS SNR, band power, and
+    response consistency per subject directly from saved derivatives
+    (nothing is recomputed from raw data).
+  - Outputs land under ``output_dir/ffrprep-group/``: grand-average
+    ``_desc-grandAverage_ave.fif`` (+ JSON sidecar with contributing
+    subjects), a per-(task, run) ``_metrics.tsv``, and a single
+    ``group_report.html``.
+  - Deliberately aggregation-only, not inferential: no group-level
+    statistics are computed, matching the scope other BIDS Apps
+    (e.g. MRIQC) use for their own "group" level.
+- Group-level FFR metrics (opt-in): ``--f0`` adds ``rms_snr_polarity_sum``,
+  ``f0_uv`` and ``upper_harmonics_uv`` (band-averaged FFT amplitude at the
+  harmonics of F0, computed on the sum of the two per-trial-type
+  averages; see ``--n-harmonics``, ``--harmonic-bin-hz``,
+  ``--harmonic-window``); ``--stimulus`` adds ``stim2resp_r/z/lag_ms``
+  (and ``stim2resp_lim_*`` with ``--xcorr-lag-range``); ``--n-trials-presented``
+  adds ``usable_pct``. ``discover_group_inputs`` now also returns the
+  per-trial-type evoked files (``"by_type"``).
+- QC flags on the group metrics table: ``--min-usable-pct`` (needs
+  ``--n-trials-presented``) and ``--min-snr`` add ``qc_usable_pct_ok`` /
+  ``qc_snr_ok``, ``qc_include`` and ``qc_reason`` columns (``add_qc_flags``).
+  Subjects are flagged, never dropped: the table and the grand averages keep
+  every subject, and the report summary shows how many were flagged.
+- Docs: the pipeline details page now covers the group-level metrics, covariates,
+  QC flags and output files, the ``--skip-existing`` / ``--clean-work-dir`` /
+  ``--no-keep-epochs`` behaviour, and the ``RejectionMode`` and ``Sources``
+  sidecar fields.
+- The group metrics TSV now has a BIDS-style data dictionary,
+  ``task-<task>[_run-<run>]_metrics.json``, beside it (``build_metrics_dictionary``):
+  a description and units for every column, with the actual windows and
+  thresholds of the run embedded. Covariate columns take their description,
+  levels and units from the JSON sidecar next to the covariate TSV
+  (``participants.json``, ``phenotype/*.json``) when one exists.
+  ``merge_covariates`` gains ``return_sources`` and ``save_group_metrics``
+  a ``dictionary`` argument.
+- ``compute_grand_average`` renames single-channel evokeds that carry different
+  channel names across sites (e.g. ``A32`` vs ``Cz``) to a common name before
+  averaging; mismatched multi-channel sets raise a clear ``ValueError``.
+- The group metrics TSV joins subject-level covariates from
+  ``<bids_dir>/participants.tsv`` and ``--covariates`` (``merge_covariates``);
+  the report section switches to per-metric histograms for cohorts above
+  40 subjects (the per-subject values stay in the TSV).
+- ``ffrprep.reports`` gains ``build_group_report`` and
+  ``build_metrics_table_section``; ``build_subject_report`` /
+  ``build_analysis_report`` pass new ``entity_label`` / ``meta_label``
+  template variables so the shared ``subject_report.html.j2`` template
+  can render a report with no single subject (existing rendered output
+  for per-subject reports is unchanged).
+- ``setup_derivatives_directories`` gains a ``create_group=False``
+  flag to materialize ``ffrprep-group/``.
 
 Preprocessing
 -------------
@@ -115,6 +197,17 @@ Analysis
     Python loop of ``scipy.stats.pearsonr`` calls (same values and
     pair ordering; ~0.3 s vs ~9 min for 3000 epochs x 4147 samples).
   - ``compute_fft``: amplitude spectrum helper.
+  - ``harmonic_amplitudes``: FFT amplitude (zero-padded, single-sided,
+    microvolts) of a response window, averaged in a ``bin_hz``-wide
+    band around each harmonic of ``f0``; returns the per-harmonic values,
+    the fundamental, and the summed upper harmonics. Defaults follow the
+    /da/ measure of Whiteford et al. (2025) (60-180 ms, 100 Hz, 10
+    harmonics, 60 Hz bins).
+  - ``stim_to_resp_xcorr``: maximum stimulus-to-response correlation in
+    MATLAB ``xcorr(..., 'coeff')`` form (no mean removal) with an
+    optional lag window, returning ``(r, Fisher z, lag_ms)``.
+  - ``load_wav_mono`` / ``resample_signal``: WAV reader and polyphase
+    resampler used to bring a stimulus to the EEG sampling rate.
 
 - Analysis worker granularity changed from per-file to
   per-(task, run) group. ``_collect_analysis_groups`` stitches

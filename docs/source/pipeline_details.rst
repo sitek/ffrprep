@@ -132,7 +132,9 @@ Preprocessing Workflow Nodes
 *Default Parameters:*
    - **High-pass:** 70.0 Hz (removes slow drifts and low-frequency noise, preserves FFR frequencies)
    - **Low-pass:** 1000.0 Hz (preserves FFR harmonics while removing high-frequency noise)
-   - **Filter design:** Zero-phase FIR with automatic transition bandwidth
+   - **Filter design:** Zero-phase FIR with automatic transition bandwidth.
+     ``--filter-method iir`` switches to zero-phase first-order
+     Butterworth high-pass + low-pass passes (12 dB/octave overall).
 
 *Outputs:* Filtered EEG data
 
@@ -158,7 +160,8 @@ amplitude-based rejection.
      around stimulus onset
    - **Baseline:** ``--baseline -0.2 0`` seconds (pre-stimulus)
    - **Rejection:** ``--reject-eeg 75e-6`` (75 µV peak-to-peak); pass
-     ``--no-auto-reject`` to disable
+     ``--no-auto-reject`` to disable, or ``--reject-mode abs`` to drop
+     epochs whose absolute amplitude reaches the threshold at any sample
 
 *Outputs:* Epoched EEG data and the post-rejection drop log.
 
@@ -185,9 +188,11 @@ combined file under ``--no-split-by-trial-type``.
      doesn't leak through ``.save()``).
    - Write each sibling ``.json`` sidecar with ``EpochCount`` /
      ``EpochCountTotal`` / ``EpochCountRejected`` /
-     ``RejectionThresholds`` / ``Filtering`` / ``SamplingFrequency``
-     / ``EpochTmin`` / ``EpochTmax`` / ``Channels`` plus run /
-     session / ``ConcatenatedRuns`` / ``Condition`` provenance.
+     ``RejectionMode`` / ``RejectionThresholds`` / ``Filtering`` /
+     ``SamplingFrequency`` / ``EpochTmin`` / ``EpochTmax`` /
+     ``Channels`` plus run / session / ``ConcatenatedRuns`` /
+     ``Condition`` provenance. ``Sources`` and ``RawSources`` list the
+     raw EEG file(s) the epochs came from, when they can be found.
    - Initialize the per-derivatives ``dataset_description.json`` if
      missing.
 
@@ -210,10 +215,16 @@ Under ``--no-split-by-trial-type`` the per-trial-type files are
 replaced by a single ``_desc-preproc_epo.fif`` + its sidecar.
 
 The sidecar JSON carries provenance, ``EpochCount`` /
-``EpochCountTotal`` / ``EpochCountRejected``, ``RejectionThresholds``,
-``Filtering`` (high-pass and low-pass cut-offs), sampling frequency,
-run / session identifiers, and ``Condition`` (for per-trial-type
-files only).
+``EpochCountTotal`` / ``EpochCountRejected``, ``RejectionMode``
+(``peak-to-peak`` or ``absolute-amplitude``) with
+``RejectionThresholds``, ``Filtering`` (high-pass and low-pass
+cut-offs), sampling frequency, run / session identifiers, the raw
+file(s) in ``Sources`` / ``RawSources``, and ``Condition`` (for
+per-trial-type files only). The epoch counts cover only the trial
+types being written: in a per-trial-type file they are that trial
+type's counts, and events outside ``event_id`` (for example markers)
+are not counted. Epochs dropped by ``--reject-mode abs`` count as
+rejected.
 
 *Outputs:* File paths, processing metadata.
 
@@ -407,6 +418,20 @@ Pipeline Integration and Quality Control
 - nipype caches per-iteration intermediates under ``work/`` so
   re-runs that already have a saved ``_desc-preproc_epo.fif`` skip
   the workflow re-execution
+- ``--skip-existing`` skips a (task, run) iteration whose sidecar
+  outputs already exist, so an interrupted run can be repeated with
+  the same command. The check uses the ``.json`` sidecars rather than
+  the epochs files, so it also works after ``--no-keep-epochs``. An
+  analysis iteration counts as done when its ``_desc-evoked.json``
+  exists, and no report is rebuilt for iterations that are skipped.
+- ``--clean-work-dir`` deletes an iteration's Nipype working files
+  once it has succeeded. Log files are kept, and the files of a
+  failed iteration are left in place.
+- ``--no-keep-epochs`` deletes the ``_epo.fif`` files after the
+  analysis stage and its report have finished. The JSON sidecars
+  stay. With ``--stage preprocessing`` the flag is ignored and a
+  warning is printed, because the analysis stage still needs the
+  epochs.
 
 **Quality Control Checkpoints:**
 
@@ -433,4 +458,72 @@ Pipeline Integration and Quality Control
   and ``extra_figures`` kwargs so downstream code can fold
   caller-computed scalars or figures into a section's table or
   figure gallery.
+
+Group-Level Aggregation
+=======================
+
+The ``group`` analysis level (``ffrprep.group.run_group_level``)
+aggregates participant-level derivatives already written under
+``output_dir`` — it does not read raw BIDS data. For each (task,
+session, run) with derivatives from at least two subjects, it:
+
+- discovers each subject's combined (``_desc-evoked.fif``) and, when
+  present, difference (``_desc-evokedDiff{A}Vs{B}.fif``) Evoked files
+  via :py:func:`ffrprep.group.discover_group_inputs`, and computes a
+  grand average with ``mne.grand_average``
+  (:py:func:`ffrprep.group.compute_grand_average`). If the subjects'
+  single channel has different names (for example ``A32`` and ``Cz``
+  at different sites), it is renamed to a common name first.
+  Multi-channel sets that differ raise an error;
+- recomputes the same scalar FFR metrics the participant-level
+  report shows (RMS SNR, band power) directly from each subject's
+  saved combined Evoked, plus trial-to-trial response consistency
+  from that subject's saved preprocessing Epochs
+  (:py:func:`ffrprep.group.compute_subject_metrics`) — nothing is
+  recomputed from raw data;
+- adds further columns when asked. ``--f0`` adds
+  ``rms_snr_polarity_sum``, ``f0_uv`` and ``upper_harmonics_uv``;
+  ``--stimulus`` adds ``stim2resp_r``, ``stim2resp_z`` and
+  ``stim2resp_lag_ms`` (plus ``stim2resp_lim_*`` with
+  ``--xcorr-lag-range``); ``--n-trials-presented`` adds
+  ``usable_pct``. These are computed from the sum of the two
+  per-trial-type evoked files. ``f0_uv`` and ``upper_harmonics_uv``
+  are FFT amplitudes averaged in a band around each harmonic of F0
+  (:py:func:`ffrprep.analysis.harmonic_amplitudes`), and
+  ``stim2resp_r`` is the maximum normalized cross-correlation between
+  the stimulus and the response
+  (:py:func:`ffrprep.analysis.stim_to_resp_xcorr`);
+- joins subject-level covariates onto the table by ``participant_id``,
+  from ``<bids_dir>/participants.tsv`` and any ``--covariates`` files
+  (:py:func:`ffrprep.group.merge_covariates`). A column already in
+  the table is not overwritten;
+- with ``--min-usable-pct`` and/or ``--min-snr``, adds ``qc_*``
+  columns that mark recordings below a threshold
+  (:py:func:`ffrprep.group.add_qc_flags`). Rows are flagged, not
+  removed, and the grand averages still include every subject;
+- writes the grand-average Evoked(s), a per-subject metrics TSV with a
+  ``_metrics.json`` data dictionary next to it
+  (:py:func:`ffrprep.group.build_metrics_dictionary`), and a single
+  ``group_report.html`` (reusing the same section builders and
+  template as the participant-level reports) under
+  ``output_dir/ffrprep-group/``.
+
+*Output Structure:* ::
+
+    derivatives/ffrprep-group/
+    ├── dataset_description.json
+    ├── task-YY_run-ZZ_desc-grandAverage_ave.fif
+    ├── task-YY_run-ZZ_desc-grandAverage_ave.json
+    ├── task-YY_run-ZZ_desc-grandAverageDiffPositiveVsNegative_ave.fif
+    ├── task-YY_run-ZZ_desc-grandAverageDiffPositiveVsNegative_ave.json
+    ├── task-YY_run-ZZ_metrics.tsv
+    ├── task-YY_run-ZZ_metrics.json
+    └── group_report.html
+
+This step is deliberately scoped to aggregation, not inference: it
+summarizes what participant-level ffrprep already computed and
+performs no group-level statistics (no hypothesis tests, no GLM).
+Statistical analysis is left to the user, e.g. directly in
+MNE-Python against the saved grand-average / per-subject
+derivatives.
 

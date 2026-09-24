@@ -455,6 +455,9 @@ After completing this tutorial, you can:
 - Process your own FFR datasets using the same workflow
 - Modify preprocessing parameters for your specific experimental setup
 - Use the generated outputs for further statistical analysis
+- Aggregate several subjects with the ``group`` analysis level, which
+  writes a grand average and a per-subject metrics table to
+  ``derivatives/ffrprep-group/`` (Example 5 in :ref:`usage`)
 - Integrate ``ffrprep`` into automated processing pipelines
 
 For more advanced usage, see the :ref:`usage` documentation and `API reference <api_ref.html>`_.

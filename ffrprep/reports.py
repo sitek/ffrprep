@@ -359,6 +359,89 @@ def build_evoked_section(
     }
 
 
+def build_metrics_table_section(metrics, *, section_id, title, max_table_rows=40, extra_summary=None):
+    """Build a section descriptor summarizing a group-level metrics table.
+
+    ``metrics`` is a per-(task, run) DataFrame such as
+    :func:`ffrprep.group.compute_subject_metrics` returns: one row per
+    subject, columns are scalar FFR metrics recomputed from saved
+    participant-level derivatives. The summary table reports the group
+    mean +/- SD for each metric. Up to ``max_table_rows`` subjects the
+    full per-subject table is rendered as a figure; for larger cohorts
+    (where a table would be unreadably tall) the figure shows one
+    histogram per metric instead and the per-subject values live in the
+    accompanying ``_metrics.tsv``. ``extra_summary`` (a dict of label to
+    text) adds entries to the summary table, e.g. the QC-flag count.
+    """
+    numeric_columns = [
+        column for column in metrics.select_dtypes("number").columns if column != "n_avg"
+    ]
+    summary = {"Subjects": str(len(metrics))}
+    for column in numeric_columns:
+        values = metrics[column].dropna()
+        if values.empty:
+            continue
+        summary[column.replace("_", " ")] = f"{values.mean():.3g} \u00b1 {values.std():.3g}"
+    summary.update(extra_summary or {})
+
+    if len(metrics) > max_table_rows and numeric_columns:
+        n_panels = len(numeric_columns)
+        n_cols = min(3, n_panels)
+        n_rows = -(-n_panels // n_cols)
+        fig, axes = plt.subplots(
+            n_rows, n_cols, figsize=(4.2 * n_cols, 3.0 * n_rows), squeeze=False,
+        )
+        for ax, column in zip(axes.ravel(), numeric_columns):
+            values = metrics[column].dropna()
+            ax.hist(values, bins=min(30, max(5, len(values) // 4)), color="#6B4E8C")
+            ax.set_title(column.replace("_", " "), fontsize=10)
+            ax.tick_params(labelsize=8)
+        for ax in axes.ravel()[n_panels:]:
+            ax.axis("off")
+        fig.tight_layout()
+        figure_title = "Metric distributions"
+        caption = (
+            f"Distribution of each metric across {len(metrics)} subjects; the "
+            "per-subject values are in the accompanying _metrics.tsv."
+        )
+    else:
+        # Column-wise ".3g" formatting (rather than a fixed .round(4)) so
+        # small-magnitude columns like band power (~1e-12) don't collapse
+        # to "0.0" next to O(1) columns like RMS SNR.
+        formatted = metrics.astype(object)
+        for column in metrics.select_dtypes("number").columns:
+            formatted[column] = metrics[column].map(lambda v: f"{v:.3g}")
+
+        fig, ax = plt.subplots(
+            figsize=(max(6, 1.4 * len(metrics.columns)), 0.4 * (len(metrics) + 1) + 0.5)
+        )
+        ax.axis("off")
+        table = ax.table(
+            cellText=formatted.values,
+            colLabels=list(metrics.columns),
+            loc="center",
+        )
+        table.auto_set_font_size(False)
+        table.set_fontsize(9)
+        fig.tight_layout()
+        figure_title = "Per-subject metrics"
+        caption = "Recomputed from saved participant-level derivatives; not persisted elsewhere."
+
+    figures = [{
+        "title": figure_title,
+        "caption": caption,
+        "data_uri": _fig_to_data_uri(fig),
+    }]
+    plt.close(fig)
+
+    return {
+        "id": section_id,
+        "title": title,
+        "summary": summary,
+        "figures": figures,
+    }
+
+
 def build_phase_consistency_section(
     epochs_a, epochs_b, *, section_id, title,
     alpha=0.01, pol_names=None, mask=True,
@@ -656,6 +739,8 @@ def build_analysis_report(bids_root, subject, out_dir, sections=None,
     html_text = template.render(
         title=title,
         subject=subject,
+        entity_label=f"sub-{subject}",
+        meta_label=f"Subject: sub-{subject}",
         overview=overview,
         nav_tree=_build_nav_tree(_normalize_groups(groups, sections)),
         bids_root=str(bids_root),
@@ -712,12 +797,46 @@ def build_subject_report(bids_root, subject, out_dir, sections=None,
     html_text = template.render(
         title=title,
         subject=subject,
+        entity_label=f"sub-{subject}",
+        meta_label=f"Subject: sub-{subject}",
         overview=overview,
         nav_tree=_build_nav_tree(_normalize_groups(groups, sections)),
         bids_root=str(bids_root),
     )
 
     out_path = out_dir / f"sub-{subject}_preprocessing_report.html"
+    out_path.write_text(html_text, encoding="utf-8")
+    return str(out_path)
+
+
+def build_group_report(out_dir, sections=None, title=None, overview=None, groups=None):
+    """Render a single-file HTML group-level report.
+
+    Same template/layout as :func:`build_analysis_report`, but with no
+    single subject: the sidebar and header show "group" instead of a
+    ``sub-<id>`` label, and the file is written to ``group_report.html``.
+
+    Either `groups` (preferred, supports nested task/run structure) or
+    `sections` (flat list, ungrouped) may be passed.
+    """
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    if title is None:
+        title = "ffrprep group-level report"
+
+    template = _jinja_env.get_template("subject_report.html.j2")
+    html_text = template.render(
+        title=title,
+        subject="group",
+        entity_label="group",
+        meta_label="Aggregated across participant-level derivatives",
+        overview=overview,
+        nav_tree=_build_nav_tree(_normalize_groups(groups, sections)),
+        bids_root=None,
+    )
+
+    out_path = out_dir / "group_report.html"
     out_path.write_text(html_text, encoding="utf-8")
     return str(out_path)
 
