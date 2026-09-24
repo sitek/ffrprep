@@ -19,6 +19,10 @@ CLI
 - New flag ``--difference-pairs A:B [C:D …]`` to compute difference
   evokeds across explicit pairs. For 2-type datasets the difference
   is auto-emitted; for 3+ types this flag is required to opt in.
+- Fixed: ``--reject-eeg 0`` now disables automatic rejection as its help
+  text documents (``parse_reject``). It previously built a ``{"eeg": 0.0}``
+  threshold, which rejects every epoch. Negative thresholds are now an
+  argument error.
 - New flag ``--with-stimuli`` on ``ffrprep-download example``
   (``BooleanOptionalAction``, default ``False``): additionally
   fetches the BIDS ``/stimuli/`` directory needed by stimulus-aware

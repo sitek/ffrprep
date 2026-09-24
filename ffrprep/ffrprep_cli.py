@@ -1660,7 +1660,7 @@ def get_parser():
     )
     preproc_group.add_argument(
         "--reject-eeg",
-        type=float,
+        type=_non_negative_float,
         help=(
             "Peak-to-peak rejection threshold for EEG channels in Volts. "
             "Set to 0 to disable automatic rejection."
@@ -1798,6 +1798,27 @@ def get_parser():
     parser.add_argument("--work_dir", type=Path, help="Path where intermediate results should be " "stored.")
 
     return parser
+
+
+def _non_negative_float(value):
+    """argparse ``type`` for thresholds that must not be negative."""
+    number = float(value)
+    if number < 0:
+        raise argparse.ArgumentTypeError(f"must be >= 0, got {value}")
+    return number
+
+
+def parse_reject(reject_eeg, no_auto_reject=False):
+    """Build the MNE ``reject`` dict from the CLI flags.
+
+    Returns ``None`` (no automatic rejection) when ``--no-auto-reject`` is
+    set or ``--reject-eeg`` is 0 — a threshold of 0 would otherwise reject
+    every epoch, since any signal exceeds it. Otherwise returns
+    ``{"eeg": threshold}`` in Volts.
+    """
+    if no_auto_reject or not reject_eeg or float(reject_eeg) <= 0:
+        return None
+    return {"eeg": float(reject_eeg)}
 
 
 def parse_baseline(baseline_str):
@@ -1968,11 +1989,8 @@ def run_ffrprep():
     baseline = parse_baseline(args.baseline)
     ref_channels = parse_ref_channels(args.ref_channels)
     # Determine rejection criteria: allow disabling automatic rejection via
-    # --no-auto-reject, otherwise use the provided --reject-eeg threshold.
-    if args.no_auto_reject:
-        reject_value = None
-    else:
-        reject_value = {"eeg": float(args.reject_eeg)}
+    # --no-auto-reject or --reject-eeg 0, otherwise use the provided threshold.
+    reject_value = parse_reject(args.reject_eeg, args.no_auto_reject)
 
     # Determine filtering parameters. Support new MNE-style l_freq/h_freq
     # CLI flags while preserving backward compatibility with
