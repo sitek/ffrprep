@@ -1687,6 +1687,22 @@ def check_preprocessing_exists(bids_root, subject):
     return len(found_files) > 0, found_files
 
 
+def _bids_label(value):
+    """Return ``value`` as a BIDS-valid alphanumeric label fragment.
+
+    BIDS entity values may only contain letters and digits, so trial
+    types such as ``da_pol-1`` would otherwise leak ``_`` / ``-`` into
+    ``desc-`` and break entity parsing. Each alphanumeric run is
+    capitalized and the separators dropped (``da_pol-1`` -> ``DaPol1``);
+    purely alphanumeric labels come out exactly as ``str.capitalize()``
+    produced them (``positive`` -> ``Positive``).
+    """
+    import re
+
+    parts = re.split(r"[^A-Za-z0-9]+", str(value))
+    return "".join(part.capitalize() for part in parts if part)
+
+
 def _build_preproc_filename(subject, session, task, run, condition=None):
     """Build the BIDS basename for a saved preprocessing epochs file.
 
@@ -1704,7 +1720,7 @@ def _build_preproc_filename(subject, session, task, run, condition=None):
         parts.append(f"run-{run}")
     desc = "desc-preproc"
     if condition is not None:
-        desc += str(condition).capitalize()
+        desc += _bids_label(condition)
     parts.append(f"{desc}_epo.fif")
     return "_".join(parts)
 
@@ -2163,7 +2179,7 @@ def save_analysis_outputs(
 
     by_type = payload.get("by_type") or {}
     for condition, evoked_obj in by_type.items():
-        cond = str(condition).capitalize()
+        cond = _bids_label(condition)
         path = subject_dir / f"{filename_base}_desc-{analysis_type}{cond}.fif"
         evoked_obj.save(path)
         _write_evoked_sidecar(
@@ -2184,7 +2200,7 @@ def save_analysis_outputs(
 
     diff = payload.get("diff") or {}
     for (a, b), evoked_obj in diff.items():
-        a_cap, b_cap = str(a).capitalize(), str(b).capitalize()
+        a_cap, b_cap = _bids_label(a), _bids_label(b)
         path = subject_dir / (
             f"{filename_base}_desc-{analysis_type}Diff{a_cap}Vs{b_cap}.fif"
         )

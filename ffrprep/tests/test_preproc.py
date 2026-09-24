@@ -1626,6 +1626,57 @@ def test_save_analysis_outputs_diff_sidecar_has_difference_of(tmp_path):
     assert sidecar.get("DifferenceOf") == ["Pos", "Neg"]
 
 
+@pytest.mark.parametrize(
+    "raw_label, expected",
+    [
+        ("positive", "Positive"),
+        ("Pos", "Pos"),
+        ("tone1", "Tone1"),
+        ("10", "10"),
+        ("da_pol-1", "DaPol1"),
+        ("da_pol-2", "DaPol2"),
+        ("--a__b--", "AB"),
+    ],
+)
+def test_bids_label_is_alphanumeric_and_backward_compatible(raw_label, expected):
+    from ffrprep.preproc import _bids_label
+
+    assert _bids_label(raw_label) == expected
+
+
+def test_build_preproc_filename_sanitizes_condition_label():
+    from ffrprep.preproc import _build_preproc_filename
+
+    name = _build_preproc_filename("bu001", None, "da", "01", condition="da_pol-1")
+    assert name == "sub-bu001_task-da_run-01_desc-preprocDaPol1_epo.fif"
+
+
+def test_save_analysis_outputs_sanitizes_non_alphanumeric_trial_types(tmp_path):
+    """``da_pol-1`` style trial types must not leak ``_``/``-`` into ``desc``."""
+    evokeds, bids_root = _two_evoked_dict_for_save_analysis(tmp_path)
+    by_type = {"da_pol-1": evokeds["Pos"], "da_pol-2": evokeds["Neg"]}
+    out_paths = save_analysis_outputs(
+        {
+            "by_type": by_type,
+            "combined": evokeds["Pos"],
+            "diff": {("da_pol-1", "da_pol-2"): evokeds["Pos"]},
+        },
+        bids_root, subject="bu001", task="da", run="01",
+    )
+    names = sorted(p.name for p in out_paths)
+    assert names == [
+        "sub-bu001_task-da_run-01_desc-evoked.fif",
+        "sub-bu001_task-da_run-01_desc-evokedDaPol1.fif",
+        "sub-bu001_task-da_run-01_desc-evokedDaPol2.fif",
+        "sub-bu001_task-da_run-01_desc-evokedDiffDaPol1VsDaPol2.fif",
+    ]
+    # The raw trial-type name is still recorded in the sidecar.
+    with open(
+        next(p for p in out_paths if p.name.endswith("DaPol1.fif")).with_suffix(".json")
+    ) as f:
+        assert json.load(f)["Condition"] == "da_pol-1"
+
+
 def test_save_analysis_outputs_scalar_input_unchanged(tmp_path):
     """Scalar Evoked input keeps today's contract: bare ``_desc-evoked.fif``."""
     evokeds, bids_root = _two_evoked_dict_for_save_analysis(tmp_path)

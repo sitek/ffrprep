@@ -35,6 +35,14 @@ CLI
 Preprocessing
 -------------
 
+- Per-trial-type filenames now use BIDS-valid alphanumeric labels:
+  ``_bids_label`` drops non-alphanumeric separators and capitalizes
+  each token, so a ``da_pol-1`` trial type is written as
+  ``_desc-preprocDaPol1_epo.fif`` / ``_desc-evokedDaPol1.fif`` /
+  ``_desc-evokedDiffDaPol1VsDaPol2.fif`` instead of leaking ``_`` and
+  ``-`` into the ``desc`` entity. Alphanumeric labels (``positive``,
+  ``10``) are unchanged, and sidecars still record the raw trial-type
+  name in ``Condition`` / ``DifferenceOf``.
 - Fixed: the preprocessing sidecar's ``Sources`` / ``RawSources`` now name the
   raw recording that actually exists (EDF, BDF, BrainVision, EEGLAB or FIF,
   including the session directory and every run of a concatenated output).
