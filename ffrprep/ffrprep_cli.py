@@ -2067,7 +2067,7 @@ def get_parser():
         action=argparse.BooleanOptionalAction,
         default=True,
         help=(
-            "Keep the large preprocessed *_epo.fif files after the analysis "
+            "Keep the large preprocessed epochs (_epo.fif) files after the analysis "
             "stage. --no-keep-epochs deletes them (JSON sidecars stay) once "
             "analysis and its report are done; ignored with --stage "
             "preprocessing because analysis still needs them."
