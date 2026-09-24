@@ -394,9 +394,13 @@ def test_compute_subject_metrics_lag_limited_variant(tmp_path):
             "lag_range_ms": (6.9, 10.9), "lag_resp_window": (0.05, 0.20),
         },
     )
-    # both segments start at 50 ms, so the lag is the true 12 ms delay's neighbourhood
+    # The lag-limited variant is confined to its window (the true 12 ms delay lies outside)...
     assert 6.9 <= metrics.loc[0, "stim2resp_lim_lag_ms"] <= 10.9
-    assert metrics.loc[0, "stim2resp_lim_r"] <= metrics.loc[0, "stim2resp_r"] + 1e-9
+    # ...while the primary measure searches ALL lags: its windows are offset by 10 ms, so
+    # the 12 ms delay appears at a 2 ms array lag, outside the restriction, with a
+    # strictly higher correlation than anything inside the 6.9-10.9 ms window.
+    assert metrics.loc[0, "stim2resp_lag_ms"] == pytest.approx(2.0, abs=0.3)
+    assert metrics.loc[0, "stim2resp_r"] > metrics.loc[0, "stim2resp_lim_r"] + 0.05
 
 
 def test_polarity_sum_metrics_are_nan_without_two_types(tmp_path, capsys):

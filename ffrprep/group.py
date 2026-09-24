@@ -357,7 +357,13 @@ def _polarity_sum_metrics(summed, harmonics, stimulus, response_window, stim_cac
             wav, wav_sfreq = load_wav_mono(stimulus["path"])
             stim_cache[sfreq] = resample_signal(wav, wav_sfreq, sfreq)
         stim = stim_cache[sfreq]
-        columns.update(_stim_to_resp_columns(summed, stim, stimulus))
+        # The primary measure searches ALL lags; ``lag_range_ms`` belongs to
+        # the separate lag-limited ("lim") variant below.
+        primary_spec = {
+            "stim_window": stimulus["stim_window"],
+            "resp_window": stimulus["resp_window"],
+        }
+        columns.update(_stim_to_resp_columns(summed, stim, primary_spec))
         if stimulus.get("lag_range_ms") is not None:
             lim_spec = {
                 "stim_window": stimulus["stim_window"],
