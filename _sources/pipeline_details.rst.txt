@@ -434,3 +434,34 @@ Pipeline Integration and Quality Control
   caller-computed scalars or figures into a section's table or
   figure gallery.
 
+Group-Level Aggregation
+=======================
+
+The ``group`` analysis level (``ffrprep.group.run_group_level``)
+aggregates participant-level derivatives already written under
+``output_dir`` — it does not read raw BIDS data. For each (task,
+session, run) with derivatives from at least two subjects, it:
+
+- discovers each subject's combined (``_desc-evoked.fif``) and, when
+  present, difference (``_desc-evokedDiff{A}Vs{B}.fif``) Evoked files
+  via :py:func:`ffrprep.group.discover_group_inputs`, and computes a
+  grand average with ``mne.grand_average``
+  (:py:func:`ffrprep.group.compute_grand_average`);
+- recomputes the same scalar FFR metrics the participant-level
+  report shows (RMS SNR, band power) directly from each subject's
+  saved combined Evoked, plus trial-to-trial response consistency
+  from that subject's saved preprocessing Epochs
+  (:py:func:`ffrprep.group.compute_subject_metrics`) — nothing is
+  recomputed from raw data;
+- writes the grand-average Evoked(s), a per-subject metrics TSV, and
+  a single ``group_report.html`` (reusing the same section builders
+  and template as the participant-level reports) under
+  ``output_dir/ffrprep-group/``.
+
+This step is deliberately scoped to aggregation, not inference: it
+summarizes what participant-level ffrprep already computed and
+performs no group-level statistics (no hypothesis tests, no GLM).
+Statistical analysis is left to the user, e.g. directly in
+MNE-Python against the saved grand-average / per-subject
+derivatives.
+

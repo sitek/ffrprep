@@ -46,13 +46,13 @@
   
   
   
-    <title>Release History &#8212; ffrprep 0.1.dev1+gcbe4d9aa9 documentation</title>
+    <title>Release History &#8212; ffrprep 0.1.dev1+g29c38576b documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
     <link rel="stylesheet" type="text/css" href="_static/material.css?v=79c92029" />
     <link rel="stylesheet" type="text/css" href="_static/plot_directive.css" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <script src="_static/documentation_options.js?v=1d9acbc3"></script>
+    <script src="_static/documentation_options.js?v=aca2d354"></script>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -85,7 +85,7 @@
   <nav class="md-header-nav md-grid">
     <div class="md-flex navheader">
       <div class="md-flex__cell md-flex__cell--shrink">
-        <a href="index.html" title="ffrprep 0.1.dev1+gcbe4d9aa9 documentation"
+        <a href="index.html" title="ffrprep 0.1.dev1+g29c38576b documentation"
            class="md-header-nav__button md-logo">
           
             &nbsp;
@@ -171,7 +171,7 @@
   <nav class="md-tabs" data-md-component="tabs">
     <div class="md-tabs__inner md-grid">
       <ul class="md-tabs__list">
-          <li class="md-tabs__item"><a href="index.html" class="md-tabs__link">ffrprep 0.1.dev1+gcbe4d9aa9 documentation</a></li>
+          <li class="md-tabs__item"><a href="index.html" class="md-tabs__link">ffrprep 0.1.dev1+g29c38576b documentation</a></li>
       </ul>
     </div>
   </nav>
@@ -183,13 +183,13 @@
               <div class="md-sidebar__inner">
                 <nav class="md-nav md-nav--primary" data-md-level="0">
   <label class="md-nav__title md-nav__title--site" for="__drawer">
-    <a href="index.html" title="ffrprep 0.1.dev1+gcbe4d9aa9 documentation" class="md-nav__button md-logo">
+    <a href="index.html" title="ffrprep 0.1.dev1+g29c38576b documentation" class="md-nav__button md-logo">
       
         <img src="_static/" alt=" logo" width="48" height="48">
       
     </a>
     <a href="index.html"
-       title="ffrprep 0.1.dev1+gcbe4d9aa9 documentation">ffrprep</a>
+       title="ffrprep 0.1.dev1+g29c38576b documentation">ffrprep</a>
   </label>
     <div class="md-nav__source">
       <a href="https://github.com/sitek/ffrprep" title="Go to repository" class="md-source" data-md-source="github">
@@ -263,6 +263,8 @@
               <ul class="md-nav__list">
         <li class="md-nav__item"><a href="#cli" class="md-nav__link">CLI</a>
         </li>
+        <li class="md-nav__item"><a href="#group-level-analysis" class="md-nav__link">Group-level analysis</a>
+        </li>
         <li class="md-nav__item"><a href="#preprocessing" class="md-nav__link">Preprocessing</a>
         </li>
         <li class="md-nav__item"><a href="#analysis" class="md-nav__link">Analysis</a>
@@ -313,6 +315,8 @@
         <li class="md-nav__item"><a href="#unreleased" class="md-nav__link">Unreleased</a><nav class="md-nav">
               <ul class="md-nav__list">
         <li class="md-nav__item"><a href="#cli" class="md-nav__link">CLI</a>
+        </li>
+        <li class="md-nav__item"><a href="#group-level-analysis" class="md-nav__link">Group-level analysis</a>
         </li>
         <li class="md-nav__item"><a href="#preprocessing" class="md-nav__link">Preprocessing</a>
         </li>
@@ -376,6 +380,43 @@ runs over many subjects, where report figures dominate runtime.</p></li>
 fetches the BIDS <code class="docutils literal notranslate"><span class="pre">/stimuli/</span></code> directory needed by stimulus-aware
 analyses (e.g. <code class="docutils literal notranslate"><span class="pre">corr_stim_to_resp</span></code>) and augments every
 <code class="docutils literal notranslate"><span class="pre">events.tsv</span></code> with the matching <code class="docutils literal notranslate"><span class="pre">stim_file</span></code> column.</p></li>
+</ul>
+</section>
+<section id="group-level-analysis">
+<h3 id="group-level-analysis">Group-level analysis<a class="headerlink" href="#group-level-analysis" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ffrprep</span> <span class="pre">&lt;bids_dir&gt;</span> <span class="pre">&lt;output_dir&gt;</span> <span class="pre">group</span></code> now runs, replacing the
+previous “Currently only participant-level analysis is supported.”
+stub. New module <code class="docutils literal notranslate"><span class="pre">ffrprep.group</span></code> aggregates already-computed
+participant-level derivatives from <code class="docutils literal notranslate"><span class="pre">output_dir</span></code> — it does not
+read <code class="docutils literal notranslate"><span class="pre">bids_dir</span></code> or re-run preprocessing/analysis:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">discover_group_inputs</span></code>: globs <code class="docutils literal notranslate"><span class="pre">ffrprep-analysis/sub-*/</span></code> and
+<code class="docutils literal notranslate"><span class="pre">ffrprep-preprocessing/sub-*/eeg/</span></code> for combined evoked, diff
+evoked, and preprocessing epochs files, grouped by
+<code class="docutils literal notranslate"><span class="pre">(task,</span> <span class="pre">session,</span> <span class="pre">run)</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">compute_grand_average</span></code>: <code class="docutils literal notranslate"><span class="pre">mne.grand_average</span></code> across subjects
+for each (task, session, run) with &gt;= 2 contributing subjects.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">compute_subject_metrics</span></code>: recomputes RMS SNR, band power, and
+response consistency per subject directly from saved derivatives
+(nothing is recomputed from raw data).</p></li>
+<li><p>Outputs land under <code class="docutils literal notranslate"><span class="pre">output_dir/ffrprep-group/</span></code>: grand-average
+<code class="docutils literal notranslate"><span class="pre">_desc-grandAverage_ave.fif</span></code> (+ JSON sidecar with contributing
+subjects), a per-(task, run) <code class="docutils literal notranslate"><span class="pre">_metrics.tsv</span></code>, and a single
+<code class="docutils literal notranslate"><span class="pre">group_report.html</span></code>.</p></li>
+<li><p>Deliberately aggregation-only, not inferential: no group-level
+statistics are computed, matching the scope other BIDS Apps
+(e.g. MRIQC) use for their own “group” level.</p></li>
+</ul>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ffrprep.reports</span></code> gains <code class="docutils literal notranslate"><span class="pre">build_group_report</span></code> and
+<code class="docutils literal notranslate"><span class="pre">build_metrics_table_section</span></code>; <code class="docutils literal notranslate"><span class="pre">build_subject_report</span></code> /
+<code class="docutils literal notranslate"><span class="pre">build_analysis_report</span></code> pass new <code class="docutils literal notranslate"><span class="pre">entity_label</span></code> / <code class="docutils literal notranslate"><span class="pre">meta_label</span></code>
+template variables so the shared <code class="docutils literal notranslate"><span class="pre">subject_report.html.j2</span></code> template
+can render a report with no single subject (existing rendered output
+for per-subject reports is unchanged).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">setup_derivatives_directories</span></code> gains a <code class="docutils literal notranslate"><span class="pre">create_group=False</span></code>
+flag to materialize <code class="docutils literal notranslate"><span class="pre">ffrprep-group/</span></code>.</p></li>
 </ul>
 </section>
 <section id="preprocessing">

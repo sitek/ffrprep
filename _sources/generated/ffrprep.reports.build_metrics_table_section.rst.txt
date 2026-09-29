@@ -1,0 +1,6 @@
+﻿ffrprep.reports.build\_metrics\_table\_section
+==============================================
+
+.. currentmodule:: ffrprep.reports
+
+.. autofunction:: build_metrics_table_section

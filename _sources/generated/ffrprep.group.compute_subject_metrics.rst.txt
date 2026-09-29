@@ -1,0 +1,6 @@
+﻿ffrprep.group.compute\_subject\_metrics
+=======================================
+
+.. currentmodule:: ffrprep.group
+
+.. autofunction:: compute_subject_metrics

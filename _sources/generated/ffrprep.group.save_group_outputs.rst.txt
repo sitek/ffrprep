@@ -1,0 +1,6 @@
+﻿ffrprep.group.save\_group\_outputs
+==================================
+
+.. currentmodule:: ffrprep.group
+
+.. autofunction:: save_group_outputs

@@ -46,13 +46,13 @@
   
   
   
-    <title>Usage &#8212; ffrprep 0.1.dev1+gcbe4d9aa9 documentation</title>
+    <title>Usage &#8212; ffrprep 0.1.dev1+g29c38576b documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
     <link rel="stylesheet" type="text/css" href="_static/material.css?v=79c92029" />
     <link rel="stylesheet" type="text/css" href="_static/plot_directive.css" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <script src="_static/documentation_options.js?v=1d9acbc3"></script>
+    <script src="_static/documentation_options.js?v=aca2d354"></script>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -85,7 +85,7 @@
   <nav class="md-header-nav md-grid">
     <div class="md-flex navheader">
       <div class="md-flex__cell md-flex__cell--shrink">
-        <a href="index.html" title="ffrprep 0.1.dev1+gcbe4d9aa9 documentation"
+        <a href="index.html" title="ffrprep 0.1.dev1+g29c38576b documentation"
            class="md-header-nav__button md-logo">
           
             &nbsp;
@@ -171,7 +171,7 @@
   <nav class="md-tabs" data-md-component="tabs">
     <div class="md-tabs__inner md-grid">
       <ul class="md-tabs__list">
-          <li class="md-tabs__item"><a href="index.html" class="md-tabs__link">ffrprep 0.1.dev1+gcbe4d9aa9 documentation</a></li>
+          <li class="md-tabs__item"><a href="index.html" class="md-tabs__link">ffrprep 0.1.dev1+g29c38576b documentation</a></li>
       </ul>
     </div>
   </nav>
@@ -183,13 +183,13 @@
               <div class="md-sidebar__inner">
                 <nav class="md-nav md-nav--primary" data-md-level="0">
   <label class="md-nav__title md-nav__title--site" for="__drawer">
-    <a href="index.html" title="ffrprep 0.1.dev1+gcbe4d9aa9 documentation" class="md-nav__button md-logo">
+    <a href="index.html" title="ffrprep 0.1.dev1+g29c38576b documentation" class="md-nav__button md-logo">
       
         <img src="_static/" alt=" logo" width="48" height="48">
       
     </a>
     <a href="index.html"
-       title="ffrprep 0.1.dev1+gcbe4d9aa9 documentation">ffrprep</a>
+       title="ffrprep 0.1.dev1+g29c38576b documentation">ffrprep</a>
   </label>
     <div class="md-nav__source">
       <a href="https://github.com/sitek/ffrprep" title="Go to repository" class="md-source" data-md-source="github">
@@ -254,6 +254,8 @@
         <li class="md-nav__item"><a href="#example-3-per-trial-type-analysis-with-explicit-difference-pairs" class="md-nav__link">Example 3 - Per-trial-type analysis with explicit difference pairs</a>
         </li>
         <li class="md-nav__item"><a href="#example-4-restrict-outputs-to-a-subset-no-split" class="md-nav__link">Example 4 - Restrict outputs to a subset, no split</a>
+        </li>
+        <li class="md-nav__item"><a href="#example-5-group-level-aggregation" class="md-nav__link">Example 5 - Group-level aggregation</a>
         </li></ul>
             </nav>
         </li></ul>
@@ -359,6 +361,8 @@
         <li class="md-nav__item"><a href="#example-3-per-trial-type-analysis-with-explicit-difference-pairs" class="md-nav__link">Example 3 - Per-trial-type analysis with explicit difference pairs</a>
         </li>
         <li class="md-nav__item"><a href="#example-4-restrict-outputs-to-a-subset-no-split" class="md-nav__link">Example 4 - Restrict outputs to a subset, no split</a>
+        </li>
+        <li class="md-nav__item"><a href="#example-5-group-level-aggregation" class="md-nav__link">Example 5 - Group-level aggregation</a>
         </li></ul>
             </nav>
         </li></ul>
@@ -749,6 +753,34 @@ docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </
 <span class="w">  </span>--n_procs<span class="w"> </span><span class="m">4</span>
 </pre></div>
 </div>
+</section>
+<section id="example-5-group-level-aggregation">
+<h4 id="example-5-group-level-aggregation">Example 5 - Group-level aggregation<a class="headerlink" href="#example-5-group-level-aggregation" title="Link to this heading">¶</a></h4>
+<p>Once participant-level ffrprep has been run for two or more subjects
+into the same <code class="docutils literal notranslate"><span class="pre">output_dir</span></code>, running the <code class="docutils literal notranslate"><span class="pre">group</span></code> analysis level
+against that same <code class="docutils literal notranslate"><span class="pre">output_dir</span></code> aggregates their derivatives — it
+does not read <code class="docutils literal notranslate"><span class="pre">bids_dir</span></code> or re-run any preprocessing/analysis.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker<span class="w"> </span>run<span class="w"> </span>--rm<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-v<span class="w"> </span>/local/bids_dataset:/data:rw<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>ksitek/ffrprep:latest<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>/data<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>/data/derivatives<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>group
+</pre></div>
+</div>
+<p>For each (task, session, run) with at least two contributing
+subjects, this writes a grand-average evoked response, a per-subject
+scalar-metrics table (RMS SNR, band power, response consistency,
+recomputed from each subject’s saved evoked/epochs), and a single
+<code class="docutils literal notranslate"><span class="pre">group_report.html</span></code>, all under
+<code class="docutils literal notranslate"><span class="pre">/data/derivatives/ffrprep-group/</span></code>. <code class="docutils literal notranslate"><span class="pre">--participant_label</span></code> and
+<code class="docutils literal notranslate"><span class="pre">--task</span></code> restrict which subjects/tasks are aggregated, same as at
+the participant level.</p>
+<p>This step only aggregates outputs participant-level ffrprep has
+already computed — it does not perform any group-level statistics
+(no hypothesis tests, no GLM). Downstream statistical analysis is
+left to the user, using their tool of choice (e.g. MNE-Python
+directly on the saved grand-average/per-subject derivatives).</p>
 </section>
 </section>
 </section>

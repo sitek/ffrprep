@@ -45,13 +45,13 @@
   
   
   
-    <title>ffrprep.preproc &#8212; ffrprep 0.1.dev1+gcbe4d9aa9 documentation</title>
+    <title>ffrprep.preproc &#8212; ffrprep 0.1.dev1+g29c38576b documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
     <link rel="stylesheet" type="text/css" href="../../_static/material.css?v=79c92029" />
     <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
-    <script src="../../_static/documentation_options.js?v=1d9acbc3"></script>
+    <script src="../../_static/documentation_options.js?v=aca2d354"></script>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -82,7 +82,7 @@
   <nav class="md-header-nav md-grid">
     <div class="md-flex navheader">
       <div class="md-flex__cell md-flex__cell--shrink">
-        <a href="../../index.html" title="ffrprep 0.1.dev1+gcbe4d9aa9 documentation"
+        <a href="../../index.html" title="ffrprep 0.1.dev1+g29c38576b documentation"
            class="md-header-nav__button md-logo">
           
             &nbsp;
@@ -168,7 +168,7 @@
   <nav class="md-tabs" data-md-component="tabs">
     <div class="md-tabs__inner md-grid">
       <ul class="md-tabs__list">
-          <li class="md-tabs__item"><a href="../../index.html" class="md-tabs__link">ffrprep 0.1.dev1+gcbe4d9aa9 documentation</a></li>
+          <li class="md-tabs__item"><a href="../../index.html" class="md-tabs__link">ffrprep 0.1.dev1+g29c38576b documentation</a></li>
           <li class="md-tabs__item"><a href="../index.html" class="md-tabs__link">Module code</a></li>
       </ul>
     </div>
@@ -181,13 +181,13 @@
               <div class="md-sidebar__inner">
                 <nav class="md-nav md-nav--primary" data-md-level="0">
   <label class="md-nav__title md-nav__title--site" for="__drawer">
-    <a href="../../index.html" title="ffrprep 0.1.dev1+gcbe4d9aa9 documentation" class="md-nav__button md-logo">
+    <a href="../../index.html" title="ffrprep 0.1.dev1+g29c38576b documentation" class="md-nav__button md-logo">
       
         <img src="../../_static/" alt=" logo" width="48" height="48">
       
     </a>
     <a href="../../index.html"
-       title="ffrprep 0.1.dev1+gcbe4d9aa9 documentation">ffrprep</a>
+       title="ffrprep 0.1.dev1+g29c38576b documentation">ffrprep</a>
   </label>
     <div class="md-nav__source">
       <a href="https://github.com/sitek/ffrprep" title="Go to repository" class="md-source" data-md-source="github">
@@ -1900,7 +1900,7 @@
 
 <span class="k">def</span><span class="w"> </span><span class="nf">setup_derivatives_directories</span><span class="p">(</span>
     <span class="n">bids_root</span><span class="p">,</span> <span class="n">subject</span><span class="p">,</span>
-    <span class="n">create_preprocessing</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">create_analysis</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">create_preprocessing</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">create_analysis</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">create_group</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
     <span class="n">output_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">"""</span>
@@ -1916,6 +1916,9 @@
 <span class="sd">        Whether to create preprocessing derivatives directory.</span>
 <span class="sd">    create_analysis : bool</span>
 <span class="sd">        Whether to create analysis derivatives directory.</span>
+<span class="sd">    create_group : bool</span>
+<span class="sd">        Whether to create the group-level derivatives directory</span>
+<span class="sd">        (``ffrprep-group/``, not subject-scoped).</span>
 <span class="sd">    output_dir : str or pathlib.Path, optional</span>
 <span class="sd">        Explicit destination root for the ffrprep-preprocessing and</span>
 <span class="sd">        ffrprep-analysis subtrees. When omitted, falls back to the</span>
@@ -1952,12 +1955,17 @@
     <span class="k">if</span> <span class="n">create_analysis</span><span class="p">:</span>
         <span class="n">analysis_subject_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
+    <span class="n">group_dir</span> <span class="o">=</span> <span class="n">derivatives_root</span> <span class="o">/</span> <span class="s2">"ffrprep-group"</span>
+    <span class="k">if</span> <span class="n">create_group</span><span class="p">:</span>
+        <span class="n">group_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
     <span class="k">return</span> <span class="p">{</span>
         <span class="s2">"derivatives_root"</span><span class="p">:</span> <span class="n">derivatives_root</span><span class="p">,</span>
         <span class="s2">"preprocessing_dir"</span><span class="p">:</span> <span class="n">preproc_dir</span><span class="p">,</span>
         <span class="s2">"analysis_dir"</span><span class="p">:</span> <span class="n">analysis_dir</span><span class="p">,</span>
         <span class="s2">"preprocessing_subject_dir"</span><span class="p">:</span> <span class="n">preproc_subject_eeg_dir</span><span class="p">,</span>
         <span class="s2">"analysis_subject_dir"</span><span class="p">:</span> <span class="n">analysis_subject_dir</span><span class="p">,</span>
+        <span class="s2">"group_dir"</span><span class="p">:</span> <span class="n">group_dir</span><span class="p">,</span>
     <span class="p">}</span>
 
 

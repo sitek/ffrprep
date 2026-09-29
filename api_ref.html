@@ -46,13 +46,13 @@
   
   
   
-    <title>Reference API &#8212; ffrprep 0.1.dev1+gcbe4d9aa9 documentation</title>
+    <title>Reference API &#8212; ffrprep 0.1.dev1+g29c38576b documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
     <link rel="stylesheet" type="text/css" href="_static/material.css?v=79c92029" />
     <link rel="stylesheet" type="text/css" href="_static/plot_directive.css" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <script src="_static/documentation_options.js?v=1d9acbc3"></script>
+    <script src="_static/documentation_options.js?v=aca2d354"></script>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -85,7 +85,7 @@
   <nav class="md-header-nav md-grid">
     <div class="md-flex navheader">
       <div class="md-flex__cell md-flex__cell--shrink">
-        <a href="index.html" title="ffrprep 0.1.dev1+gcbe4d9aa9 documentation"
+        <a href="index.html" title="ffrprep 0.1.dev1+g29c38576b documentation"
            class="md-header-nav__button md-logo">
           
             &nbsp;
@@ -171,7 +171,7 @@
   <nav class="md-tabs" data-md-component="tabs">
     <div class="md-tabs__inner md-grid">
       <ul class="md-tabs__list">
-          <li class="md-tabs__item"><a href="index.html" class="md-tabs__link">ffrprep 0.1.dev1+gcbe4d9aa9 documentation</a></li>
+          <li class="md-tabs__item"><a href="index.html" class="md-tabs__link">ffrprep 0.1.dev1+g29c38576b documentation</a></li>
       </ul>
     </div>
   </nav>
@@ -183,13 +183,13 @@
               <div class="md-sidebar__inner">
                 <nav class="md-nav md-nav--primary" data-md-level="0">
   <label class="md-nav__title md-nav__title--site" for="__drawer">
-    <a href="index.html" title="ffrprep 0.1.dev1+gcbe4d9aa9 documentation" class="md-nav__button md-logo">
+    <a href="index.html" title="ffrprep 0.1.dev1+g29c38576b documentation" class="md-nav__button md-logo">
       
         <img src="_static/" alt=" logo" width="48" height="48">
       
     </a>
     <a href="index.html"
-       title="ffrprep 0.1.dev1+gcbe4d9aa9 documentation">ffrprep</a>
+       title="ffrprep 0.1.dev1+g29c38576b documentation">ffrprep</a>
   </label>
     <div class="md-nav__source">
       <a href="https://github.com/sitek/ffrprep" title="Go to repository" class="md-source" data-md-source="github">
@@ -258,6 +258,8 @@
         </li>
         <li class="md-nav__item"><a href="#module-ffrprep.reports" class="md-nav__link"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ffrprep.reports</span></code> - Report builders</a>
         </li>
+        <li class="md-nav__item"><a href="#module-ffrprep.group" class="md-nav__link"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ffrprep.group</span></code> - Group-level aggregation</a>
+        </li>
         <li class="md-nav__item"><a href="#module-ffrprep.datasets" class="md-nav__link"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ffrprep.datasets</span></code> - Dataset functions</a>
         </li>
         <li class="md-nav__item"><a href="#module-ffrprep.utils" class="md-nav__link"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ffrprep.utils</span></code> - Utility functions</a>
@@ -308,6 +310,8 @@
         </li>
         <li class="md-nav__item"><a href="#module-ffrprep.reports" class="md-nav__link"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ffrprep.reports</span></code> - Report builders</a>
         </li>
+        <li class="md-nav__item"><a href="#module-ffrprep.group" class="md-nav__link"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ffrprep.group</span></code> - Group-level aggregation</a>
+        </li>
         <li class="md-nav__item"><a href="#module-ffrprep.datasets" class="md-nav__link"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ffrprep.datasets</span></code> - Dataset functions</a>
         </li>
         <li class="md-nav__item"><a href="#module-ffrprep.utils" class="md-nav__link"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ffrprep.utils</span></code> - Utility functions</a>
@@ -336,8 +340,9 @@
 <li><p><a class="reference internal" href="#module-ffrprep.preproc" id="id1"><a class="reference internal" href="#module-ffrprep.preproc" title="ffrprep.preproc"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ffrprep.preproc</span></code></a> - Preprocessing functions</a></p></li>
 <li><p><a class="reference internal" href="#module-ffrprep.analysis" id="id2"><a class="reference internal" href="#module-ffrprep.analysis" title="ffrprep.analysis"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ffrprep.analysis</span></code></a> - FFR analysis functions</a></p></li>
 <li><p><a class="reference internal" href="#module-ffrprep.reports" id="id3"><a class="reference internal" href="#module-ffrprep.reports" title="ffrprep.reports"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ffrprep.reports</span></code></a> - Report builders</a></p></li>
-<li><p><a class="reference internal" href="#module-ffrprep.datasets" id="id4"><a class="reference internal" href="#module-ffrprep.datasets" title="ffrprep.datasets"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ffrprep.datasets</span></code></a> - Dataset functions</a></p></li>
-<li><p><a class="reference internal" href="#module-ffrprep.utils" id="id5"><a class="reference internal" href="#module-ffrprep.utils" title="ffrprep.utils"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ffrprep.utils</span></code></a> - Utility functions</a></p></li>
+<li><p><a class="reference internal" href="#module-ffrprep.group" id="id4"><a class="reference internal" href="#module-ffrprep.group" title="ffrprep.group"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ffrprep.group</span></code></a> - Group-level aggregation</a></p></li>
+<li><p><a class="reference internal" href="#module-ffrprep.datasets" id="id5"><a class="reference internal" href="#module-ffrprep.datasets" title="ffrprep.datasets"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ffrprep.datasets</span></code></a> - Dataset functions</a></p></li>
+<li><p><a class="reference internal" href="#module-ffrprep.utils" id="id6"><a class="reference internal" href="#module-ffrprep.utils" title="ffrprep.utils"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ffrprep.utils</span></code></a> - Utility functions</a></p></li>
 </ul>
 </nav>
 <section id="module-ffrprep.preproc">
@@ -447,17 +452,23 @@ special MNE objects.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/ffrprep.reports.build_evoked_section.html#ffrprep.reports.build_evoked_section" title="ffrprep.reports.build_evoked_section"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_evoked_section</span></code></a>(evoked, *, section_id, ...)</p></td>
 <td><p>Build a section descriptor from an Evoked object.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="generated/ffrprep.reports.build_phase_consistency_section.html#ffrprep.reports.build_phase_consistency_section" title="ffrprep.reports.build_phase_consistency_section"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_phase_consistency_section</span></code></a>(epochs_a, ...)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/ffrprep.reports.build_metrics_table_section.html#ffrprep.reports.build_metrics_table_section" title="ffrprep.reports.build_metrics_table_section"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_metrics_table_section</span></code></a>(metrics, *, ...)</p></td>
+<td><p>Build a section descriptor summarizing a group-level metrics table.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/ffrprep.reports.build_phase_consistency_section.html#ffrprep.reports.build_phase_consistency_section" title="ffrprep.reports.build_phase_consistency_section"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_phase_consistency_section</span></code></a>(epochs_a, ...)</p></td>
 <td><p>Build a phase-consistency section from two polarities of Epochs.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="generated/ffrprep.reports.make_group.html#ffrprep.reports.make_group" title="ffrprep.reports.make_group"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_group</span></code></a>(*, sections[, session, task, ...])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/ffrprep.reports.make_group.html#ffrprep.reports.make_group" title="ffrprep.reports.make_group"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_group</span></code></a>(*, sections[, session, task, ...])</p></td>
 <td><p>Construct a group descriptor consumable by the report builders.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="generated/ffrprep.reports.build_subject_report.html#ffrprep.reports.build_subject_report" title="ffrprep.reports.build_subject_report"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_subject_report</span></code></a>(bids_root, subject, out_dir)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/ffrprep.reports.build_subject_report.html#ffrprep.reports.build_subject_report" title="ffrprep.reports.build_subject_report"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_subject_report</span></code></a>(bids_root, subject, out_dir)</p></td>
 <td><p>Render a single-file HTML preprocessing report for a subject.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="generated/ffrprep.reports.build_analysis_report.html#ffrprep.reports.build_analysis_report" title="ffrprep.reports.build_analysis_report"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_analysis_report</span></code></a>(bids_root, subject, ...)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/ffrprep.reports.build_analysis_report.html#ffrprep.reports.build_analysis_report" title="ffrprep.reports.build_analysis_report"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_analysis_report</span></code></a>(bids_root, subject, ...)</p></td>
 <td><p>Render a single-file HTML analysis report for a subject.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/ffrprep.reports.build_group_report.html#ffrprep.reports.build_group_report" title="ffrprep.reports.build_group_report"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_group_report</span></code></a>(out_dir[, sections, ...])</p></td>
+<td><p>Render a single-file HTML group-level report.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="generated/ffrprep.reports.evoked_qa.html#ffrprep.reports.evoked_qa" title="ffrprep.reports.evoked_qa"><code class="xref py py-obj docutils literal notranslate"><span class="pre">evoked_qa</span></code></a>(evoked[, save_dir, prefix])</p></td>
 <td><p>Generate FFR-specific QA figures for an mne.Evoked object.</p></td>
@@ -468,8 +479,42 @@ special MNE objects.</p>
 </tbody>
 </table>
 </section>
+<section id="module-ffrprep.group">
+<span id="ffrprep-group-group-level-aggregation"></span><span id="ref-group"></span><h2 id="module-ffrprep.group"><a class="toc-backref" href="#id4" role="doc-backlink"><a class="reference internal" href="#module-ffrprep.group" title="ffrprep.group"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ffrprep.group</span></code></a> - Group-level aggregation</a><a class="headerlink" href="#module-ffrprep.group" title="Link to this heading">¶</a></h2>
+<p>group module for ffrprep.</p>
+<p>Aggregates already-computed participant-level derivatives
+(<code class="docutils literal notranslate"><span class="pre">ffrprep-analysis/sub-*/</span></code> and <code class="docutils literal notranslate"><span class="pre">ffrprep-preprocessing/sub-*/eeg/</span></code>)
+into group-level summaries: a grand-average evoked response per (task,
+session, run), a per-subject scalar-metrics table, and a group HTML
+report. This mirrors the aggregation-only scope other BIDS Apps use for
+their “group” level (e.g. MRIQC’s group report): it summarizes what
+participant-level ffrprep already computed, it does not run any
+group-level statistics.</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/ffrprep.group.discover_group_inputs.html#ffrprep.group.discover_group_inputs" title="ffrprep.group.discover_group_inputs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">discover_group_inputs</span></code></a>(derivatives_root[, ...])</p></td>
+<td><p>Discover participant-level derivatives to aggregate at the group level.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/ffrprep.group.compute_grand_average.html#ffrprep.group.compute_grand_average" title="ffrprep.group.compute_grand_average"><code class="xref py py-obj docutils literal notranslate"><span class="pre">compute_grand_average</span></code></a>(evoked_paths)</p></td>
+<td><p>Load per-subject Evoked files and compute their grand average.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/ffrprep.group.compute_subject_metrics.html#ffrprep.group.compute_subject_metrics" title="ffrprep.group.compute_subject_metrics"><code class="xref py py-obj docutils literal notranslate"><span class="pre">compute_subject_metrics</span></code></a>(evoked_paths[, ...])</p></td>
+<td><p>Compute per-subject scalar FFR metrics from saved derivatives.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/ffrprep.group.save_group_outputs.html#ffrprep.group.save_group_outputs" title="ffrprep.group.save_group_outputs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">save_group_outputs</span></code></a>(derivatives_root, task, ...)</p></td>
+<td><p>Save a grand-average Evoked and its provenance sidecar under <code class="docutils literal notranslate"><span class="pre">derivatives_root/ffrprep-group/</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/ffrprep.group.save_group_metrics.html#ffrprep.group.save_group_metrics" title="ffrprep.group.save_group_metrics"><code class="xref py py-obj docutils literal notranslate"><span class="pre">save_group_metrics</span></code></a>(derivatives_root, task, ...)</p></td>
+<td><p>Save a per-subject metrics table to a group-level TSV file.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/ffrprep.group.run_group_level.html#ffrprep.group.run_group_level" title="ffrprep.group.run_group_level"><code class="xref py py-obj docutils literal notranslate"><span class="pre">run_group_level</span></code></a>(args)</p></td>
+<td><p>Run the group-level aggregation step (BIDS-App <code class="docutils literal notranslate"><span class="pre">analysis_level=group</span></code>).</p></td>
+</tr>
+</tbody>
+</table>
+</section>
 <section id="module-ffrprep.datasets">
-<span id="ffrprep-datasets-dataset-functions"></span><span id="ref-dataset"></span><h2 id="module-ffrprep.datasets"><a class="toc-backref" href="#id4" role="doc-backlink"><a class="reference internal" href="#module-ffrprep.datasets" title="ffrprep.datasets"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ffrprep.datasets</span></code></a> - Dataset functions</a><a class="headerlink" href="#module-ffrprep.datasets" title="Link to this heading">¶</a></h2>
+<span id="ffrprep-datasets-dataset-functions"></span><span id="ref-dataset"></span><h2 id="module-ffrprep.datasets"><a class="toc-backref" href="#id5" role="doc-backlink"><a class="reference internal" href="#module-ffrprep.datasets" title="ffrprep.datasets"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ffrprep.datasets</span></code></a> - Dataset functions</a><a class="headerlink" href="#module-ffrprep.datasets" title="Link to this heading">¶</a></h2>
 <table class="autosummary longtable docutils align-default">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/ffrprep.datasets.download_example_data.html#ffrprep.datasets.download_example_data" title="ffrprep.datasets.download_example_data"><code class="xref py py-obj docutils literal notranslate"><span class="pre">download_example_data</span></code></a>([dataset_path, ...])</p></td>
@@ -488,7 +533,7 @@ special MNE objects.</p>
 </table>
 </section>
 <section id="module-ffrprep.utils">
-<span id="ffrprep-utils-utility-functions"></span><span id="ref-utils"></span><h2 id="module-ffrprep.utils"><a class="toc-backref" href="#id5" role="doc-backlink"><a class="reference internal" href="#module-ffrprep.utils" title="ffrprep.utils"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ffrprep.utils</span></code></a> - Utility functions</a><a class="headerlink" href="#module-ffrprep.utils" title="Link to this heading">¶</a></h2>
+<span id="ffrprep-utils-utility-functions"></span><span id="ref-utils"></span><h2 id="module-ffrprep.utils"><a class="toc-backref" href="#id6" role="doc-backlink"><a class="reference internal" href="#module-ffrprep.utils" title="ffrprep.utils"><code class="xref py py-mod docutils literal notranslate"><span class="pre">ffrprep.utils</span></code></a> - Utility functions</a><a class="headerlink" href="#module-ffrprep.utils" title="Link to this heading">¶</a></h2>
 <p>Utility functions for validating BIDS directories and related operations.</p>
 <table class="autosummary longtable docutils align-default">
 <tbody>

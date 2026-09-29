@@ -1,0 +1,6 @@
+﻿ffrprep.group.compute\_grand\_average
+=====================================
+
+.. currentmodule:: ffrprep.group
+
+.. autofunction:: compute_grand_average

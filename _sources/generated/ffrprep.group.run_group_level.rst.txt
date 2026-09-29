@@ -1,0 +1,6 @@
+﻿ffrprep.group.run\_group\_level
+===============================
+
+.. currentmodule:: ffrprep.group
+
+.. autofunction:: run_group_level

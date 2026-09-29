@@ -81,12 +81,36 @@ Reference API
    build_raw_section
    build_epoch_section
    build_evoked_section
+   build_metrics_table_section
    build_phase_consistency_section
    make_group
    build_subject_report
    build_analysis_report
+   build_group_report
    evoked_qa
    epoch_qa
+
+
+.. _ref_group:
+
+:mod:`ffrprep.group` - Group-level aggregation
+----------------------------------------------
+.. automodule:: ffrprep.group
+   :no-members:
+   :no-inherited-members:
+
+.. currentmodule:: ffrprep.group
+
+.. autosummary::
+   :template: function.rst
+   :toctree: generated/
+
+   discover_group_inputs
+   compute_grand_average
+   compute_subject_metrics
+   save_group_outputs
+   save_group_metrics
+   run_group_level
 
 
 .. _ref_dataset:

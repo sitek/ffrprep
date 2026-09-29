@@ -46,13 +46,13 @@
   
   
   
-    <title>Pipeline details &#8212; ffrprep 0.1.dev1+gcbe4d9aa9 documentation</title>
+    <title>Pipeline details &#8212; ffrprep 0.1.dev1+g29c38576b documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
     <link rel="stylesheet" type="text/css" href="_static/material.css?v=79c92029" />
     <link rel="stylesheet" type="text/css" href="_static/plot_directive.css" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <script src="_static/documentation_options.js?v=1d9acbc3"></script>
+    <script src="_static/documentation_options.js?v=aca2d354"></script>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -85,7 +85,7 @@
   <nav class="md-header-nav md-grid">
     <div class="md-flex navheader">
       <div class="md-flex__cell md-flex__cell--shrink">
-        <a href="index.html" title="ffrprep 0.1.dev1+gcbe4d9aa9 documentation"
+        <a href="index.html" title="ffrprep 0.1.dev1+g29c38576b documentation"
            class="md-header-nav__button md-logo">
           
             &nbsp;
@@ -171,7 +171,7 @@
   <nav class="md-tabs" data-md-component="tabs">
     <div class="md-tabs__inner md-grid">
       <ul class="md-tabs__list">
-          <li class="md-tabs__item"><a href="index.html" class="md-tabs__link">ffrprep 0.1.dev1+gcbe4d9aa9 documentation</a></li>
+          <li class="md-tabs__item"><a href="index.html" class="md-tabs__link">ffrprep 0.1.dev1+g29c38576b documentation</a></li>
       </ul>
     </div>
   </nav>
@@ -183,13 +183,13 @@
               <div class="md-sidebar__inner">
                 <nav class="md-nav md-nav--primary" data-md-level="0">
   <label class="md-nav__title md-nav__title--site" for="__drawer">
-    <a href="index.html" title="ffrprep 0.1.dev1+gcbe4d9aa9 documentation" class="md-nav__button md-logo">
+    <a href="index.html" title="ffrprep 0.1.dev1+g29c38576b documentation" class="md-nav__button md-logo">
       
         <img src="_static/" alt=" logo" width="48" height="48">
       
     </a>
     <a href="index.html"
-       title="ffrprep 0.1.dev1+gcbe4d9aa9 documentation">ffrprep</a>
+       title="ffrprep 0.1.dev1+g29c38576b documentation">ffrprep</a>
   </label>
     <div class="md-nav__source">
       <a href="https://github.com/sitek/ffrprep" title="Go to repository" class="md-source" data-md-source="github">
@@ -257,6 +257,8 @@
             </nav>
         </li>
         <li class="md-nav__item"><a href="#pipeline-integration-and-quality-control" class="md-nav__link">Pipeline Integration and Quality Control</a>
+        </li>
+        <li class="md-nav__item"><a href="#group-level-aggregation" class="md-nav__link">Group-Level Aggregation</a>
         </li></ul>
             </nav>
         </li>
@@ -331,6 +333,8 @@
             </nav>
         </li>
         <li class="md-nav__item"><a href="#pipeline-integration-and-quality-control" class="md-nav__link">Pipeline Integration and Quality Control</a>
+        </li>
+        <li class="md-nav__item"><a href="#group-level-aggregation" class="md-nav__link">Group-Level Aggregation</a>
         </li></ul>
             </nav>
         </li>
@@ -756,6 +760,36 @@ and <code class="docutils literal notranslate"><span class="pre">extra_figures</
 caller-computed scalars or figures into a section’s table or
 figure gallery.</p></li>
 </ul>
+</section>
+<section id="group-level-aggregation">
+<h2 id="group-level-aggregation">Group-Level Aggregation<a class="headerlink" href="#group-level-aggregation" title="Link to this heading">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">group</span></code> analysis level (<code class="docutils literal notranslate"><span class="pre">ffrprep.group.run_group_level</span></code>)
+aggregates participant-level derivatives already written under
+<code class="docutils literal notranslate"><span class="pre">output_dir</span></code> — it does not read raw BIDS data. For each (task,
+session, run) with derivatives from at least two subjects, it:</p>
+<ul class="simple">
+<li><p>discovers each subject’s combined (<code class="docutils literal notranslate"><span class="pre">_desc-evoked.fif</span></code>) and, when
+present, difference (<code class="docutils literal notranslate"><span class="pre">_desc-evokedDiff{A}Vs{B}.fif</span></code>) Evoked files
+via <a class="reference internal" href="generated/ffrprep.group.discover_group_inputs.html#ffrprep.group.discover_group_inputs" title="ffrprep.group.discover_group_inputs"><code class="xref py py-func docutils literal notranslate"><span class="pre">ffrprep.group.discover_group_inputs()</span></code></a>, and computes a
+grand average with <code class="docutils literal notranslate"><span class="pre">mne.grand_average</span></code>
+(<a class="reference internal" href="generated/ffrprep.group.compute_grand_average.html#ffrprep.group.compute_grand_average" title="ffrprep.group.compute_grand_average"><code class="xref py py-func docutils literal notranslate"><span class="pre">ffrprep.group.compute_grand_average()</span></code></a>);</p></li>
+<li><p>recomputes the same scalar FFR metrics the participant-level
+report shows (RMS SNR, band power) directly from each subject’s
+saved combined Evoked, plus trial-to-trial response consistency
+from that subject’s saved preprocessing Epochs
+(<a class="reference internal" href="generated/ffrprep.group.compute_subject_metrics.html#ffrprep.group.compute_subject_metrics" title="ffrprep.group.compute_subject_metrics"><code class="xref py py-func docutils literal notranslate"><span class="pre">ffrprep.group.compute_subject_metrics()</span></code></a>) — nothing is
+recomputed from raw data;</p></li>
+<li><p>writes the grand-average Evoked(s), a per-subject metrics TSV, and
+a single <code class="docutils literal notranslate"><span class="pre">group_report.html</span></code> (reusing the same section builders
+and template as the participant-level reports) under
+<code class="docutils literal notranslate"><span class="pre">output_dir/ffrprep-group/</span></code>.</p></li>
+</ul>
+<p>This step is deliberately scoped to aggregation, not inference: it
+summarizes what participant-level ffrprep already computed and
+performs no group-level statistics (no hypothesis tests, no GLM).
+Statistical analysis is left to the user, e.g. directly in
+MNE-Python against the saved grand-average / per-subject
+derivatives.</p>
 </section>
 </section>
 

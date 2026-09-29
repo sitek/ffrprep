@@ -1,0 +1,6 @@
+﻿ffrprep.group.discover\_group\_inputs
+=====================================
+
+.. currentmodule:: ffrprep.group
+
+.. autofunction:: discover_group_inputs
