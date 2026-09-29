@@ -2,15 +2,17 @@ name: Build and Publish Container
 
 # The events/triggers when it should be run
 # Here we set that the workflow should run
-# whenever there was a push or PR to the 
-# main branch
+# whenever there was a push or PR to the
+# main branch, or a version tag (e.g. v0.2.0)
+# was pushed
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   pull_request:
     branches: [main]
   pull_request_target:
-    branches: [main]  
+    branches: [main]
 
 # We define the jobs that should be run
 # and the respective runner, ie virtual machine
@@ -53,7 +55,25 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      
+
+      # figure out which image tags to build:
+      # always "latest", plus a version tag (e.g. "0.2.0") when this
+      # run was triggered by pushing a "vX.Y.Z" git tag
+      - name: Determine image tags
+        id: image_tags
+        run: |
+          tags="ksitek/ffrprep:latest
+          ghcr.io/sitek/ffrprep:latest"
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            version="${GITHUB_REF#refs/tags/v}"
+            tags="${tags}
+          ksitek/ffrprep:${version}
+          ghcr.io/sitek/ffrprep:${version}"
+          fi
+          echo "tags<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$tags" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
       # build and push the image to DockerHub and GitHub Container Registry
       - name: Build image and push to Docker Hub and GitHub Container Registry
         uses: docker/build-push-action@v2
@@ -61,11 +81,9 @@ jobs:
           # relative path to the place where source code with Dockerfile is located
           context: ./
           # Note: tags has to be all lower-case
-          tags: |
-            ksitek/ffrprep:latest 
-            ghcr.io/sitek/ffrprep:latest
-          # build on feature branches, push only on main branch
-          push: ${{ github.ref == 'refs/heads/main' }}
+          tags: ${{ steps.image_tags.outputs.tags }}
+          # build on feature branches, push only on main or a version tag
+          push: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') }}
 
       - name: Image digest
         run: echo ${{ steps.docker_build.outputs.digest }}
