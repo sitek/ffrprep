@@ -1584,7 +1584,7 @@ def create_analysis_workflow(name="ffrprep_analysis"):
 
 def setup_derivatives_directories(
     bids_root, subject,
-    create_preprocessing=True, create_analysis=True,
+    create_preprocessing=True, create_analysis=True, create_group=False,
     output_dir=None,
 ):
     """
@@ -1600,6 +1600,9 @@ def setup_derivatives_directories(
         Whether to create preprocessing derivatives directory.
     create_analysis : bool
         Whether to create analysis derivatives directory.
+    create_group : bool
+        Whether to create the group-level derivatives directory
+        (``ffrprep-group/``, not subject-scoped).
     output_dir : str or pathlib.Path, optional
         Explicit destination root for the ffrprep-preprocessing and
         ffrprep-analysis subtrees. When omitted, falls back to the
@@ -1636,12 +1639,17 @@ def setup_derivatives_directories(
     if create_analysis:
         analysis_subject_dir.mkdir(parents=True, exist_ok=True)
 
+    group_dir = derivatives_root / "ffrprep-group"
+    if create_group:
+        group_dir.mkdir(parents=True, exist_ok=True)
+
     return {
         "derivatives_root": derivatives_root,
         "preprocessing_dir": preproc_dir,
         "analysis_dir": analysis_dir,
         "preprocessing_subject_dir": preproc_subject_eeg_dir,
         "analysis_subject_dir": analysis_subject_dir,
+        "group_dir": group_dir,
     }
 
 

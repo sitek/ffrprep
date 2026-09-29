@@ -32,6 +32,40 @@ CLI
   analyses (e.g. ``corr_stim_to_resp``) and augments every
   ``events.tsv`` with the matching ``stim_file`` column.
 
+Group-level analysis
+--------------------
+
+- ``ffrprep <bids_dir> <output_dir> group`` now runs, replacing the
+  previous "Currently only participant-level analysis is supported."
+  stub. New module ``ffrprep.group`` aggregates already-computed
+  participant-level derivatives from ``output_dir`` — it does not
+  read ``bids_dir`` or re-run preprocessing/analysis:
+
+  - ``discover_group_inputs``: globs ``ffrprep-analysis/sub-*/`` and
+    ``ffrprep-preprocessing/sub-*/eeg/`` for combined evoked, diff
+    evoked, and preprocessing epochs files, grouped by
+    ``(task, session, run)``.
+  - ``compute_grand_average``: ``mne.grand_average`` across subjects
+    for each (task, session, run) with >= 2 contributing subjects.
+  - ``compute_subject_metrics``: recomputes RMS SNR, band power, and
+    response consistency per subject directly from saved derivatives
+    (nothing is recomputed from raw data).
+  - Outputs land under ``output_dir/ffrprep-group/``: grand-average
+    ``_desc-grandAverage_ave.fif`` (+ JSON sidecar with contributing
+    subjects), a per-(task, run) ``_metrics.tsv``, and a single
+    ``group_report.html``.
+  - Deliberately aggregation-only, not inferential: no group-level
+    statistics are computed, matching the scope other BIDS Apps
+    (e.g. MRIQC) use for their own "group" level.
+- ``ffrprep.reports`` gains ``build_group_report`` and
+  ``build_metrics_table_section``; ``build_subject_report`` /
+  ``build_analysis_report`` pass new ``entity_label`` / ``meta_label``
+  template variables so the shared ``subject_report.html.j2`` template
+  can render a report with no single subject (existing rendered output
+  for per-subject reports is unchanged).
+- ``setup_derivatives_directories`` gains a ``create_group=False``
+  flag to materialize ``ffrprep-group/``.
+
 Preprocessing
 -------------
 
