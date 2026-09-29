@@ -1,0 +1,6 @@
+﻿ffrprep.analysis.load\_wav\_mono
+================================
+
+.. currentmodule:: ffrprep.analysis
+
+.. autofunction:: load_wav_mono

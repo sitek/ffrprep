@@ -1,0 +1,6 @@
+﻿ffrprep.group.add\_qc\_flags
+============================
+
+.. currentmodule:: ffrprep.group
+
+.. autofunction:: add_qc_flags

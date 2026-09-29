@@ -46,13 +46,13 @@
   
   
   
-    <title>ffrprep.group.discover_group_inputs &#8212; ffrprep 0.1.dev1+g29c38576b documentation</title>
+    <title>ffrprep.group.discover_group_inputs &#8212; ffrprep 0.1.dev1+g626fc0d1d documentation</title>
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
     <link rel="stylesheet" type="text/css" href="../_static/material.css?v=79c92029" />
     <link rel="stylesheet" type="text/css" href="../_static/plot_directive.css" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
-    <script src="../_static/documentation_options.js?v=aca2d354"></script>
+    <script src="../_static/documentation_options.js?v=40177eca"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -85,7 +85,7 @@
   <nav class="md-header-nav md-grid">
     <div class="md-flex navheader">
       <div class="md-flex__cell md-flex__cell--shrink">
-        <a href="../index.html" title="ffrprep 0.1.dev1+g29c38576b documentation"
+        <a href="../index.html" title="ffrprep 0.1.dev1+g626fc0d1d documentation"
            class="md-header-nav__button md-logo">
           
             &nbsp;
@@ -171,7 +171,7 @@
   <nav class="md-tabs" data-md-component="tabs">
     <div class="md-tabs__inner md-grid">
       <ul class="md-tabs__list">
-          <li class="md-tabs__item"><a href="../index.html" class="md-tabs__link">ffrprep 0.1.dev1+g29c38576b documentation</a></li>
+          <li class="md-tabs__item"><a href="../index.html" class="md-tabs__link">ffrprep 0.1.dev1+g626fc0d1d documentation</a></li>
           <li class="md-tabs__item"><a href="../api_ref.html" class="md-tabs__link">Reference API</a></li>
       </ul>
     </div>
@@ -184,13 +184,13 @@
               <div class="md-sidebar__inner">
                 <nav class="md-nav md-nav--primary" data-md-level="0">
   <label class="md-nav__title md-nav__title--site" for="__drawer">
-    <a href="../index.html" title="ffrprep 0.1.dev1+g29c38576b documentation" class="md-nav__button md-logo">
+    <a href="../index.html" title="ffrprep 0.1.dev1+g626fc0d1d documentation" class="md-nav__button md-logo">
       
         <img src="../_static/" alt=" logo" width="48" height="48">
       
     </a>
     <a href="../index.html"
-       title="ffrprep 0.1.dev1+g29c38576b documentation">ffrprep</a>
+       title="ffrprep 0.1.dev1+g626fc0d1d documentation">ffrprep</a>
   </label>
     <div class="md-nav__source">
       <a href="https://github.com/sitek/ffrprep" title="Go to repository" class="md-source" data-md-source="github">
@@ -312,13 +312,16 @@ If None, all subjects found under <code class="docutils literal notranslate"><sp
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p><strong>inputs</strong> – Dictionary with keys <code class="docutils literal notranslate"><span class="pre">"evoked"</span></code>, <code class="docutils literal notranslate"><span class="pre">"diff"</span></code>, and
-<code class="docutils literal notranslate"><span class="pre">"epochs"</span></code>. <code class="docutils literal notranslate"><span class="pre">"evoked"</span></code> and <code class="docutils literal notranslate"><span class="pre">"epochs"</span></code> map a
+<dd class="field-even"><p><strong>inputs</strong> – Dictionary with keys <code class="docutils literal notranslate"><span class="pre">"evoked"</span></code>, <code class="docutils literal notranslate"><span class="pre">"diff"</span></code>, <code class="docutils literal notranslate"><span class="pre">"by_type"</span></code>
+and <code class="docutils literal notranslate"><span class="pre">"epochs"</span></code>. <code class="docutils literal notranslate"><span class="pre">"evoked"</span></code> and <code class="docutils literal notranslate"><span class="pre">"epochs"</span></code> map a
 <code class="docutils literal notranslate"><span class="pre">(task,</span> <span class="pre">session,</span> <span class="pre">run)</span></code> tuple to <code class="docutils literal notranslate"><span class="pre">{subject:</span> <span class="pre">Path}</span></code>
 (<code class="docutils literal notranslate"><span class="pre">{subject:</span> <span class="pre">[Path,</span> <span class="pre">...]}</span></code> for <code class="docutils literal notranslate"><span class="pre">"epochs"</span></code>); <code class="docutils literal notranslate"><span class="pre">"diff"</span></code>
 maps a <code class="docutils literal notranslate"><span class="pre">(task,</span> <span class="pre">session,</span> <span class="pre">run,</span> <span class="pre">condition_a,</span> <span class="pre">condition_b)</span></code>
-tuple to <code class="docutils literal notranslate"><span class="pre">{subject:</span> <span class="pre">Path}</span></code>. <code class="docutils literal notranslate"><span class="pre">session</span></code> and <code class="docutils literal notranslate"><span class="pre">run</span></code> are
-None when not present in a filename.</p>
+tuple to <code class="docutils literal notranslate"><span class="pre">{subject:</span> <span class="pre">Path}</span></code>; <code class="docutils literal notranslate"><span class="pre">"by_type"</span></code> maps a
+<code class="docutils literal notranslate"><span class="pre">(task,</span> <span class="pre">session,</span> <span class="pre">run)</span></code> tuple to
+<code class="docutils literal notranslate"><span class="pre">{subject:</span> <span class="pre">{condition_label:</span> <span class="pre">Path}}</span></code> for the per-trial-type
+evoked files. <code class="docutils literal notranslate"><span class="pre">session</span></code> and <code class="docutils literal notranslate"><span class="pre">run</span></code> are None when not present
+in a filename.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)">dict</a></p>

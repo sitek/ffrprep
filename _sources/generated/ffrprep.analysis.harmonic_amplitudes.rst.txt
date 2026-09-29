@@ -1,0 +1,6 @@
+﻿ffrprep.analysis.harmonic\_amplitudes
+=====================================
+
+.. currentmodule:: ffrprep.analysis
+
+.. autofunction:: harmonic_amplitudes

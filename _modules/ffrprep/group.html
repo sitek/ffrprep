@@ -45,13 +45,13 @@
   
   
   
-    <title>ffrprep.group &#8212; ffrprep 0.1.dev1+g29c38576b documentation</title>
+    <title>ffrprep.group &#8212; ffrprep 0.1.dev1+g626fc0d1d documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
     <link rel="stylesheet" type="text/css" href="../../_static/material.css?v=79c92029" />
     <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
-    <script src="../../_static/documentation_options.js?v=aca2d354"></script>
+    <script src="../../_static/documentation_options.js?v=40177eca"></script>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -82,7 +82,7 @@
   <nav class="md-header-nav md-grid">
     <div class="md-flex navheader">
       <div class="md-flex__cell md-flex__cell--shrink">
-        <a href="../../index.html" title="ffrprep 0.1.dev1+g29c38576b documentation"
+        <a href="../../index.html" title="ffrprep 0.1.dev1+g626fc0d1d documentation"
            class="md-header-nav__button md-logo">
           
             &nbsp;
@@ -168,7 +168,7 @@
   <nav class="md-tabs" data-md-component="tabs">
     <div class="md-tabs__inner md-grid">
       <ul class="md-tabs__list">
-          <li class="md-tabs__item"><a href="../../index.html" class="md-tabs__link">ffrprep 0.1.dev1+g29c38576b documentation</a></li>
+          <li class="md-tabs__item"><a href="../../index.html" class="md-tabs__link">ffrprep 0.1.dev1+g626fc0d1d documentation</a></li>
           <li class="md-tabs__item"><a href="../index.html" class="md-tabs__link">Module code</a></li>
       </ul>
     </div>
@@ -181,13 +181,13 @@
               <div class="md-sidebar__inner">
                 <nav class="md-nav md-nav--primary" data-md-level="0">
   <label class="md-nav__title md-nav__title--site" for="__drawer">
-    <a href="../../index.html" title="ffrprep 0.1.dev1+g29c38576b documentation" class="md-nav__button md-logo">
+    <a href="../../index.html" title="ffrprep 0.1.dev1+g626fc0d1d documentation" class="md-nav__button md-logo">
       
         <img src="../../_static/" alt=" logo" width="48" height="48">
       
     </a>
     <a href="../../index.html"
-       title="ffrprep 0.1.dev1+g29c38576b documentation">ffrprep</a>
+       title="ffrprep 0.1.dev1+g626fc0d1d documentation">ffrprep</a>
   </label>
     <div class="md-nav__source">
       <a href="https://github.com/sitek/ffrprep" title="Go to repository" class="md-source" data-md-source="github">
@@ -306,7 +306,15 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">ffrprep.reports</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">reports</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">ffrprep.analysis</span><span class="w"> </span><span class="kn">import</span> <span class="n">compute_power</span><span class="p">,</span> <span class="n">response_consistency</span><span class="p">,</span> <span class="n">rms_snr</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ffrprep.analysis</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">compute_power</span><span class="p">,</span>
+    <span class="n">harmonic_amplitudes</span><span class="p">,</span>
+    <span class="n">load_wav_mono</span><span class="p">,</span>
+    <span class="n">resample_signal</span><span class="p">,</span>
+    <span class="n">response_consistency</span><span class="p">,</span>
+    <span class="n">rms_snr</span><span class="p">,</span>
+    <span class="n">stim_to_resp_xcorr</span><span class="p">,</span>
+<span class="p">)</span>
 
 <span class="c1"># Matches combined/diff evoked filenames written by</span>
 <span class="c1"># preproc.save_analysis_outputs(), e.g.</span>
@@ -320,6 +328,7 @@
     <span class="sa">r</span><span class="s2">"_desc-(?P&lt;desc&gt;[A-Za-z0-9]+)\.fif$"</span>
 <span class="p">)</span>
 <span class="n">_DIFF_DESC_RE</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">"^evokedDiff([A-Za-z0-9]+)Vs([A-Za-z0-9]+)$"</span><span class="p">)</span>
+<span class="n">_PER_TYPE_DESC_RE</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">"^evoked(?P&lt;label&gt;[A-Za-z0-9]+)$"</span><span class="p">)</span>
 
 <span class="c1"># Matches preprocessing epochs filenames written by</span>
 <span class="c1"># preproc.save_preprocessing_outputs(), e.g.</span>
@@ -355,13 +364,16 @@
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    inputs : dict</span>
-<span class="sd">        Dictionary with keys ``"evoked"``, ``"diff"``, and</span>
-<span class="sd">        ``"epochs"``. ``"evoked"`` and ``"epochs"`` map a</span>
+<span class="sd">        Dictionary with keys ``"evoked"``, ``"diff"``, ``"by_type"``</span>
+<span class="sd">        and ``"epochs"``. ``"evoked"`` and ``"epochs"`` map a</span>
 <span class="sd">        ``(task, session, run)`` tuple to ``{subject: Path}``</span>
 <span class="sd">        (``{subject: [Path, ...]}`` for ``"epochs"``); ``"diff"``</span>
 <span class="sd">        maps a ``(task, session, run, condition_a, condition_b)``</span>
-<span class="sd">        tuple to ``{subject: Path}``. ``session`` and ``run`` are</span>
-<span class="sd">        None when not present in a filename.</span>
+<span class="sd">        tuple to ``{subject: Path}``; ``"by_type"`` maps a</span>
+<span class="sd">        ``(task, session, run)`` tuple to</span>
+<span class="sd">        ``{subject: {condition_label: Path}}`` for the per-trial-type</span>
+<span class="sd">        evoked files. ``session`` and ``run`` are None when not present</span>
+<span class="sd">        in a filename.</span>
 <span class="sd">    """</span>
     <span class="n">derivatives_root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">derivatives_root</span><span class="p">)</span>
     <span class="n">analysis_dir</span> <span class="o">=</span> <span class="n">derivatives_root</span> <span class="o">/</span> <span class="s2">"ffrprep-analysis"</span>
@@ -369,6 +381,7 @@
 
     <span class="n">evoked</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">dict</span><span class="p">)</span>
     <span class="n">diff</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">dict</span><span class="p">)</span>
+    <span class="n">by_type</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">dict</span><span class="p">))</span>
     <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">analysis_dir</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">"sub-*/*.fif"</span><span class="p">)):</span>
         <span class="n">match</span> <span class="o">=</span> <span class="n">_EVOKED_RE</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">match</span><span class="p">:</span>
@@ -389,6 +402,10 @@
         <span class="k">if</span> <span class="n">diff_match</span><span class="p">:</span>
             <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="o">=</span> <span class="n">diff_match</span><span class="o">.</span><span class="n">groups</span><span class="p">()</span>
             <span class="n">diff</span><span class="p">[</span><span class="n">key</span> <span class="o">+</span> <span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">)][</span><span class="n">subject</span><span class="p">]</span> <span class="o">=</span> <span class="n">path</span>
+            <span class="k">continue</span>
+        <span class="n">type_match</span> <span class="o">=</span> <span class="n">_PER_TYPE_DESC_RE</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">desc</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">type_match</span><span class="p">:</span>
+            <span class="n">by_type</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="n">subject</span><span class="p">][</span><span class="n">type_match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="s2">"label"</span><span class="p">)]</span> <span class="o">=</span> <span class="n">path</span>
 
     <span class="n">epochs</span> <span class="o">=</span> <span class="n">defaultdict</span><span class="p">(</span><span class="k">lambda</span><span class="p">:</span> <span class="n">defaultdict</span><span class="p">(</span><span class="nb">list</span><span class="p">))</span>
     <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">preproc_dir</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">"sub-*/eeg/*.fif"</span><span class="p">)):</span>
@@ -408,6 +425,10 @@
     <span class="k">return</span> <span class="p">{</span>
         <span class="s2">"evoked"</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="n">evoked</span><span class="p">),</span>
         <span class="s2">"diff"</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="n">diff</span><span class="p">),</span>
+        <span class="s2">"by_type"</span><span class="p">:</span> <span class="p">{</span>
+            <span class="n">key</span><span class="p">:</span> <span class="p">{</span><span class="n">subject</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="n">conds</span><span class="p">)</span> <span class="k">for</span> <span class="n">subject</span><span class="p">,</span> <span class="n">conds</span> <span class="ow">in</span> <span class="n">subjects</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">subjects</span> <span class="ow">in</span> <span class="n">by_type</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+        <span class="p">},</span>
         <span class="s2">"epochs"</span><span class="p">:</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">epochs</span><span class="o">.</span><span class="n">items</span><span class="p">()},</span>
     <span class="p">}</span></div>
 
@@ -451,14 +472,92 @@
 <span class="sd">    """</span>
     <span class="n">subjects</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">evoked_paths</span><span class="p">)</span>
     <span class="n">evokeds</span> <span class="o">=</span> <span class="p">[</span><span class="n">_read_evoked_with_baseline</span><span class="p">(</span><span class="n">evoked_paths</span><span class="p">[</span><span class="n">subject</span><span class="p">])</span> <span class="k">for</span> <span class="n">subject</span> <span class="ow">in</span> <span class="n">subjects</span><span class="p">]</span>
+    <span class="n">_harmonize_channel_names</span><span class="p">(</span><span class="n">evokeds</span><span class="p">,</span> <span class="n">subjects</span><span class="p">)</span>
     <span class="n">grand_average</span> <span class="o">=</span> <span class="n">mne</span><span class="o">.</span><span class="n">grand_average</span><span class="p">(</span><span class="n">evokeds</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">grand_average</span><span class="p">,</span> <span class="n">subjects</span></div>
 
 
 
+<span class="k">def</span><span class="w"> </span><span class="nf">_harmonize_channel_names</span><span class="p">(</span><span class="n">evokeds</span><span class="p">,</span> <span class="n">subjects</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Give single-channel Evokeds a common channel name (in place).</span>
+
+<span class="sd">    Multi-site FFR cohorts often record one channel that different sites</span>
+<span class="sd">    label differently (e.g. ``A32`` vs ``Cz``); ``mne.grand_average``</span>
+<span class="sd">    refuses to combine those. When every Evoked has exactly one channel</span>
+<span class="sd">    the name carries no information, so all are renamed to the most</span>
+<span class="sd">    common one. Differing names across multi-channel Evokeds cannot be</span>
+<span class="sd">    aligned automatically and raise a ``ValueError``.</span>
+<span class="sd">    """</span>
+    <span class="n">names</span> <span class="o">=</span> <span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">ev</span><span class="o">.</span><span class="n">ch_names</span><span class="p">)</span> <span class="k">for</span> <span class="n">ev</span> <span class="ow">in</span> <span class="n">evokeds</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">names</span><span class="p">))</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">return</span>
+    <span class="k">if</span> <span class="nb">all</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">n</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">names</span><span class="p">):</span>
+        <span class="n">counts</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">name</span><span class="p">,)</span> <span class="ow">in</span> <span class="n">names</span><span class="p">:</span>
+            <span class="n">counts</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">counts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="n">target</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">counts</span><span class="p">),</span> <span class="n">key</span><span class="o">=</span><span class="n">counts</span><span class="o">.</span><span class="n">get</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"Note: single-channel evokeds use different channel names </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">counts</span><span class="p">)</span><span class="si">}</span><span class="s2">; "</span>
+            <span class="sa">f</span><span class="s2">"treating them as the same channel and renaming to '</span><span class="si">{</span><span class="n">target</span><span class="si">}</span><span class="s2">'."</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">ev</span> <span class="ow">in</span> <span class="n">evokeds</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">ev</span><span class="o">.</span><span class="n">ch_names</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">target</span><span class="p">:</span>
+                <span class="n">ev</span><span class="o">.</span><span class="n">rename_channels</span><span class="p">({</span><span class="n">ev</span><span class="o">.</span><span class="n">ch_names</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span> <span class="n">target</span><span class="p">})</span>
+        <span class="k">return</span>
+    <span class="n">first</span> <span class="o">=</span> <span class="n">names</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">subject</span><span class="p">,</span> <span class="n">name</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">subjects</span><span class="p">,</span> <span class="n">names</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="o">!=</span> <span class="n">first</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"sub-</span><span class="si">{</span><span class="n">subject</span><span class="si">}</span><span class="s2"> has channels </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">name</span><span class="p">)</span><span class="si">}</span><span class="s2"> but sub-</span><span class="si">{</span><span class="n">subjects</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2"> has "</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">first</span><span class="p">)</span><span class="si">}</span><span class="s2">; grand averaging needs identical channel sets."</span>
+            <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_load_polarity_sum</span><span class="p">(</span><span class="n">cond_paths</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Sum of a subject's two per-trial-type Evokeds (or None).</span>
+
+<span class="sd">    FFR analyses that suppress the cochlear microphonic / stimulus</span>
+<span class="sd">    artifact add the responses to the two stimulus polarities (a **sum**</span>
+<span class="sd">    of the per-polarity averages, not a trial-weighted mean). Returns</span>
+<span class="sd">    None unless exactly two per-type files are available.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">cond_paths</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">cond_paths</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="n">first</span><span class="p">,</span> <span class="n">second</span> <span class="o">=</span> <span class="p">(</span><span class="n">_read_evoked_with_baseline</span><span class="p">(</span><span class="n">cond_paths</span><span class="p">[</span><span class="n">c</span><span class="p">])</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">cond_paths</span><span class="p">))</span>
+    <span class="n">summed</span> <span class="o">=</span> <span class="n">mne</span><span class="o">.</span><span class="n">combine_evoked</span><span class="p">([</span><span class="n">first</span><span class="p">,</span> <span class="n">second</span><span class="p">],</span> <span class="n">weights</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+    <span class="n">summed</span><span class="o">.</span><span class="n">baseline</span> <span class="o">=</span> <span class="n">first</span><span class="o">.</span><span class="n">baseline</span>
+    <span class="k">return</span> <span class="n">summed</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_window</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">sfreq</span><span class="p">,</span> <span class="n">tmin</span><span class="p">,</span> <span class="n">tmax</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Nearest-sample, inclusive ``tmin``-``tmax`` slice of a signal that starts at t=0."""</span>
+    <span class="k">return</span> <span class="n">array</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">tmin</span> <span class="o">*</span> <span class="n">sfreq</span><span class="p">)):</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">tmax</span> <span class="o">*</span> <span class="n">sfreq</span><span class="p">))</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_stim_to_resp_columns</span><span class="p">(</span><span class="n">summed</span><span class="p">,</span> <span class="n">stim</span><span class="p">,</span> <span class="n">spec</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">"stim2resp"</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""r / z / lag columns for one stimulus-to-response window definition."""</span>
+    <span class="n">sfreq</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">summed</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s2">"sfreq"</span><span class="p">])</span>
+    <span class="n">stim_tmin</span><span class="p">,</span> <span class="n">stim_tmax</span> <span class="o">=</span> <span class="n">spec</span><span class="p">[</span><span class="s2">"stim_window"</span><span class="p">]</span>
+    <span class="n">resp_tmin</span><span class="p">,</span> <span class="n">resp_tmax</span> <span class="o">=</span> <span class="n">spec</span><span class="p">[</span><span class="s2">"resp_window"</span><span class="p">]</span>
+    <span class="n">stim_seg</span> <span class="o">=</span> <span class="n">_window</span><span class="p">(</span><span class="n">stim</span><span class="p">,</span> <span class="n">sfreq</span><span class="p">,</span> <span class="n">stim_tmin</span><span class="p">,</span> <span class="n">stim_tmax</span><span class="p">)</span>
+    <span class="n">resp_seg</span> <span class="o">=</span> <span class="n">summed</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span><span class="o">.</span><span class="n">crop</span><span class="p">(</span><span class="n">tmin</span><span class="o">=</span><span class="n">resp_tmin</span><span class="p">,</span> <span class="n">tmax</span><span class="o">=</span><span class="n">resp_tmax</span><span class="p">)</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">r</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="n">lag_ms</span> <span class="o">=</span> <span class="n">stim_to_resp_xcorr</span><span class="p">(</span>
+        <span class="n">stim_seg</span><span class="p">,</span> <span class="n">resp_seg</span><span class="p">,</span> <span class="n">sfreq</span><span class="p">,</span> <span class="n">lag_range_ms</span><span class="o">=</span><span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"lag_range_ms"</span><span class="p">),</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="p">{</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_r"</span><span class="p">:</span> <span class="n">r</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_z"</span><span class="p">:</span> <span class="n">z</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s2">_lag_ms"</span><span class="p">:</span> <span class="n">lag_ms</span><span class="p">}</span>
+
+
 <div class="viewcode-block" id="compute_subject_metrics">
 <a class="viewcode-back" href="../../generated/ffrprep.group.compute_subject_metrics.html#ffrprep.group.compute_subject_metrics">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">compute_subject_metrics</span><span class="p">(</span><span class="n">evoked_paths</span><span class="p">,</span> <span class="n">epochs_paths</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">response_window</span><span class="o">=</span><span class="p">(</span><span class="mf">0.100</span><span class="p">,</span> <span class="mf">0.200</span><span class="p">)):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_subject_metrics</span><span class="p">(</span>
+    <span class="n">evoked_paths</span><span class="p">,</span>
+    <span class="n">epochs_paths</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">response_window</span><span class="o">=</span><span class="p">(</span><span class="mf">0.100</span><span class="p">,</span> <span class="mf">0.200</span><span class="p">),</span>
+    <span class="n">by_type_paths</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">harmonics</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">stimulus</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">n_trials_presented</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="p">):</span>
 <span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Compute per-subject scalar FFR metrics from saved derivatives.</span>
 
@@ -468,6 +567,10 @@
 <span class="sd">    consistency from the saved preprocessing Epochs when available.</span>
 <span class="sd">    Nothing here is computed from raw data; this only aggregates</span>
 <span class="sd">    already-computed participant-level derivatives.</span>
+
+<span class="sd">    Optionally (``harmonics`` / ``stimulus``) it also derives spectral and</span>
+<span class="sd">    stimulus-following measures from the **sum of the two per-trial-type</span>
+<span class="sd">    (polarity) averages**, the response commonly analyzed in FFR studies.</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -481,27 +584,49 @@
 <span class="sd">    response_window : tuple of (float, float)</span>
 <span class="sd">        Response window for RMS SNR / band power, matching the</span>
 <span class="sd">        participant-level ``--response-window`` default.</span>
+<span class="sd">    by_type_paths : dict[str, dict[str, pathlib.Path]], optional</span>
+<span class="sd">        ``{subject: {condition_label: per-type Evoked path}}``. Required</span>
+<span class="sd">        for the polarity-sum measures; a subject needs exactly two</span>
+<span class="sd">        conditions, otherwise those columns are NaN.</span>
+<span class="sd">    harmonics : dict, optional</span>
+<span class="sd">        Keyword arguments for :func:`ffrprep.analysis.harmonic_amplitudes`</span>
+<span class="sd">        (``f0``, ``n_harmonics``, ``bin_hz``, ``tmin``, ``tmax``). Adds</span>
+<span class="sd">        ``rms_snr_polarity_sum``, ``f0_uv`` and ``upper_harmonics_uv``.</span>
+<span class="sd">    stimulus : dict, optional</span>
+<span class="sd">        ``{"path": wav, "stim_window": (t0, t1), "resp_window": (t0, t1)}``</span>
+<span class="sd">        plus optionally ``"lag_range_ms": (lo, hi)`` and</span>
+<span class="sd">        ``"lag_resp_window": (t0, t1)``. Adds ``stim2resp_r``,</span>
+<span class="sd">        ``stim2resp_z``, ``stim2resp_lag_ms`` (and ``stim2resp_lim_*`` when</span>
+<span class="sd">        a lag range is given). The stimulus is resampled to the EEG rate.</span>
+<span class="sd">    n_trials_presented : int, optional</span>
+<span class="sd">        Trials presented per recording; when given, ``usable_pct`` =</span>
+<span class="sd">        100 * kept trials / presented is added.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
 <span class="sd">    metrics : pandas.DataFrame</span>
 <span class="sd">        One row per subject with columns ``subject``, ``n_avg``,</span>
-<span class="sd">        ``rms_snr``, ``band_power_90_110hz``, ``response_consistency``.</span>
+<span class="sd">        ``rms_snr``, ``band_power_90_110hz``, ``response_consistency`` and</span>
+<span class="sd">        the optional columns described above.</span>
 <span class="sd">    """</span>
     <span class="n">epochs_paths</span> <span class="o">=</span> <span class="n">epochs_paths</span> <span class="ow">or</span> <span class="p">{}</span>
+    <span class="n">by_type_paths</span> <span class="o">=</span> <span class="n">by_type_paths</span> <span class="ow">or</span> <span class="p">{}</span>
     <span class="n">resp_lower</span><span class="p">,</span> <span class="n">resp_upper</span> <span class="o">=</span> <span class="n">response_window</span>
+    <span class="n">use_sum</span> <span class="o">=</span> <span class="n">harmonics</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">stimulus</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+    <span class="n">stim_cache</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">for</span> <span class="n">subject</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">evoked_paths</span><span class="p">):</span>
         <span class="n">evoked</span> <span class="o">=</span> <span class="n">_read_evoked_with_baseline</span><span class="p">(</span><span class="n">evoked_paths</span><span class="p">[</span><span class="n">subject</span><span class="p">])</span>
-        <span class="n">row</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s2">"subject"</span><span class="p">:</span> <span class="n">subject</span><span class="p">,</span>
-            <span class="s2">"n_avg"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">evoked</span><span class="o">.</span><span class="n">nave</span><span class="p">),</span>
+        <span class="n">row</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"subject"</span><span class="p">:</span> <span class="n">subject</span><span class="p">,</span> <span class="s2">"n_avg"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">evoked</span><span class="o">.</span><span class="n">nave</span><span class="p">)}</span>
+        <span class="k">if</span> <span class="n">n_trials_presented</span><span class="p">:</span>
+            <span class="n">row</span><span class="p">[</span><span class="s2">"usable_pct"</span><span class="p">]</span> <span class="o">=</span> <span class="mf">100.0</span> <span class="o">*</span> <span class="nb">int</span><span class="p">(</span><span class="n">evoked</span><span class="o">.</span><span class="n">nave</span><span class="p">)</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="n">n_trials_presented</span><span class="p">)</span>
+        <span class="n">row</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
             <span class="s2">"rms_snr"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
             <span class="s2">"band_power_90_110hz"</span><span class="p">:</span> <span class="n">compute_power</span><span class="p">(</span>
                 <span class="n">evoked</span><span class="p">,</span> <span class="n">f_low</span><span class="o">=</span><span class="mi">90</span><span class="p">,</span> <span class="n">f_high</span><span class="o">=</span><span class="mi">110</span><span class="p">,</span> <span class="n">t_low</span><span class="o">=</span><span class="n">resp_lower</span><span class="p">,</span> <span class="n">t_high</span><span class="o">=</span><span class="n">resp_upper</span><span class="p">,</span>
             <span class="p">),</span>
             <span class="s2">"response_consistency"</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="p">}</span>
+        <span class="p">})</span>
         <span class="k">if</span> <span class="n">evoked</span><span class="o">.</span><span class="n">baseline</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">row</span><span class="p">[</span><span class="s2">"rms_snr"</span><span class="p">]</span> <span class="o">=</span> <span class="n">rms_snr</span><span class="p">(</span><span class="n">evoked</span><span class="p">,</span> <span class="n">response_lower</span><span class="o">=</span><span class="n">resp_lower</span><span class="p">,</span> <span class="n">response_upper</span><span class="o">=</span><span class="n">resp_upper</span><span class="p">)</span>
 
@@ -518,8 +643,289 @@
         <span class="k">if</span> <span class="n">consistencies</span><span class="p">:</span>
             <span class="n">row</span><span class="p">[</span><span class="s2">"response_consistency"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">consistencies</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">consistencies</span><span class="p">)</span>
 
+        <span class="k">if</span> <span class="n">use_sum</span><span class="p">:</span>
+            <span class="n">summed</span> <span class="o">=</span> <span class="n">_load_polarity_sum</span><span class="p">(</span><span class="n">by_type_paths</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">subject</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">summed</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">"Warning: sub-</span><span class="si">{</span><span class="n">subject</span><span class="si">}</span><span class="s2"> does not have exactly two per-trial-type "</span>
+                    <span class="s2">"evoked files; polarity-sum metrics are left empty."</span>
+                <span class="p">)</span>
+            <span class="n">row</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">_polarity_sum_metrics</span><span class="p">(</span>
+                <span class="n">summed</span><span class="p">,</span> <span class="n">harmonics</span><span class="p">,</span> <span class="n">stimulus</span><span class="p">,</span> <span class="n">response_window</span><span class="p">,</span> <span class="n">stim_cache</span><span class="p">,</span>
+            <span class="p">))</span>
+
         <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_polarity_sum_metrics</span><span class="p">(</span><span class="n">summed</span><span class="p">,</span> <span class="n">harmonics</span><span class="p">,</span> <span class="n">stimulus</span><span class="p">,</span> <span class="n">response_window</span><span class="p">,</span> <span class="n">stim_cache</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Columns derived from the polarity-summed response (NaN when unavailable)."""</span>
+    <span class="n">nan</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s2">"nan"</span><span class="p">)</span>
+    <span class="n">columns</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"rms_snr_polarity_sum"</span><span class="p">:</span> <span class="n">nan</span><span class="p">}</span>
+    <span class="k">if</span> <span class="n">harmonics</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">columns</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">"f0_uv"</span><span class="p">:</span> <span class="n">nan</span><span class="p">,</span> <span class="s2">"upper_harmonics_uv"</span><span class="p">:</span> <span class="n">nan</span><span class="p">})</span>
+    <span class="k">if</span> <span class="n">stimulus</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">columns</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">"stim2resp_r"</span><span class="p">:</span> <span class="n">nan</span><span class="p">,</span> <span class="s2">"stim2resp_z"</span><span class="p">:</span> <span class="n">nan</span><span class="p">,</span> <span class="s2">"stim2resp_lag_ms"</span><span class="p">:</span> <span class="n">nan</span><span class="p">})</span>
+        <span class="k">if</span> <span class="n">stimulus</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"lag_range_ms"</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">columns</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+                <span class="s2">"stim2resp_lim_r"</span><span class="p">:</span> <span class="n">nan</span><span class="p">,</span> <span class="s2">"stim2resp_lim_z"</span><span class="p">:</span> <span class="n">nan</span><span class="p">,</span> <span class="s2">"stim2resp_lim_lag_ms"</span><span class="p">:</span> <span class="n">nan</span><span class="p">,</span>
+            <span class="p">})</span>
+    <span class="k">if</span> <span class="n">summed</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">columns</span>
+
+    <span class="k">if</span> <span class="n">summed</span><span class="o">.</span><span class="n">baseline</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">columns</span><span class="p">[</span><span class="s2">"rms_snr_polarity_sum"</span><span class="p">]</span> <span class="o">=</span> <span class="n">rms_snr</span><span class="p">(</span>
+            <span class="n">summed</span><span class="p">,</span> <span class="n">response_lower</span><span class="o">=</span><span class="n">response_window</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">response_upper</span><span class="o">=</span><span class="n">response_window</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">harmonics</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">harmonic_amplitudes</span><span class="p">(</span><span class="n">summed</span><span class="p">,</span> <span class="o">**</span><span class="n">harmonics</span><span class="p">)</span>
+        <span class="n">columns</span><span class="p">[</span><span class="s2">"f0_uv"</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">"f0"</span><span class="p">]</span>
+        <span class="n">columns</span><span class="p">[</span><span class="s2">"upper_harmonics_uv"</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">"upper_harmonics"</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">stimulus</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">sfreq</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">summed</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s2">"sfreq"</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">sfreq</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">stim_cache</span><span class="p">:</span>
+            <span class="n">wav</span><span class="p">,</span> <span class="n">wav_sfreq</span> <span class="o">=</span> <span class="n">load_wav_mono</span><span class="p">(</span><span class="n">stimulus</span><span class="p">[</span><span class="s2">"path"</span><span class="p">])</span>
+            <span class="n">stim_cache</span><span class="p">[</span><span class="n">sfreq</span><span class="p">]</span> <span class="o">=</span> <span class="n">resample_signal</span><span class="p">(</span><span class="n">wav</span><span class="p">,</span> <span class="n">wav_sfreq</span><span class="p">,</span> <span class="n">sfreq</span><span class="p">)</span>
+        <span class="n">stim</span> <span class="o">=</span> <span class="n">stim_cache</span><span class="p">[</span><span class="n">sfreq</span><span class="p">]</span>
+        <span class="c1"># The primary measure searches ALL lags; ``lag_range_ms`` belongs to</span>
+        <span class="c1"># the separate lag-limited ("lim") variant below.</span>
+        <span class="n">primary_spec</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">"stim_window"</span><span class="p">:</span> <span class="n">stimulus</span><span class="p">[</span><span class="s2">"stim_window"</span><span class="p">],</span>
+            <span class="s2">"resp_window"</span><span class="p">:</span> <span class="n">stimulus</span><span class="p">[</span><span class="s2">"resp_window"</span><span class="p">],</span>
+        <span class="p">}</span>
+        <span class="n">columns</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">_stim_to_resp_columns</span><span class="p">(</span><span class="n">summed</span><span class="p">,</span> <span class="n">stim</span><span class="p">,</span> <span class="n">primary_spec</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">stimulus</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"lag_range_ms"</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">lim_spec</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">"stim_window"</span><span class="p">:</span> <span class="n">stimulus</span><span class="p">[</span><span class="s2">"stim_window"</span><span class="p">],</span>
+                <span class="s2">"resp_window"</span><span class="p">:</span> <span class="n">stimulus</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"lag_resp_window"</span><span class="p">,</span> <span class="n">stimulus</span><span class="p">[</span><span class="s2">"resp_window"</span><span class="p">]),</span>
+                <span class="s2">"lag_range_ms"</span><span class="p">:</span> <span class="n">stimulus</span><span class="p">[</span><span class="s2">"lag_range_ms"</span><span class="p">],</span>
+            <span class="p">}</span>
+            <span class="n">columns</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">_stim_to_resp_columns</span><span class="p">(</span><span class="n">summed</span><span class="p">,</span> <span class="n">stim</span><span class="p">,</span> <span class="n">lim_spec</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">"stim2resp_lim"</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">columns</span>
+
+
+<div class="viewcode-block" id="add_qc_flags">
+<a class="viewcode-back" href="../../generated/ffrprep.group.add_qc_flags.html#ffrprep.group.add_qc_flags">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">add_qc_flags</span><span class="p">(</span><span class="n">metrics</span><span class="p">,</span> <span class="n">min_usable_pct</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">min_snr</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Flag recordings that fail quality thresholds; never drop rows.</span>
+
+<span class="sd">    Adds boolean ``qc_usable_pct_ok`` (``usable_pct &gt;= min_usable_pct``)</span>
+<span class="sd">    and/or ``qc_snr_ok`` (polarity-sum RMS SNR, else the combined-evoked</span>
+<span class="sd">    ``rms_snr``, ``&gt;= min_snr``) columns for each threshold given, plus</span>
+<span class="sd">    ``qc_include`` (all checks pass) and ``qc_reason`` (the failed checks,</span>
+<span class="sd">    ``n/a`` when none). A missing value (NaN) fails its check. The metrics</span>
+<span class="sd">    table keeps every subject and the grand averages are unchanged, so</span>
+<span class="sd">    downstream analyses choose whether to filter on ``qc_include``.</span>
+
+<span class="sd">    Returns ``metrics`` unchanged when no threshold is given.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">min_usable_pct</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">min_snr</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">metrics</span>
+
+    <span class="n">flagged</span> <span class="o">=</span> <span class="n">metrics</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">ok_columns</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">reasons</span> <span class="o">=</span> <span class="p">[[]</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">flagged</span><span class="p">))]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_check</span><span class="p">(</span><span class="n">column</span><span class="p">,</span> <span class="n">threshold</span><span class="p">,</span> <span class="n">ok_name</span><span class="p">,</span> <span class="n">label</span><span class="p">):</span>
+        <span class="n">values</span> <span class="o">=</span> <span class="n">flagged</span><span class="p">[</span><span class="n">column</span><span class="p">]</span>
+        <span class="n">passed</span> <span class="o">=</span> <span class="p">(</span><span class="n">values</span> <span class="o">&gt;=</span> <span class="n">threshold</span><span class="p">)</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">bool</span><span class="p">)</span>
+        <span class="n">flagged</span><span class="p">[</span><span class="n">ok_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">passed</span>
+        <span class="n">ok_columns</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ok_name</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">ok</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">passed</span><span class="p">):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">ok</span><span class="p">:</span>
+                <span class="n">reasons</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2">&lt;</span><span class="si">{</span><span class="n">threshold</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">min_usable_pct</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="s2">"usable_pct"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">flagged</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"--min-usable-pct needs --n-trials-presented (no usable_pct column)"</span><span class="p">)</span>
+        <span class="n">_check</span><span class="p">(</span><span class="s2">"usable_pct"</span><span class="p">,</span> <span class="n">min_usable_pct</span><span class="p">,</span> <span class="s2">"qc_usable_pct_ok"</span><span class="p">,</span> <span class="s2">"usable_pct"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">min_snr</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">snr_column</span> <span class="o">=</span> <span class="s2">"rms_snr_polarity_sum"</span> <span class="k">if</span> <span class="s2">"rms_snr_polarity_sum"</span> <span class="ow">in</span> <span class="n">flagged</span> <span class="k">else</span> <span class="s2">"rms_snr"</span>
+        <span class="n">_check</span><span class="p">(</span><span class="n">snr_column</span><span class="p">,</span> <span class="n">min_snr</span><span class="p">,</span> <span class="s2">"qc_snr_ok"</span><span class="p">,</span> <span class="n">snr_column</span><span class="p">)</span>
+
+    <span class="n">flagged</span><span class="p">[</span><span class="s2">"qc_include"</span><span class="p">]</span> <span class="o">=</span> <span class="n">flagged</span><span class="p">[</span><span class="n">ok_columns</span><span class="p">]</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">flagged</span><span class="p">[</span><span class="s2">"qc_reason"</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"; "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">r</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">"n/a"</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">reasons</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">flagged</span></div>
+
+
+
+<div class="viewcode-block" id="merge_covariates">
+<a class="viewcode-back" href="../../generated/ffrprep.group.merge_covariates.html#ffrprep.group.merge_covariates">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">merge_covariates</span><span class="p">(</span><span class="n">metrics</span><span class="p">,</span> <span class="n">covariate_paths</span><span class="p">,</span> <span class="n">return_sources</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Left-join subject-level covariate TSVs onto a metrics table.</span>
+
+<span class="sd">    Each TSV needs a ``participant_id`` column (``sub-&lt;label&gt;``, as in a</span>
+<span class="sd">    BIDS ``participants.tsv`` or ``phenotype/*.tsv``). Columns already</span>
+<span class="sd">    present in ``metrics`` are not overwritten. Missing files are skipped</span>
+<span class="sd">    with a warning.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    pandas.DataFrame</span>
+<span class="sd">        ``metrics`` with the covariate columns appended. With</span>
+<span class="sd">        ``return_sources=True`` a ``(table, sources)`` tuple, where</span>
+<span class="sd">        ``sources`` maps each appended column to the file it came from.</span>
+<span class="sd">    """</span>
+    <span class="n">merged</span> <span class="o">=</span> <span class="n">metrics</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">sources</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">key</span> <span class="o">=</span> <span class="s2">"sub-"</span> <span class="o">+</span> <span class="n">merged</span><span class="p">[</span><span class="s2">"subject"</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">covariate_paths</span> <span class="ow">or</span> <span class="p">[]:</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Warning: covariate file not found, skipping: </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+            <span class="k">continue</span>
+        <span class="n">table</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s2">"</span><span class="se">\t</span><span class="s2">"</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="p">{</span><span class="s2">"participant_id"</span><span class="p">:</span> <span class="nb">str</span><span class="p">})</span>
+        <span class="k">if</span> <span class="s2">"participant_id"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">table</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Warning: </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2"> has no 'participant_id' column, skipping."</span><span class="p">)</span>
+            <span class="k">continue</span>
+        <span class="n">new_columns</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">table</span><span class="o">.</span><span class="n">columns</span> <span class="k">if</span> <span class="n">c</span> <span class="o">!=</span> <span class="s2">"participant_id"</span> <span class="ow">and</span> <span class="n">c</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">merged</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">new_columns</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">lookup</span> <span class="o">=</span> <span class="n">table</span><span class="o">.</span><span class="n">drop_duplicates</span><span class="p">(</span><span class="s2">"participant_id"</span><span class="p">)</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s2">"participant_id"</span><span class="p">)[</span><span class="n">new_columns</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">new_columns</span><span class="p">:</span>
+            <span class="n">merged</span><span class="p">[</span><span class="n">column</span><span class="p">]</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">lookup</span><span class="p">[</span><span class="n">column</span><span class="p">])</span>
+            <span class="n">sources</span><span class="p">[</span><span class="n">column</span><span class="p">]</span> <span class="o">=</span> <span class="n">path</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">merged</span><span class="p">,</span> <span class="n">sources</span><span class="p">)</span> <span class="k">if</span> <span class="n">return_sources</span> <span class="k">else</span> <span class="n">merged</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_covariate_sidecar_entry</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">column</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""The ``column`` entry of the JSON sidecar next to a covariate TSV, or ``None``."""</span>
+    <span class="n">sidecar</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">with_suffix</span><span class="p">(</span><span class="s2">".json"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">sidecar</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">entry</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">sidecar</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">column</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">OSError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="n">entry</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+
+
+<div class="viewcode-block" id="build_metrics_dictionary">
+<a class="viewcode-back" href="../../generated/ffrprep.group.build_metrics_dictionary.html#ffrprep.group.build_metrics_dictionary">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">build_metrics_dictionary</span><span class="p">(</span>
+    <span class="n">columns</span><span class="p">,</span>
+    <span class="o">*</span><span class="p">,</span>
+    <span class="n">response_window</span><span class="o">=</span><span class="p">(</span><span class="mf">0.100</span><span class="p">,</span> <span class="mf">0.200</span><span class="p">),</span>
+    <span class="n">harmonics</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">stimulus</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">n_trials_presented</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">min_usable_pct</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">min_snr</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">covariate_sources</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Build a BIDS-style data dictionary for the group metrics TSV.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    columns : sequence of str</span>
+<span class="sd">        Column names of the saved metrics table, in order.</span>
+<span class="sd">    response_window, harmonics, stimulus, n_trials_presented, min_usable_pct, min_snr</span>
+<span class="sd">        The options the metrics were computed with (as returned by</span>
+<span class="sd">        ``_metric_options_from_args``); descriptions embed the actual</span>
+<span class="sd">        windows and thresholds so the dictionary documents the run.</span>
+<span class="sd">    covariate_sources : dict, optional</span>
+<span class="sd">        ``{column: path}`` from ``merge_covariates(..., return_sources=True)``.</span>
+<span class="sd">        A covariate's description (and levels/units) is copied from the JSON</span>
+<span class="sd">        sidecar next to its TSV (``participants.json``, ``phenotype/*.json``)</span>
+<span class="sd">        when present.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict</span>
+<span class="sd">        ``{column: {"Description": ..., "Units": ...}}`` with one entry per</span>
+<span class="sd">        column, in the order of ``columns``. Unknown columns get a stub entry.</span>
+<span class="sd">    """</span>
+    <span class="n">resp</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">response_window</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">1e3</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">response_window</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">1e3</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2"> ms"</span>
+    <span class="n">info</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">"subject"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"Description"</span><span class="p">:</span> <span class="s2">"Participant label (without the 'sub-' prefix)"</span><span class="p">},</span>
+        <span class="s2">"n_avg"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"Description"</span><span class="p">:</span> <span class="s2">"Number of trials averaged in the combined evoked (kept after rejection)"</span><span class="p">,</span>
+                  <span class="s2">"Units"</span><span class="p">:</span> <span class="s2">"trials"</span><span class="p">},</span>
+        <span class="s2">"usable_pct"</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">"Description"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"100 * n_avg / </span><span class="si">{</span><span class="n">n_trials_presented</span><span class="si">}</span><span class="s2"> trials presented"</span>
+            <span class="k">if</span> <span class="n">n_trials_presented</span> <span class="k">else</span> <span class="s2">"100 * n_avg / trials presented"</span><span class="p">,</span>
+            <span class="s2">"Units"</span><span class="p">:</span> <span class="s2">"%"</span><span class="p">,</span>
+        <span class="p">},</span>
+        <span class="s2">"rms_snr"</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">"Description"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"RMS of the response window (</span><span class="si">{</span><span class="n">resp</span><span class="si">}</span><span class="s2">) divided by RMS of the baseline, "</span>
+                           <span class="s2">"combined evoked response"</span><span class="p">,</span>
+            <span class="s2">"Units"</span><span class="p">:</span> <span class="s2">"ratio"</span><span class="p">,</span>
+        <span class="p">},</span>
+        <span class="s2">"band_power_90_110hz"</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">"Description"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"Mean 90-110 Hz power in the response window (</span><span class="si">{</span><span class="n">resp</span><span class="si">}</span><span class="s2">), combined evoked response"</span><span class="p">,</span>
+            <span class="s2">"Units"</span><span class="p">:</span> <span class="s2">"V^2"</span><span class="p">,</span>
+        <span class="p">},</span>
+        <span class="s2">"response_consistency"</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">"Description"</span><span class="p">:</span> <span class="s2">"Mean pairwise trial-to-trial correlation of the preprocessed epochs "</span>
+                           <span class="s2">"(averaged over runs; empty when a recording has fewer than 10 epochs)"</span><span class="p">,</span>
+            <span class="s2">"Units"</span><span class="p">:</span> <span class="s2">"r"</span><span class="p">,</span>
+        <span class="p">},</span>
+        <span class="s2">"rms_snr_polarity_sum"</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">"Description"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"RMS of the response window (</span><span class="si">{</span><span class="n">resp</span><span class="si">}</span><span class="s2">) divided by RMS of the baseline, "</span>
+                           <span class="s2">"sum of the two per-trial-type averages"</span><span class="p">,</span>
+            <span class="s2">"Units"</span><span class="p">:</span> <span class="s2">"ratio"</span><span class="p">,</span>
+        <span class="p">},</span>
+        <span class="s2">"qc_usable_pct_ok"</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">"Description"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"usable_pct &gt;= </span><span class="si">{</span><span class="n">min_usable_pct</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">"</span> <span class="k">if</span> <span class="n">min_usable_pct</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="k">else</span> <span class="s2">"usable_pct passes the threshold"</span><span class="p">,</span>
+            <span class="s2">"Levels"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"True"</span><span class="p">:</span> <span class="s2">"passes"</span><span class="p">,</span> <span class="s2">"False"</span><span class="p">:</span> <span class="s2">"fails or missing"</span><span class="p">},</span>
+        <span class="p">},</span>
+        <span class="s2">"qc_snr_ok"</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">"Description"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"SNR (rms_snr_polarity_sum when present, else rms_snr) &gt;= </span><span class="si">{</span><span class="n">min_snr</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">"</span>
+            <span class="k">if</span> <span class="n">min_snr</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">"SNR passes the threshold"</span><span class="p">,</span>
+            <span class="s2">"Levels"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"True"</span><span class="p">:</span> <span class="s2">"passes"</span><span class="p">,</span> <span class="s2">"False"</span><span class="p">:</span> <span class="s2">"fails or missing"</span><span class="p">},</span>
+        <span class="p">},</span>
+        <span class="s2">"qc_include"</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">"Description"</span><span class="p">:</span> <span class="s2">"All requested QC checks pass; subjects are flagged, never removed"</span><span class="p">,</span>
+            <span class="s2">"Levels"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"True"</span><span class="p">:</span> <span class="s2">"include"</span><span class="p">,</span> <span class="s2">"False"</span><span class="p">:</span> <span class="s2">"flagged"</span><span class="p">},</span>
+        <span class="p">},</span>
+        <span class="s2">"qc_reason"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"Description"</span><span class="p">:</span> <span class="s2">"Failed QC checks ('n/a' when none)"</span><span class="p">},</span>
+    <span class="p">}</span>
+    <span class="k">if</span> <span class="n">harmonics</span><span class="p">:</span>
+        <span class="n">window</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">harmonics</span><span class="p">[</span><span class="s1">'tmin'</span><span class="p">]</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">1e3</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">harmonics</span><span class="p">[</span><span class="s1">'tmax'</span><span class="p">]</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">1e3</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2"> ms"</span>
+        <span class="n">band</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"+/-</span><span class="si">{</span><span class="n">harmonics</span><span class="p">[</span><span class="s1">'bin_hz'</span><span class="p">]</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">2</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2"> Hz"</span>
+        <span class="n">info</span><span class="p">[</span><span class="s2">"f0_uv"</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">"Description"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"Mean FFT amplitude (2|FFT|/L) within </span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s2"> of </span><span class="si">{</span><span class="n">harmonics</span><span class="p">[</span><span class="s1">'f0'</span><span class="p">]</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2"> Hz, "</span>
+                           <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s2">, sum of the two per-trial-type averages"</span><span class="p">,</span>
+            <span class="s2">"Units"</span><span class="p">:</span> <span class="s2">"uV"</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="n">info</span><span class="p">[</span><span class="s2">"upper_harmonics_uv"</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">"Description"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"Sum over harmonics 2..</span><span class="si">{</span><span class="n">harmonics</span><span class="p">[</span><span class="s1">'n_harmonics'</span><span class="p">]</span><span class="si">}</span><span class="s2"> of the mean FFT amplitude "</span>
+                           <span class="sa">f</span><span class="s2">"within </span><span class="si">{</span><span class="n">band</span><span class="si">}</span><span class="s2"> of k*</span><span class="si">{</span><span class="n">harmonics</span><span class="p">[</span><span class="s1">'f0'</span><span class="p">]</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2"> Hz, </span><span class="si">{</span><span class="n">window</span><span class="si">}</span><span class="s2">, sum of the two "</span>
+                           <span class="s2">"per-trial-type averages"</span><span class="p">,</span>
+            <span class="s2">"Units"</span><span class="p">:</span> <span class="s2">"uV"</span><span class="p">,</span>
+        <span class="p">}</span>
+    <span class="k">if</span> <span class="n">stimulus</span><span class="p">:</span>
+        <span class="n">stim_win</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">stimulus</span><span class="p">[</span><span class="s1">'stim_window'</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">1e3</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">stimulus</span><span class="p">[</span><span class="s1">'stim_window'</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">1e3</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2"> ms"</span>
+        <span class="n">resp_win</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">stimulus</span><span class="p">[</span><span class="s1">'resp_window'</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">1e3</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">stimulus</span><span class="p">[</span><span class="s1">'resp_window'</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">1e3</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2"> ms"</span>
+        <span class="n">base</span> <span class="o">=</span> <span class="p">(</span><span class="sa">f</span><span class="s2">"cross-correlation ('coeff' normalization) of the stimulus (</span><span class="si">{</span><span class="n">stim_win</span><span class="si">}</span><span class="s2">) with the "</span>
+                <span class="sa">f</span><span class="s2">"polarity-summed response (</span><span class="si">{</span><span class="n">resp_win</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span>
+        <span class="n">info</span><span class="p">[</span><span class="s2">"stim2resp_r"</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"Description"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"Maximum </span><span class="si">{</span><span class="n">base</span><span class="si">}</span><span class="s2"> over all lags"</span><span class="p">,</span> <span class="s2">"Units"</span><span class="p">:</span> <span class="s2">"r"</span><span class="p">}</span>
+        <span class="n">info</span><span class="p">[</span><span class="s2">"stim2resp_z"</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"Description"</span><span class="p">:</span> <span class="s2">"Fisher z transform (arctanh) of stim2resp_r"</span><span class="p">,</span> <span class="s2">"Units"</span><span class="p">:</span> <span class="s2">"z"</span><span class="p">}</span>
+        <span class="n">info</span><span class="p">[</span><span class="s2">"stim2resp_lag_ms"</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">"Description"</span><span class="p">:</span> <span class="s2">"Lag of the maximum stimulus-to-response correlation "</span>
+                           <span class="s2">"(positive = response delayed)"</span><span class="p">,</span> <span class="s2">"Units"</span><span class="p">:</span> <span class="s2">"ms"</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="n">lag_range</span> <span class="o">=</span> <span class="n">stimulus</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"lag_range_ms"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">lag_range</span><span class="p">:</span>
+            <span class="n">lim</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"restricted to lags of </span><span class="si">{</span><span class="n">lag_range</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2"> to </span><span class="si">{</span><span class="n">lag_range</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2"> ms"</span>
+            <span class="n">info</span><span class="p">[</span><span class="s2">"stim2resp_lim_r"</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"Description"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"Maximum </span><span class="si">{</span><span class="n">base</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">lim</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span> <span class="s2">"Units"</span><span class="p">:</span> <span class="s2">"r"</span><span class="p">}</span>
+            <span class="n">info</span><span class="p">[</span><span class="s2">"stim2resp_lim_z"</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"Description"</span><span class="p">:</span> <span class="s2">"Fisher z transform of stim2resp_lim_r"</span><span class="p">,</span> <span class="s2">"Units"</span><span class="p">:</span> <span class="s2">"z"</span><span class="p">}</span>
+            <span class="n">info</span><span class="p">[</span><span class="s2">"stim2resp_lim_lag_ms"</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">"Description"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"Lag of the maximum lag-restricted correlation (</span><span class="si">{</span><span class="n">lim</span><span class="si">}</span><span class="s2">)"</span><span class="p">,</span> <span class="s2">"Units"</span><span class="p">:</span> <span class="s2">"ms"</span><span class="p">,</span>
+            <span class="p">}</span>
+
+    <span class="n">dictionary</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">columns</span><span class="p">:</span>
+        <span class="n">entry</span> <span class="o">=</span> <span class="n">info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">column</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">entry</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">column</span> <span class="ow">in</span> <span class="p">(</span><span class="n">covariate_sources</span> <span class="ow">or</span> <span class="p">{}):</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="n">covariate_sources</span><span class="p">[</span><span class="n">column</span><span class="p">]</span>
+            <span class="n">entry</span> <span class="o">=</span> <span class="n">_covariate_sidecar_entry</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">column</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{</span>
+                <span class="s2">"Description"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"Joined from </span><span class="si">{</span><span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+            <span class="p">}</span>
+        <span class="n">dictionary</span><span class="p">[</span><span class="n">column</span><span class="p">]</span> <span class="o">=</span> <span class="n">entry</span> <span class="ow">or</span> <span class="p">{</span><span class="s2">"Description"</span><span class="p">:</span> <span class="s2">"No description available"</span><span class="p">}</span>
+    <span class="k">return</span> <span class="n">dictionary</span></div>
 
 
 
@@ -593,8 +999,12 @@
 
 <div class="viewcode-block" id="save_group_metrics">
 <a class="viewcode-back" href="../../generated/ffrprep.group.save_group_metrics.html#ffrprep.group.save_group_metrics">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">save_group_metrics</span><span class="p">(</span><span class="n">derivatives_root</span><span class="p">,</span> <span class="n">task</span><span class="p">,</span> <span class="n">session</span><span class="p">,</span> <span class="n">run</span><span class="p">,</span> <span class="n">metrics</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">"""Save a per-subject metrics table to a group-level TSV file."""</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">save_group_metrics</span><span class="p">(</span><span class="n">derivatives_root</span><span class="p">,</span> <span class="n">task</span><span class="p">,</span> <span class="n">session</span><span class="p">,</span> <span class="n">run</span><span class="p">,</span> <span class="n">metrics</span><span class="p">,</span> <span class="n">dictionary</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Save a per-subject metrics table to a group-level TSV file.</span>
+
+<span class="sd">    When ``dictionary`` (see :func:`build_metrics_dictionary`) is given it</span>
+<span class="sd">    is written as ``&lt;base&gt;_metrics.json`` next to the TSV.</span>
+<span class="sd">    """</span>
     <span class="n">derivatives_root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">derivatives_root</span><span class="p">)</span>
     <span class="n">group_dir</span> <span class="o">=</span> <span class="n">derivatives_root</span> <span class="o">/</span> <span class="s2">"ffrprep-group"</span>
     <span class="n">group_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -603,6 +1013,8 @@
     <span class="n">base</span> <span class="o">=</span> <span class="n">_basename</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="n">session</span><span class="p">,</span> <span class="n">run</span><span class="p">)</span>
     <span class="n">metrics_path</span> <span class="o">=</span> <span class="n">group_dir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">base</span><span class="si">}</span><span class="s2">_metrics.tsv"</span>
     <span class="n">metrics</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">metrics_path</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s2">"</span><span class="se">\t</span><span class="s2">"</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">dictionary</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">metrics_path</span><span class="o">.</span><span class="n">with_suffix</span><span class="p">(</span><span class="s2">".json"</span><span class="p">)</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">dictionary</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">metrics_path</span></div>
 
 
@@ -622,6 +1034,67 @@
         <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">dataset_desc</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
 
 
+<span class="k">def</span><span class="w"> </span><span class="nf">_qc_summary</span><span class="p">(</span><span class="n">metrics</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Report summary entry for the QC flags (empty when no threshold was set)."""</span>
+    <span class="k">if</span> <span class="s2">"qc_include"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">metrics</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">{}</span>
+    <span class="n">n_flagged</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="o">~</span><span class="n">metrics</span><span class="p">[</span><span class="s2">"qc_include"</span><span class="p">])</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+    <span class="k">return</span> <span class="p">{</span><span class="s2">"QC flagged"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">n_flagged</span><span class="si">}</span><span class="s2"> of </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">metrics</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">}</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_metric_options_from_args</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Translate group-level CLI args into ``compute_subject_metrics`` options.</span>
+
+<span class="sd">    Every attribute is read with ``getattr`` so callers that build a bare</span>
+<span class="sd">    namespace (tests, scripts) keep working; unset options leave the</span>
+<span class="sd">    corresponding metrics off.</span>
+<span class="sd">    """</span>
+    <span class="n">harmonics</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">f0</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="s2">"f0"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">f0</span><span class="p">:</span>
+        <span class="n">tmin</span><span class="p">,</span> <span class="n">tmax</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="s2">"harmonic_window"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="mf">0.060</span><span class="p">,</span> <span class="mf">0.180</span><span class="p">)</span>
+        <span class="n">harmonics</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">"f0"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">f0</span><span class="p">),</span>
+            <span class="s2">"n_harmonics"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="s2">"n_harmonics"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="mi">10</span><span class="p">),</span>
+            <span class="s2">"bin_hz"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="s2">"harmonic_bin_hz"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="mf">60.0</span><span class="p">),</span>
+            <span class="s2">"tmin"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">tmin</span><span class="p">),</span>
+            <span class="s2">"tmax"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">tmax</span><span class="p">),</span>
+        <span class="p">}</span>
+
+    <span class="n">stimulus</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">stimulus_path</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="s2">"stimulus"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">stimulus_path</span><span class="p">:</span>
+        <span class="n">stimulus</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">"path"</span><span class="p">:</span> <span class="n">Path</span><span class="p">(</span><span class="n">stimulus_path</span><span class="p">),</span>
+            <span class="s2">"stim_window"</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="s2">"xcorr_stim_window"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="mf">0.050</span><span class="p">,</span> <span class="mf">0.170</span><span class="p">)),</span>
+            <span class="s2">"resp_window"</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="s2">"xcorr_resp_window"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="mf">0.060</span><span class="p">,</span> <span class="mf">0.180</span><span class="p">)),</span>
+        <span class="p">}</span>
+        <span class="n">lag_range</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="s2">"xcorr_lag_range"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">lag_range</span><span class="p">:</span>
+            <span class="n">stimulus</span><span class="p">[</span><span class="s2">"lag_range_ms"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">lag_range</span><span class="p">)</span>
+            <span class="n">lag_resp_window</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="s2">"xcorr_lag_resp_window"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">lag_resp_window</span><span class="p">:</span>
+                <span class="n">stimulus</span><span class="p">[</span><span class="s2">"lag_resp_window"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">lag_resp_window</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">"harmonics"</span><span class="p">:</span> <span class="n">harmonics</span><span class="p">,</span>
+        <span class="s2">"stimulus"</span><span class="p">:</span> <span class="n">stimulus</span><span class="p">,</span>
+        <span class="s2">"n_trials_presented"</span><span class="p">:</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="s2">"n_trials_presented"</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
+    <span class="p">}</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_covariate_paths_from_args</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""``participants.tsv`` (if present next to bids_dir) plus ``--covariates``."""</span>
+    <span class="n">paths</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">bids_dir</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="s2">"bids_dir"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">bids_dir</span><span class="p">:</span>
+        <span class="n">participants</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">bids_dir</span><span class="p">)</span> <span class="o">/</span> <span class="s2">"participants.tsv"</span>
+        <span class="k">if</span> <span class="n">participants</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="n">paths</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">participants</span><span class="p">)</span>
+    <span class="n">paths</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="s2">"covariates"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[]))</span>
+    <span class="k">return</span> <span class="n">paths</span>
+
+
 <div class="viewcode-block" id="run_group_level">
 <a class="viewcode-back" href="../../generated/ffrprep.group.run_group_level.html#ffrprep.group.run_group_level">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">run_group_level</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
@@ -636,12 +1109,25 @@
 <span class="sd">    returns the list of output paths written.</span>
 
 <span class="sd">    This step only aggregates outputs participant-level ffrprep has</span>
-<span class="sd">    already computed; it does not run any group-level statistics.</span>
+<span class="sd">    already computed; it does not run any group-level statistics. When</span>
+<span class="sd">    ``args.f0`` / ``args.stimulus`` are set, the metrics table also gets</span>
+<span class="sd">    harmonic-amplitude and stimulus-to-response columns computed from the</span>
+<span class="sd">    sum of the per-trial-type averages, and subject-level covariates from</span>
+<span class="sd">    ``&lt;bids_dir&gt;/participants.tsv`` and ``args.covariates`` are joined onto</span>
+<span class="sd">    the saved TSV (never used for inference here). ``args.min_usable_pct`` /</span>
+<span class="sd">    ``args.min_snr`` add ``qc_*`` flag columns (see :func:`add_qc_flags`);</span>
+<span class="sd">    flagged subjects stay in the table and the grand averages.</span>
 <span class="sd">    """</span>
     <span class="n">output_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">output_dir</span><span class="p">)</span>
     <span class="n">response_window</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="s2">"response_window"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="mf">0.100</span><span class="p">,</span> <span class="mf">0.200</span><span class="p">))</span>
     <span class="n">participant_label</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="s2">"participant_label"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
     <span class="n">task_filter</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="s2">"task"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="n">metric_options</span> <span class="o">=</span> <span class="n">_metric_options_from_args</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+    <span class="n">covariate_paths</span> <span class="o">=</span> <span class="n">_covariate_paths_from_args</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+    <span class="n">min_usable_pct</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="s2">"min_usable_pct"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="n">min_snr</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="s2">"min_snr"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">min_usable_pct</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">metric_options</span><span class="p">[</span><span class="s2">"n_trials_presented"</span><span class="p">]:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"--min-usable-pct needs --n-trials-presented"</span><span class="p">)</span>
 
     <span class="n">inputs</span> <span class="o">=</span> <span class="n">discover_group_inputs</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">participant_label</span><span class="o">=</span><span class="n">participant_label</span><span class="p">,</span> <span class="n">task</span><span class="o">=</span><span class="n">task_filter</span><span class="p">)</span>
 
@@ -666,9 +1152,27 @@
         <span class="n">written</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">evoked_path</span><span class="p">)</span>
 
         <span class="n">epochs_paths</span> <span class="o">=</span> <span class="n">inputs</span><span class="p">[</span><span class="s2">"epochs"</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">((</span><span class="n">task</span><span class="p">,</span> <span class="n">session</span><span class="p">,</span> <span class="n">run</span><span class="p">),</span> <span class="p">{})</span>
-        <span class="n">metrics</span> <span class="o">=</span> <span class="n">compute_subject_metrics</span><span class="p">(</span><span class="n">evoked_paths</span><span class="p">,</span> <span class="n">epochs_paths</span><span class="p">,</span> <span class="n">response_window</span><span class="o">=</span><span class="n">response_window</span><span class="p">)</span>
-        <span class="n">metrics_path</span> <span class="o">=</span> <span class="n">save_group_metrics</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">task</span><span class="p">,</span> <span class="n">session</span><span class="p">,</span> <span class="n">run</span><span class="p">,</span> <span class="n">metrics</span><span class="p">)</span>
-        <span class="n">written</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">metrics_path</span><span class="p">)</span>
+        <span class="n">metrics</span> <span class="o">=</span> <span class="n">compute_subject_metrics</span><span class="p">(</span>
+            <span class="n">evoked_paths</span><span class="p">,</span> <span class="n">epochs_paths</span><span class="p">,</span> <span class="n">response_window</span><span class="o">=</span><span class="n">response_window</span><span class="p">,</span>
+            <span class="n">by_type_paths</span><span class="o">=</span><span class="n">inputs</span><span class="p">[</span><span class="s2">"by_type"</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">((</span><span class="n">task</span><span class="p">,</span> <span class="n">session</span><span class="p">,</span> <span class="n">run</span><span class="p">),</span> <span class="p">{}),</span>
+            <span class="o">**</span><span class="n">metric_options</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">metrics</span> <span class="o">=</span> <span class="n">add_qc_flags</span><span class="p">(</span><span class="n">metrics</span><span class="p">,</span> <span class="n">min_usable_pct</span><span class="o">=</span><span class="n">min_usable_pct</span><span class="p">,</span> <span class="n">min_snr</span><span class="o">=</span><span class="n">min_snr</span><span class="p">)</span>
+        <span class="n">metrics_with_covariates</span><span class="p">,</span> <span class="n">covariate_sources</span> <span class="o">=</span> <span class="n">merge_covariates</span><span class="p">(</span>
+            <span class="n">metrics</span><span class="p">,</span> <span class="n">covariate_paths</span><span class="p">,</span> <span class="n">return_sources</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">dictionary</span> <span class="o">=</span> <span class="n">build_metrics_dictionary</span><span class="p">(</span>
+            <span class="n">metrics_with_covariates</span><span class="o">.</span><span class="n">columns</span><span class="p">,</span>
+            <span class="n">response_window</span><span class="o">=</span><span class="n">response_window</span><span class="p">,</span>
+            <span class="n">min_usable_pct</span><span class="o">=</span><span class="n">min_usable_pct</span><span class="p">,</span>
+            <span class="n">min_snr</span><span class="o">=</span><span class="n">min_snr</span><span class="p">,</span>
+            <span class="n">covariate_sources</span><span class="o">=</span><span class="n">covariate_sources</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">metric_options</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">metrics_path</span> <span class="o">=</span> <span class="n">save_group_metrics</span><span class="p">(</span>
+            <span class="n">output_dir</span><span class="p">,</span> <span class="n">task</span><span class="p">,</span> <span class="n">session</span><span class="p">,</span> <span class="n">run</span><span class="p">,</span> <span class="n">metrics_with_covariates</span><span class="p">,</span> <span class="n">dictionary</span><span class="o">=</span><span class="n">dictionary</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">written</span><span class="o">.</span><span class="n">extend</span><span class="p">([</span><span class="n">metrics_path</span><span class="p">,</span> <span class="n">metrics_path</span><span class="o">.</span><span class="n">with_suffix</span><span class="p">(</span><span class="s2">".json"</span><span class="p">)])</span>
 
         <span class="n">sections</span> <span class="o">=</span> <span class="p">[</span>
             <span class="n">reports</span><span class="o">.</span><span class="n">build_evoked_section</span><span class="p">(</span>
@@ -679,9 +1183,10 @@
                 <span class="n">response_window</span><span class="o">=</span><span class="n">response_window</span><span class="p">,</span>
             <span class="p">),</span>
             <span class="n">reports</span><span class="o">.</span><span class="n">build_metrics_table_section</span><span class="p">(</span>
-                <span class="n">metrics</span><span class="p">,</span>
+                <span class="n">metrics</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">metrics</span><span class="o">.</span><span class="n">columns</span> <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"qc_"</span><span class="p">)]),</span>
                 <span class="n">section_id</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2">-metrics"</span><span class="p">,</span>
                 <span class="n">title</span><span class="o">=</span><span class="s2">"Per-subject metrics"</span><span class="p">,</span>
+                <span class="n">extra_summary</span><span class="o">=</span><span class="n">_qc_summary</span><span class="p">(</span><span class="n">metrics</span><span class="p">),</span>
             <span class="p">),</span>
         <span class="p">]</span>
 

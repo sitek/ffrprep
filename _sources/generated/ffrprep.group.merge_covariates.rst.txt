@@ -1,0 +1,6 @@
+﻿ffrprep.group.merge\_covariates
+===============================
+
+.. currentmodule:: ffrprep.group
+
+.. autofunction:: merge_covariates

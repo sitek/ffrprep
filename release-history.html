@@ -46,13 +46,13 @@
   
   
   
-    <title>Release History &#8212; ffrprep 0.1.dev1+g29c38576b documentation</title>
+    <title>Release History &#8212; ffrprep 0.1.dev1+g626fc0d1d documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
     <link rel="stylesheet" type="text/css" href="_static/material.css?v=79c92029" />
     <link rel="stylesheet" type="text/css" href="_static/plot_directive.css" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <script src="_static/documentation_options.js?v=aca2d354"></script>
+    <script src="_static/documentation_options.js?v=40177eca"></script>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -85,7 +85,7 @@
   <nav class="md-header-nav md-grid">
     <div class="md-flex navheader">
       <div class="md-flex__cell md-flex__cell--shrink">
-        <a href="index.html" title="ffrprep 0.1.dev1+g29c38576b documentation"
+        <a href="index.html" title="ffrprep 0.1.dev1+g626fc0d1d documentation"
            class="md-header-nav__button md-logo">
           
             &nbsp;
@@ -171,7 +171,7 @@
   <nav class="md-tabs" data-md-component="tabs">
     <div class="md-tabs__inner md-grid">
       <ul class="md-tabs__list">
-          <li class="md-tabs__item"><a href="index.html" class="md-tabs__link">ffrprep 0.1.dev1+g29c38576b documentation</a></li>
+          <li class="md-tabs__item"><a href="index.html" class="md-tabs__link">ffrprep 0.1.dev1+g626fc0d1d documentation</a></li>
       </ul>
     </div>
   </nav>
@@ -183,13 +183,13 @@
               <div class="md-sidebar__inner">
                 <nav class="md-nav md-nav--primary" data-md-level="0">
   <label class="md-nav__title md-nav__title--site" for="__drawer">
-    <a href="index.html" title="ffrprep 0.1.dev1+g29c38576b documentation" class="md-nav__button md-logo">
+    <a href="index.html" title="ffrprep 0.1.dev1+g626fc0d1d documentation" class="md-nav__button md-logo">
       
         <img src="_static/" alt=" logo" width="48" height="48">
       
     </a>
     <a href="index.html"
-       title="ffrprep 0.1.dev1+g29c38576b documentation">ffrprep</a>
+       title="ffrprep 0.1.dev1+g626fc0d1d documentation">ffrprep</a>
   </label>
     <div class="md-nav__source">
       <a href="https://github.com/sitek/ffrprep" title="Go to repository" class="md-source" data-md-source="github">
@@ -368,6 +368,16 @@ to a subset.</p></li>
 <li><p>New flag <code class="docutils literal notranslate"><span class="pre">--difference-pairs</span> <span class="pre">A:B</span> <span class="pre">[C:D</span> <span class="pre">…]</span></code> to compute difference
 evokeds across explicit pairs. For 2-type datasets the difference
 is auto-emitted; for 3+ types this flag is required to opt in.</p></li>
+<li><p>New flag <code class="docutils literal notranslate"><span class="pre">--filter-method</span> <span class="pre">{fir,iir}</span></code> (default <code class="docutils literal notranslate"><span class="pre">fir</span></code>): <code class="docutils literal notranslate"><span class="pre">iir</span></code> applies
+zero-phase (forward-backward) first-order Butterworth high-pass and
+low-pass filters (12 dB/octave overall), matching the <code class="docutils literal notranslate"><span class="pre">butter</span></code> /
+<code class="docutils literal notranslate"><span class="pre">filtfilt</span></code> band-pass used in some published FFR pipelines.</p></li>
+<li><p>New flag <code class="docutils literal notranslate"><span class="pre">--reject-mode</span> <span class="pre">{ptp,abs}</span></code> (default <code class="docutils literal notranslate"><span class="pre">ptp</span></code>): <code class="docutils literal notranslate"><span class="pre">abs</span></code> drops
+epochs whose absolute amplitude reaches <code class="docutils literal notranslate"><span class="pre">--reject-eeg</span></code> at any sample
+(<code class="docutils literal notranslate"><span class="pre">max|x|</span> <span class="pre">&gt;=</span> <span class="pre">threshold</span></code>, drop reason <code class="docutils literal notranslate"><span class="pre">ABS_AMP</span></code>) instead of MNE’s
+peak-to-peak criterion. The preprocessing sidecar records
+<code class="docutils literal notranslate"><span class="pre">RejectionMode</span></code> (<code class="docutils literal notranslate"><span class="pre">peak-to-peak</span></code> / <code class="docutils literal notranslate"><span class="pre">absolute-amplitude</span></code>) next to
+<code class="docutils literal notranslate"><span class="pre">RejectionThresholds</span></code>.</p></li>
 <li><p>Fixed: <code class="docutils literal notranslate"><span class="pre">--reject-eeg</span> <span class="pre">0</span></code> now disables automatic rejection as its help
 text documents (<code class="docutils literal notranslate"><span class="pre">parse_reject</span></code>). It previously built a <code class="docutils literal notranslate"><span class="pre">{"eeg":</span> <span class="pre">0.0}</span></code>
 threshold, which rejects every epoch. Negative thresholds are now an
@@ -375,6 +385,12 @@ argument error.</p></li>
 <li><p>New flag <code class="docutils literal notranslate"><span class="pre">--no-report</span></code>: skip HTML report generation (preprocessing
 and analysis) while still writing all derivatives. Intended for bulk
 runs over many subjects, where report figures dominate runtime.</p></li>
+<li><p>New flags for resumable, disk-friendly bulk runs: <code class="docutils literal notranslate"><span class="pre">--skip-existing</span></code>
+(skip (task, run) iterations whose sidecar outputs already exist),
+<code class="docutils literal notranslate"><span class="pre">--clean-work-dir</span></code> (delete each iteration’s Nipype working files after
+it succeeds; logs are kept) and <code class="docutils literal notranslate"><span class="pre">--keep-epochs</span></code> /
+<code class="docutils literal notranslate"><span class="pre">--no-keep-epochs</span></code> (default keep; <code class="docutils literal notranslate"><span class="pre">--no-keep-epochs</span></code> deletes the
+<code class="docutils literal notranslate"><span class="pre">*_epo.fif</span></code> files after analysis and keeps the JSON sidecars).</p></li>
 <li><p>New flag <code class="docutils literal notranslate"><span class="pre">--with-stimuli</span></code> on <code class="docutils literal notranslate"><span class="pre">ffrprep-download</span> <span class="pre">example</span></code>
 (<code class="docutils literal notranslate"><span class="pre">BooleanOptionalAction</span></code>, default <code class="docutils literal notranslate"><span class="pre">False</span></code>): additionally
 fetches the BIDS <code class="docutils literal notranslate"><span class="pre">/stimuli/</span></code> directory needed by stimulus-aware
@@ -409,6 +425,38 @@ statistics are computed, matching the scope other BIDS Apps
 (e.g. MRIQC) use for their own “group” level.</p></li>
 </ul>
 </li>
+<li><p>Group-level FFR metrics (opt-in): <code class="docutils literal notranslate"><span class="pre">--f0</span></code> adds <code class="docutils literal notranslate"><span class="pre">rms_snr_polarity_sum</span></code>,
+<code class="docutils literal notranslate"><span class="pre">f0_uv</span></code> and <code class="docutils literal notranslate"><span class="pre">upper_harmonics_uv</span></code> (band-averaged FFT amplitude at the
+harmonics of F0, computed on the sum of the two per-trial-type
+averages; see <code class="docutils literal notranslate"><span class="pre">--n-harmonics</span></code>, <code class="docutils literal notranslate"><span class="pre">--harmonic-bin-hz</span></code>,
+<code class="docutils literal notranslate"><span class="pre">--harmonic-window</span></code>); <code class="docutils literal notranslate"><span class="pre">--stimulus</span></code> adds <code class="docutils literal notranslate"><span class="pre">stim2resp_r/z/lag_ms</span></code>
+(and <code class="docutils literal notranslate"><span class="pre">stim2resp_lim_*</span></code> with <code class="docutils literal notranslate"><span class="pre">--xcorr-lag-range</span></code>); <code class="docutils literal notranslate"><span class="pre">--n-trials-presented</span></code>
+adds <code class="docutils literal notranslate"><span class="pre">usable_pct</span></code>. <code class="docutils literal notranslate"><span class="pre">discover_group_inputs</span></code> now also returns the
+per-trial-type evoked files (<code class="docutils literal notranslate"><span class="pre">"by_type"</span></code>).</p></li>
+<li><p>QC flags on the group metrics table: <code class="docutils literal notranslate"><span class="pre">--min-usable-pct</span></code> (needs
+<code class="docutils literal notranslate"><span class="pre">--n-trials-presented</span></code>) and <code class="docutils literal notranslate"><span class="pre">--min-snr</span></code> add <code class="docutils literal notranslate"><span class="pre">qc_usable_pct_ok</span></code> /
+<code class="docutils literal notranslate"><span class="pre">qc_snr_ok</span></code>, <code class="docutils literal notranslate"><span class="pre">qc_include</span></code> and <code class="docutils literal notranslate"><span class="pre">qc_reason</span></code> columns (<code class="docutils literal notranslate"><span class="pre">add_qc_flags</span></code>).
+Subjects are flagged, never dropped: the table and the grand averages keep
+every subject, and the report summary shows how many were flagged.</p></li>
+<li><p>Docs: the pipeline details page now covers the group-level metrics, covariates,
+QC flags and output files, the <code class="docutils literal notranslate"><span class="pre">--skip-existing</span></code> / <code class="docutils literal notranslate"><span class="pre">--clean-work-dir</span></code> /
+<code class="docutils literal notranslate"><span class="pre">--no-keep-epochs</span></code> behaviour, and the <code class="docutils literal notranslate"><span class="pre">RejectionMode</span></code> and <code class="docutils literal notranslate"><span class="pre">Sources</span></code>
+sidecar fields.</p></li>
+<li><p>The group metrics TSV now has a BIDS-style data dictionary,
+<code class="docutils literal notranslate"><span class="pre">task-&lt;task&gt;[_run-&lt;run&gt;]_metrics.json</span></code>, beside it (<code class="docutils literal notranslate"><span class="pre">build_metrics_dictionary</span></code>):
+a description and units for every column, with the actual windows and
+thresholds of the run embedded. Covariate columns take their description,
+levels and units from the JSON sidecar next to the covariate TSV
+(<code class="docutils literal notranslate"><span class="pre">participants.json</span></code>, <code class="docutils literal notranslate"><span class="pre">phenotype/*.json</span></code>) when one exists.
+<code class="docutils literal notranslate"><span class="pre">merge_covariates</span></code> gains <code class="docutils literal notranslate"><span class="pre">return_sources</span></code> and <code class="docutils literal notranslate"><span class="pre">save_group_metrics</span></code>
+a <code class="docutils literal notranslate"><span class="pre">dictionary</span></code> argument.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">compute_grand_average</span></code> renames single-channel evokeds that carry different
+channel names across sites (e.g. <code class="docutils literal notranslate"><span class="pre">A32</span></code> vs <code class="docutils literal notranslate"><span class="pre">Cz</span></code>) to a common name before
+averaging; mismatched multi-channel sets raise a clear <code class="docutils literal notranslate"><span class="pre">ValueError</span></code>.</p></li>
+<li><p>The group metrics TSV joins subject-level covariates from
+<code class="docutils literal notranslate"><span class="pre">&lt;bids_dir&gt;/participants.tsv</span></code> and <code class="docutils literal notranslate"><span class="pre">--covariates</span></code> (<code class="docutils literal notranslate"><span class="pre">merge_covariates</span></code>);
+the report section switches to per-metric histograms for cohorts above
+40 subjects (the per-subject values stay in the TSV).</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">ffrprep.reports</span></code> gains <code class="docutils literal notranslate"><span class="pre">build_group_report</span></code> and
 <code class="docutils literal notranslate"><span class="pre">build_metrics_table_section</span></code>; <code class="docutils literal notranslate"><span class="pre">build_subject_report</span></code> /
 <code class="docutils literal notranslate"><span class="pre">build_analysis_report</span></code> pass new <code class="docutils literal notranslate"><span class="pre">entity_label</span></code> / <code class="docutils literal notranslate"><span class="pre">meta_label</span></code>
@@ -503,6 +551,17 @@ Computed with a single <code class="docutils literal notranslate"><span class="p
 Python loop of <code class="docutils literal notranslate"><span class="pre">scipy.stats.pearsonr</span></code> calls (same values and
 pair ordering; ~0.3 s vs ~9 min for 3000 epochs x 4147 samples).</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">compute_fft</span></code>: amplitude spectrum helper.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">harmonic_amplitudes</span></code>: FFT amplitude (zero-padded, single-sided,
+microvolts) of a response window, averaged in a <code class="docutils literal notranslate"><span class="pre">bin_hz</span></code>-wide
+band around each harmonic of <code class="docutils literal notranslate"><span class="pre">f0</span></code>; returns the per-harmonic values,
+the fundamental, and the summed upper harmonics. Defaults follow the
+/da/ measure of Whiteford et al. (2025) (60-180 ms, 100 Hz, 10
+harmonics, 60 Hz bins).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">stim_to_resp_xcorr</span></code>: maximum stimulus-to-response correlation in
+MATLAB <code class="docutils literal notranslate"><span class="pre">xcorr(...,</span> <span class="pre">'coeff')</span></code> form (no mean removal) with an
+optional lag window, returning <code class="docutils literal notranslate"><span class="pre">(r,</span> <span class="pre">Fisher</span> <span class="pre">z,</span> <span class="pre">lag_ms)</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">load_wav_mono</span></code> / <code class="docutils literal notranslate"><span class="pre">resample_signal</span></code>: WAV reader and polyphase
+resampler used to bring a stimulus to the EEG sampling rate.</p></li>
 </ul>
 </li>
 <li><p>Analysis worker granularity changed from per-file to

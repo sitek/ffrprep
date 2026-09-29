@@ -46,13 +46,13 @@
   
   
   
-    <title>ffrprep.preproc.epoch_data &#8212; ffrprep 0.1.dev1+g29c38576b documentation</title>
+    <title>ffrprep.preproc.epoch_data &#8212; ffrprep 0.1.dev1+g626fc0d1d documentation</title>
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
     <link rel="stylesheet" type="text/css" href="../_static/material.css?v=79c92029" />
     <link rel="stylesheet" type="text/css" href="../_static/plot_directive.css" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
-    <script src="../_static/documentation_options.js?v=aca2d354"></script>
+    <script src="../_static/documentation_options.js?v=40177eca"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -85,7 +85,7 @@
   <nav class="md-header-nav md-grid">
     <div class="md-flex navheader">
       <div class="md-flex__cell md-flex__cell--shrink">
-        <a href="../index.html" title="ffrprep 0.1.dev1+g29c38576b documentation"
+        <a href="../index.html" title="ffrprep 0.1.dev1+g626fc0d1d documentation"
            class="md-header-nav__button md-logo">
           
             &nbsp;
@@ -171,7 +171,7 @@
   <nav class="md-tabs" data-md-component="tabs">
     <div class="md-tabs__inner md-grid">
       <ul class="md-tabs__list">
-          <li class="md-tabs__item"><a href="../index.html" class="md-tabs__link">ffrprep 0.1.dev1+g29c38576b documentation</a></li>
+          <li class="md-tabs__item"><a href="../index.html" class="md-tabs__link">ffrprep 0.1.dev1+g626fc0d1d documentation</a></li>
           <li class="md-tabs__item"><a href="../api_ref.html" class="md-tabs__link">Reference API</a></li>
       </ul>
     </div>
@@ -184,13 +184,13 @@
               <div class="md-sidebar__inner">
                 <nav class="md-nav md-nav--primary" data-md-level="0">
   <label class="md-nav__title md-nav__title--site" for="__drawer">
-    <a href="../index.html" title="ffrprep 0.1.dev1+g29c38576b documentation" class="md-nav__button md-logo">
+    <a href="../index.html" title="ffrprep 0.1.dev1+g626fc0d1d documentation" class="md-nav__button md-logo">
       
         <img src="../_static/" alt=" logo" width="48" height="48">
       
     </a>
     <a href="../index.html"
-       title="ffrprep 0.1.dev1+g29c38576b documentation">ffrprep</a>
+       title="ffrprep 0.1.dev1+g626fc0d1d documentation">ffrprep</a>
   </label>
     <div class="md-nav__source">
       <a href="https://github.com/sitek/ffrprep" title="Go to repository" class="md-source" data-md-source="github">
@@ -298,7 +298,7 @@
 <h1 id="generated-ffrprep-preproc-epoch-data--page-root">ffrprep.preproc.epoch_data<a class="headerlink" href="#generated-ffrprep-preproc-epoch-data--page-root" title="Link to this heading">¶</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="ffrprep.preproc.epoch_data">
-<span class="sig-prename descclassname"><span class="pre">ffrprep.preproc.</span></span><span class="sig-name descname"><span class="pre">epoch_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">eeg_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">baseline</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">events_file</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">picks</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tmin</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tmax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reject</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">on_missing</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'warn'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">event_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">derivatives_root</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">subject</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">run</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trial_types</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/ffrprep/preproc.html#epoch_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ffrprep.preproc.epoch_data" title="Link to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">ffrprep.preproc.</span></span><span class="sig-name descname"><span class="pre">epoch_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">eeg_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">baseline</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">events_file</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">picks</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tmin</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tmax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reject</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">on_missing</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'warn'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">event_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">derivatives_root</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">subject</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">run</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trial_types</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reject_mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'ptp'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/ffrprep/preproc.html#epoch_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ffrprep.preproc.epoch_data" title="Link to this definition">¶</a></dt>
 <dd><p>Epoch the provided EEG data object based on events.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -311,6 +311,11 @@ If None, events will be found from the data annotations or triggers.</p></li>
 <li><p><strong>picks</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>, </em><em>optional</em>) – Channels to include in epochs.</p></li>
 <li><p><strong>tmin</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>optional</em>) – Start time before event (in seconds).</p></li>
 <li><p><strong>tmax</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><em>optional</em>) – End time after event (in seconds).</p></li>
+<li><p><strong>reject</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>, </em><em>optional</em>) – Rejection thresholds in Volts, e.g. <code class="docutils literal notranslate"><span class="pre">{"eeg":</span> <span class="pre">75e-6}</span></code>.</p></li>
+<li><p><strong>reject_mode</strong> (<em>{"ptp"</em><em>, </em><em>"abs"}</em>) – How <code class="docutils literal notranslate"><span class="pre">reject["eeg"]</span></code> is interpreted. <code class="docutils literal notranslate"><span class="pre">"ptp"</span></code> (default) is MNE’s
+peak-to-peak criterion. <code class="docutils literal notranslate"><span class="pre">"abs"</span></code> drops any epoch whose absolute
+amplitude reaches the threshold at any EEG sample (<code class="docutils literal notranslate"><span class="pre">max|x|</span> <span class="pre">&gt;=</span>
+<span class="pre">threshold</span></code>); dropped epochs are logged with reason <code class="docutils literal notranslate"><span class="pre">ABS_AMP</span></code>.</p></li>
 <li><p><strong>verbose</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" title="(in Python v3.14)"><em>bool</em></a>) – Whether to print verbose output.</p></li>
 </ul>
 </dd>

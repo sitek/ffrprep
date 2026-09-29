@@ -46,13 +46,13 @@
   
   
   
-    <title>ffrprep.group.compute_subject_metrics &#8212; ffrprep 0.1.dev1+g29c38576b documentation</title>
+    <title>ffrprep.group.compute_subject_metrics &#8212; ffrprep 0.1.dev1+g626fc0d1d documentation</title>
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
     <link rel="stylesheet" type="text/css" href="../_static/material.css?v=79c92029" />
     <link rel="stylesheet" type="text/css" href="../_static/plot_directive.css" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
-    <script src="../_static/documentation_options.js?v=aca2d354"></script>
+    <script src="../_static/documentation_options.js?v=40177eca"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -60,7 +60,7 @@
     <script src="../_static/design-tabs.js?v=f930bc37"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="ffrprep.group.save_group_outputs" href="ffrprep.group.save_group_outputs.html" />
+    <link rel="next" title="ffrprep.group.add_qc_flags" href="ffrprep.group.add_qc_flags.html" />
     <link rel="prev" title="ffrprep.group.compute_grand_average" href="ffrprep.group.compute_grand_average.html" />
   
    
@@ -85,7 +85,7 @@
   <nav class="md-header-nav md-grid">
     <div class="md-flex navheader">
       <div class="md-flex__cell md-flex__cell--shrink">
-        <a href="../index.html" title="ffrprep 0.1.dev1+g29c38576b documentation"
+        <a href="../index.html" title="ffrprep 0.1.dev1+g626fc0d1d documentation"
            class="md-header-nav__button md-logo">
           
             &nbsp;
@@ -171,7 +171,7 @@
   <nav class="md-tabs" data-md-component="tabs">
     <div class="md-tabs__inner md-grid">
       <ul class="md-tabs__list">
-          <li class="md-tabs__item"><a href="../index.html" class="md-tabs__link">ffrprep 0.1.dev1+g29c38576b documentation</a></li>
+          <li class="md-tabs__item"><a href="../index.html" class="md-tabs__link">ffrprep 0.1.dev1+g626fc0d1d documentation</a></li>
           <li class="md-tabs__item"><a href="../api_ref.html" class="md-tabs__link">Reference API</a></li>
       </ul>
     </div>
@@ -184,13 +184,13 @@
               <div class="md-sidebar__inner">
                 <nav class="md-nav md-nav--primary" data-md-level="0">
   <label class="md-nav__title md-nav__title--site" for="__drawer">
-    <a href="../index.html" title="ffrprep 0.1.dev1+g29c38576b documentation" class="md-nav__button md-logo">
+    <a href="../index.html" title="ffrprep 0.1.dev1+g626fc0d1d documentation" class="md-nav__button md-logo">
       
         <img src="../_static/" alt=" logo" width="48" height="48">
       
     </a>
     <a href="../index.html"
-       title="ffrprep 0.1.dev1+g29c38576b documentation">ffrprep</a>
+       title="ffrprep 0.1.dev1+g626fc0d1d documentation">ffrprep</a>
   </label>
     <div class="md-nav__source">
       <a href="https://github.com/sitek/ffrprep" title="Go to repository" class="md-source" data-md-source="github">
@@ -298,7 +298,7 @@
 <h1 id="generated-ffrprep-group-compute-subject-metrics--page-root">ffrprep.group.compute_subject_metrics<a class="headerlink" href="#generated-ffrprep-group-compute-subject-metrics--page-root" title="Link to this heading">¶</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="ffrprep.group.compute_subject_metrics">
-<span class="sig-prename descclassname"><span class="pre">ffrprep.group.</span></span><span class="sig-name descname"><span class="pre">compute_subject_metrics</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">evoked_paths</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">epochs_paths</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">response_window</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0.1,</span> <span class="pre">0.2)</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/ffrprep/group.html#compute_subject_metrics"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ffrprep.group.compute_subject_metrics" title="Link to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">ffrprep.group.</span></span><span class="sig-name descname"><span class="pre">compute_subject_metrics</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">evoked_paths</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">epochs_paths</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">response_window</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0.1,</span> <span class="pre">0.2)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">by_type_paths</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">harmonics</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stimulus</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_trials_presented</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/ffrprep/group.html#compute_subject_metrics"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#ffrprep.group.compute_subject_metrics" title="Link to this definition">¶</a></dt>
 <dd><p>Compute per-subject scalar FFR metrics from saved derivatives.</p>
 <p>Recomputes the same scalar metrics <code class="docutils literal notranslate"><span class="pre">ffrprep.reports</span></code> shows in the
 participant-level report (RMS SNR, band power) directly from each
@@ -306,6 +306,9 @@ subject’s saved combined Evoked, plus trial-to-trial response
 consistency from the saved preprocessing Epochs when available.
 Nothing here is computed from raw data; this only aggregates
 already-computed participant-level derivatives.</p>
+<p>Optionally (<code class="docutils literal notranslate"><span class="pre">harmonics</span></code> / <code class="docutils literal notranslate"><span class="pre">stimulus</span></code>) it also derives spectral and
+stimulus-following measures from the <strong>sum of the two per-trial-type
+(polarity) averages</strong>, the response commonly analyzed in FFR studies.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -316,11 +319,25 @@ subject has multiple (per-trial-type) epochs files, response
 consistency is averaged across them.</p></li>
 <li><p><strong>response_window</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em> of </em><em>(</em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>)</em>) – Response window for RMS SNR / band power, matching the
 participant-level <code class="docutils literal notranslate"><span class="pre">--response-window</span></code> default.</p></li>
+<li><p><strong>by_type_paths</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.14)"><em>pathlib.Path</em></a><em>]</em><em>]</em><em>, </em><em>optional</em>) – <code class="docutils literal notranslate"><span class="pre">{subject:</span> <span class="pre">{condition_label:</span> <span class="pre">per-type</span> <span class="pre">Evoked</span> <span class="pre">path}}</span></code>. Required
+for the polarity-sum measures; a subject needs exactly two
+conditions, otherwise those columns are NaN.</p></li>
+<li><p><strong>harmonics</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>, </em><em>optional</em>) – Keyword arguments for <a class="reference internal" href="ffrprep.analysis.harmonic_amplitudes.html#ffrprep.analysis.harmonic_amplitudes" title="ffrprep.analysis.harmonic_amplitudes"><code class="xref py py-func docutils literal notranslate"><span class="pre">ffrprep.analysis.harmonic_amplitudes()</span></code></a>
+(<code class="docutils literal notranslate"><span class="pre">f0</span></code>, <code class="docutils literal notranslate"><span class="pre">n_harmonics</span></code>, <code class="docutils literal notranslate"><span class="pre">bin_hz</span></code>, <code class="docutils literal notranslate"><span class="pre">tmin</span></code>, <code class="docutils literal notranslate"><span class="pre">tmax</span></code>). Adds
+<code class="docutils literal notranslate"><span class="pre">rms_snr_polarity_sum</span></code>, <code class="docutils literal notranslate"><span class="pre">f0_uv</span></code> and <code class="docutils literal notranslate"><span class="pre">upper_harmonics_uv</span></code>.</p></li>
+<li><p><strong>stimulus</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em>, </em><em>optional</em>) – <code class="docutils literal notranslate"><span class="pre">{"path":</span> <span class="pre">wav,</span> <span class="pre">"stim_window":</span> <span class="pre">(t0,</span> <span class="pre">t1),</span> <span class="pre">"resp_window":</span> <span class="pre">(t0,</span> <span class="pre">t1)}</span></code>
+plus optionally <code class="docutils literal notranslate"><span class="pre">"lag_range_ms":</span> <span class="pre">(lo,</span> <span class="pre">hi)</span></code> and
+<code class="docutils literal notranslate"><span class="pre">"lag_resp_window":</span> <span class="pre">(t0,</span> <span class="pre">t1)</span></code>. Adds <code class="docutils literal notranslate"><span class="pre">stim2resp_r</span></code>,
+<code class="docutils literal notranslate"><span class="pre">stim2resp_z</span></code>, <code class="docutils literal notranslate"><span class="pre">stim2resp_lag_ms</span></code> (and <code class="docutils literal notranslate"><span class="pre">stim2resp_lim_*</span></code> when
+a lag range is given). The stimulus is resampled to the EEG rate.</p></li>
+<li><p><strong>n_trials_presented</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>optional</em>) – Trials presented per recording; when given, <code class="docutils literal notranslate"><span class="pre">usable_pct</span></code> =
+100 * kept trials / presented is added.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p><strong>metrics</strong> – One row per subject with columns <code class="docutils literal notranslate"><span class="pre">subject</span></code>, <code class="docutils literal notranslate"><span class="pre">n_avg</span></code>,
-<code class="docutils literal notranslate"><span class="pre">rms_snr</span></code>, <code class="docutils literal notranslate"><span class="pre">band_power_90_110hz</span></code>, <code class="docutils literal notranslate"><span class="pre">response_consistency</span></code>.</p>
+<code class="docutils literal notranslate"><span class="pre">rms_snr</span></code>, <code class="docutils literal notranslate"><span class="pre">band_power_90_110hz</span></code>, <code class="docutils literal notranslate"><span class="pre">response_consistency</span></code> and
+the optional columns described above.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html#pandas.DataFrame" title="(in pandas v3.0.6)">pandas.DataFrame</a></p>
@@ -353,12 +370,12 @@ participant-level <code class="docutils literal notranslate"><span class="pre">-
             </a>
           
           
-            <a href="ffrprep.group.save_group_outputs.html" title="ffrprep.group.save_group_outputs"
+            <a href="ffrprep.group.add_qc_flags.html" title="ffrprep.group.add_qc_flags"
                class="md-flex md-footer-nav__link md-footer-nav__link--next"
                rel="next">
             <div class="md-flex__cell md-flex__cell--stretch md-footer-nav__title"><span
                 class="md-flex__ellipsis"> <span
-                class="md-footer-nav__direction"> "Next" </span> ffrprep.group.save_group_outputs </span>
+                class="md-footer-nav__direction"> "Next" </span> ffrprep.group.add_qc_flags </span>
             </div>
             <div class="md-flex__cell md-flex__cell--shrink"><i
                 class="md-icon md-icon--arrow-forward md-footer-nav__button"></i>

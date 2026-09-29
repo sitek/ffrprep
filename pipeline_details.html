@@ -46,13 +46,13 @@
   
   
   
-    <title>Pipeline details &#8212; ffrprep 0.1.dev1+g29c38576b documentation</title>
+    <title>Pipeline details &#8212; ffrprep 0.1.dev1+g626fc0d1d documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
     <link rel="stylesheet" type="text/css" href="_static/material.css?v=79c92029" />
     <link rel="stylesheet" type="text/css" href="_static/plot_directive.css" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <script src="_static/documentation_options.js?v=aca2d354"></script>
+    <script src="_static/documentation_options.js?v=40177eca"></script>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -85,7 +85,7 @@
   <nav class="md-header-nav md-grid">
     <div class="md-flex navheader">
       <div class="md-flex__cell md-flex__cell--shrink">
-        <a href="index.html" title="ffrprep 0.1.dev1+g29c38576b documentation"
+        <a href="index.html" title="ffrprep 0.1.dev1+g626fc0d1d documentation"
            class="md-header-nav__button md-logo">
           
             &nbsp;
@@ -171,7 +171,7 @@
   <nav class="md-tabs" data-md-component="tabs">
     <div class="md-tabs__inner md-grid">
       <ul class="md-tabs__list">
-          <li class="md-tabs__item"><a href="index.html" class="md-tabs__link">ffrprep 0.1.dev1+g29c38576b documentation</a></li>
+          <li class="md-tabs__item"><a href="index.html" class="md-tabs__link">ffrprep 0.1.dev1+g626fc0d1d documentation</a></li>
       </ul>
     </div>
   </nav>
@@ -183,13 +183,13 @@
               <div class="md-sidebar__inner">
                 <nav class="md-nav md-nav--primary" data-md-level="0">
   <label class="md-nav__title md-nav__title--site" for="__drawer">
-    <a href="index.html" title="ffrprep 0.1.dev1+g29c38576b documentation" class="md-nav__button md-logo">
+    <a href="index.html" title="ffrprep 0.1.dev1+g626fc0d1d documentation" class="md-nav__button md-logo">
       
         <img src="_static/" alt=" logo" width="48" height="48">
       
     </a>
     <a href="index.html"
-       title="ffrprep 0.1.dev1+g29c38576b documentation">ffrprep</a>
+       title="ffrprep 0.1.dev1+g626fc0d1d documentation">ffrprep</a>
   </label>
     <div class="md-nav__source">
       <a href="https://github.com/sitek/ffrprep" title="Go to repository" class="md-source" data-md-source="github">
@@ -469,7 +469,9 @@ Implemented as a Nipype workflow (<a class="reference external" href="https://si
 <dt><em>Default Parameters:</em></dt><dd><ul class="simple">
 <li><p><strong>High-pass:</strong> 70.0 Hz (removes slow drifts and low-frequency noise, preserves FFR frequencies)</p></li>
 <li><p><strong>Low-pass:</strong> 1000.0 Hz (preserves FFR harmonics while removing high-frequency noise)</p></li>
-<li><p><strong>Filter design:</strong> Zero-phase FIR with automatic transition bandwidth</p></li>
+<li><p><strong>Filter design:</strong> Zero-phase FIR with automatic transition bandwidth.
+<code class="docutils literal notranslate"><span class="pre">--filter-method</span> <span class="pre">iir</span></code> switches to zero-phase first-order
+Butterworth high-pass + low-pass passes (12 dB/octave overall).</p></li>
 </ul>
 </dd>
 </dl>
@@ -495,7 +497,8 @@ output</p></li>
 around stimulus onset</p></li>
 <li><p><strong>Baseline:</strong> <code class="docutils literal notranslate"><span class="pre">--baseline</span> <span class="pre">-0.2</span> <span class="pre">0</span></code> seconds (pre-stimulus)</p></li>
 <li><p><strong>Rejection:</strong> <code class="docutils literal notranslate"><span class="pre">--reject-eeg</span> <span class="pre">75e-6</span></code> (75 µV peak-to-peak); pass
-<code class="docutils literal notranslate"><span class="pre">--no-auto-reject</span></code> to disable</p></li>
+<code class="docutils literal notranslate"><span class="pre">--no-auto-reject</span></code> to disable, or <code class="docutils literal notranslate"><span class="pre">--reject-mode</span> <span class="pre">abs</span></code> to drop
+epochs whose absolute amplitude reaches the threshold at any sample</p></li>
 </ul>
 </dd>
 </dl>
@@ -521,9 +524,11 @@ round-trip (and the upstream Epochs object’s internal state
 doesn’t leak through <code class="docutils literal notranslate"><span class="pre">.save()</span></code>).</p></li>
 <li><p>Write each sibling <code class="docutils literal notranslate"><span class="pre">.json</span></code> sidecar with <code class="docutils literal notranslate"><span class="pre">EpochCount</span></code> /
 <code class="docutils literal notranslate"><span class="pre">EpochCountTotal</span></code> / <code class="docutils literal notranslate"><span class="pre">EpochCountRejected</span></code> /
-<code class="docutils literal notranslate"><span class="pre">RejectionThresholds</span></code> / <code class="docutils literal notranslate"><span class="pre">Filtering</span></code> / <code class="docutils literal notranslate"><span class="pre">SamplingFrequency</span></code>
-/ <code class="docutils literal notranslate"><span class="pre">EpochTmin</span></code> / <code class="docutils literal notranslate"><span class="pre">EpochTmax</span></code> / <code class="docutils literal notranslate"><span class="pre">Channels</span></code> plus run /
-session / <code class="docutils literal notranslate"><span class="pre">ConcatenatedRuns</span></code> / <code class="docutils literal notranslate"><span class="pre">Condition</span></code> provenance.</p></li>
+<code class="docutils literal notranslate"><span class="pre">RejectionMode</span></code> / <code class="docutils literal notranslate"><span class="pre">RejectionThresholds</span></code> / <code class="docutils literal notranslate"><span class="pre">Filtering</span></code> /
+<code class="docutils literal notranslate"><span class="pre">SamplingFrequency</span></code> / <code class="docutils literal notranslate"><span class="pre">EpochTmin</span></code> / <code class="docutils literal notranslate"><span class="pre">EpochTmax</span></code> /
+<code class="docutils literal notranslate"><span class="pre">Channels</span></code> plus run / session / <code class="docutils literal notranslate"><span class="pre">ConcatenatedRuns</span></code> /
+<code class="docutils literal notranslate"><span class="pre">Condition</span></code> provenance. <code class="docutils literal notranslate"><span class="pre">Sources</span></code> and <code class="docutils literal notranslate"><span class="pre">RawSources</span></code> list the
+raw EEG file(s) the epochs came from, when they can be found.</p></li>
 <li><p>Initialize the per-derivatives <code class="docutils literal notranslate"><span class="pre">dataset_description.json</span></code> if
 missing.</p></li>
 </ul>
@@ -546,10 +551,16 @@ than as a workflow node — see <a class="reference internal" href="#reporting">
 <p>Under <code class="docutils literal notranslate"><span class="pre">--no-split-by-trial-type</span></code> the per-trial-type files are
 replaced by a single <code class="docutils literal notranslate"><span class="pre">_desc-preproc_epo.fif</span></code> + its sidecar.</p>
 <p>The sidecar JSON carries provenance, <code class="docutils literal notranslate"><span class="pre">EpochCount</span></code> /
-<code class="docutils literal notranslate"><span class="pre">EpochCountTotal</span></code> / <code class="docutils literal notranslate"><span class="pre">EpochCountRejected</span></code>, <code class="docutils literal notranslate"><span class="pre">RejectionThresholds</span></code>,
-<code class="docutils literal notranslate"><span class="pre">Filtering</span></code> (high-pass and low-pass cut-offs), sampling frequency,
-run / session identifiers, and <code class="docutils literal notranslate"><span class="pre">Condition</span></code> (for per-trial-type
-files only).</p>
+<code class="docutils literal notranslate"><span class="pre">EpochCountTotal</span></code> / <code class="docutils literal notranslate"><span class="pre">EpochCountRejected</span></code>, <code class="docutils literal notranslate"><span class="pre">RejectionMode</span></code>
+(<code class="docutils literal notranslate"><span class="pre">peak-to-peak</span></code> or <code class="docutils literal notranslate"><span class="pre">absolute-amplitude</span></code>) with
+<code class="docutils literal notranslate"><span class="pre">RejectionThresholds</span></code>, <code class="docutils literal notranslate"><span class="pre">Filtering</span></code> (high-pass and low-pass
+cut-offs), sampling frequency, run / session identifiers, the raw
+file(s) in <code class="docutils literal notranslate"><span class="pre">Sources</span></code> / <code class="docutils literal notranslate"><span class="pre">RawSources</span></code>, and <code class="docutils literal notranslate"><span class="pre">Condition</span></code> (for
+per-trial-type files only). The epoch counts cover only the trial
+types being written: in a per-trial-type file they are that trial
+type’s counts, and events outside <code class="docutils literal notranslate"><span class="pre">event_id</span></code> (for example markers)
+are not counted. Epochs dropped by <code class="docutils literal notranslate"><span class="pre">--reject-mode</span> <span class="pre">abs</span></code> count as
+rejected.</p>
 <p><em>Outputs:</em> File paths, processing metadata.</p>
 </section>
 </section>
@@ -733,6 +744,20 @@ CLI entry point</p></li>
 <li><p>nipype caches per-iteration intermediates under <code class="docutils literal notranslate"><span class="pre">work/</span></code> so
 re-runs that already have a saved <code class="docutils literal notranslate"><span class="pre">_desc-preproc_epo.fif</span></code> skip
 the workflow re-execution</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--skip-existing</span></code> skips a (task, run) iteration whose sidecar
+outputs already exist, so an interrupted run can be repeated with
+the same command. The check uses the <code class="docutils literal notranslate"><span class="pre">.json</span></code> sidecars rather than
+the epochs files, so it also works after <code class="docutils literal notranslate"><span class="pre">--no-keep-epochs</span></code>. An
+analysis iteration counts as done when its <code class="docutils literal notranslate"><span class="pre">_desc-evoked.json</span></code>
+exists, and no report is rebuilt for iterations that are skipped.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--clean-work-dir</span></code> deletes an iteration’s Nipype working files
+once it has succeeded. Log files are kept, and the files of a
+failed iteration are left in place.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--no-keep-epochs</span></code> deletes the <code class="docutils literal notranslate"><span class="pre">_epo.fif</span></code> files after the
+analysis stage and its report have finished. The JSON sidecars
+stay. With <code class="docutils literal notranslate"><span class="pre">--stage</span> <span class="pre">preprocessing</span></code> the flag is ignored and a
+warning is printed, because the analysis stage still needs the
+epochs.</p></li>
 </ul>
 <p><strong>Quality Control Checkpoints:</strong></p>
 <ul class="simple">
@@ -772,18 +797,55 @@ session, run) with derivatives from at least two subjects, it:</p>
 present, difference (<code class="docutils literal notranslate"><span class="pre">_desc-evokedDiff{A}Vs{B}.fif</span></code>) Evoked files
 via <a class="reference internal" href="generated/ffrprep.group.discover_group_inputs.html#ffrprep.group.discover_group_inputs" title="ffrprep.group.discover_group_inputs"><code class="xref py py-func docutils literal notranslate"><span class="pre">ffrprep.group.discover_group_inputs()</span></code></a>, and computes a
 grand average with <code class="docutils literal notranslate"><span class="pre">mne.grand_average</span></code>
-(<a class="reference internal" href="generated/ffrprep.group.compute_grand_average.html#ffrprep.group.compute_grand_average" title="ffrprep.group.compute_grand_average"><code class="xref py py-func docutils literal notranslate"><span class="pre">ffrprep.group.compute_grand_average()</span></code></a>);</p></li>
+(<a class="reference internal" href="generated/ffrprep.group.compute_grand_average.html#ffrprep.group.compute_grand_average" title="ffrprep.group.compute_grand_average"><code class="xref py py-func docutils literal notranslate"><span class="pre">ffrprep.group.compute_grand_average()</span></code></a>). If the subjects’
+single channel has different names (for example <code class="docutils literal notranslate"><span class="pre">A32</span></code> and <code class="docutils literal notranslate"><span class="pre">Cz</span></code>
+at different sites), it is renamed to a common name first.
+Multi-channel sets that differ raise an error;</p></li>
 <li><p>recomputes the same scalar FFR metrics the participant-level
 report shows (RMS SNR, band power) directly from each subject’s
 saved combined Evoked, plus trial-to-trial response consistency
 from that subject’s saved preprocessing Epochs
 (<a class="reference internal" href="generated/ffrprep.group.compute_subject_metrics.html#ffrprep.group.compute_subject_metrics" title="ffrprep.group.compute_subject_metrics"><code class="xref py py-func docutils literal notranslate"><span class="pre">ffrprep.group.compute_subject_metrics()</span></code></a>) — nothing is
 recomputed from raw data;</p></li>
-<li><p>writes the grand-average Evoked(s), a per-subject metrics TSV, and
-a single <code class="docutils literal notranslate"><span class="pre">group_report.html</span></code> (reusing the same section builders
-and template as the participant-level reports) under
+<li><p>adds further columns when asked. <code class="docutils literal notranslate"><span class="pre">--f0</span></code> adds
+<code class="docutils literal notranslate"><span class="pre">rms_snr_polarity_sum</span></code>, <code class="docutils literal notranslate"><span class="pre">f0_uv</span></code> and <code class="docutils literal notranslate"><span class="pre">upper_harmonics_uv</span></code>;
+<code class="docutils literal notranslate"><span class="pre">--stimulus</span></code> adds <code class="docutils literal notranslate"><span class="pre">stim2resp_r</span></code>, <code class="docutils literal notranslate"><span class="pre">stim2resp_z</span></code> and
+<code class="docutils literal notranslate"><span class="pre">stim2resp_lag_ms</span></code> (plus <code class="docutils literal notranslate"><span class="pre">stim2resp_lim_*</span></code> with
+<code class="docutils literal notranslate"><span class="pre">--xcorr-lag-range</span></code>); <code class="docutils literal notranslate"><span class="pre">--n-trials-presented</span></code> adds
+<code class="docutils literal notranslate"><span class="pre">usable_pct</span></code>. These are computed from the sum of the two
+per-trial-type evoked files. <code class="docutils literal notranslate"><span class="pre">f0_uv</span></code> and <code class="docutils literal notranslate"><span class="pre">upper_harmonics_uv</span></code>
+are FFT amplitudes averaged in a band around each harmonic of F0
+(<a class="reference internal" href="generated/ffrprep.analysis.harmonic_amplitudes.html#ffrprep.analysis.harmonic_amplitudes" title="ffrprep.analysis.harmonic_amplitudes"><code class="xref py py-func docutils literal notranslate"><span class="pre">ffrprep.analysis.harmonic_amplitudes()</span></code></a>), and
+<code class="docutils literal notranslate"><span class="pre">stim2resp_r</span></code> is the maximum normalized cross-correlation between
+the stimulus and the response
+(<a class="reference internal" href="generated/ffrprep.analysis.stim_to_resp_xcorr.html#ffrprep.analysis.stim_to_resp_xcorr" title="ffrprep.analysis.stim_to_resp_xcorr"><code class="xref py py-func docutils literal notranslate"><span class="pre">ffrprep.analysis.stim_to_resp_xcorr()</span></code></a>);</p></li>
+<li><p>joins subject-level covariates onto the table by <code class="docutils literal notranslate"><span class="pre">participant_id</span></code>,
+from <code class="docutils literal notranslate"><span class="pre">&lt;bids_dir&gt;/participants.tsv</span></code> and any <code class="docutils literal notranslate"><span class="pre">--covariates</span></code> files
+(<a class="reference internal" href="generated/ffrprep.group.merge_covariates.html#ffrprep.group.merge_covariates" title="ffrprep.group.merge_covariates"><code class="xref py py-func docutils literal notranslate"><span class="pre">ffrprep.group.merge_covariates()</span></code></a>). A column already in
+the table is not overwritten;</p></li>
+<li><p>with <code class="docutils literal notranslate"><span class="pre">--min-usable-pct</span></code> and/or <code class="docutils literal notranslate"><span class="pre">--min-snr</span></code>, adds <code class="docutils literal notranslate"><span class="pre">qc_*</span></code>
+columns that mark recordings below a threshold
+(<a class="reference internal" href="generated/ffrprep.group.add_qc_flags.html#ffrprep.group.add_qc_flags" title="ffrprep.group.add_qc_flags"><code class="xref py py-func docutils literal notranslate"><span class="pre">ffrprep.group.add_qc_flags()</span></code></a>). Rows are flagged, not
+removed, and the grand averages still include every subject;</p></li>
+<li><p>writes the grand-average Evoked(s), a per-subject metrics TSV with a
+<code class="docutils literal notranslate"><span class="pre">_metrics.json</span></code> data dictionary next to it
+(<a class="reference internal" href="generated/ffrprep.group.build_metrics_dictionary.html#ffrprep.group.build_metrics_dictionary" title="ffrprep.group.build_metrics_dictionary"><code class="xref py py-func docutils literal notranslate"><span class="pre">ffrprep.group.build_metrics_dictionary()</span></code></a>), and a single
+<code class="docutils literal notranslate"><span class="pre">group_report.html</span></code> (reusing the same section builders and
+template as the participant-level reports) under
 <code class="docutils literal notranslate"><span class="pre">output_dir/ffrprep-group/</span></code>.</p></li>
 </ul>
+<p><em>Output Structure:</em></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>derivatives/ffrprep-group/
+├── dataset_description.json
+├── task-YY_run-ZZ_desc-grandAverage_ave.fif
+├── task-YY_run-ZZ_desc-grandAverage_ave.json
+├── task-YY_run-ZZ_desc-grandAverageDiffPositiveVsNegative_ave.fif
+├── task-YY_run-ZZ_desc-grandAverageDiffPositiveVsNegative_ave.json
+├── task-YY_run-ZZ_metrics.tsv
+├── task-YY_run-ZZ_metrics.json
+└── group_report.html
+</pre></div>
+</div>
 <p>This step is deliberately scoped to aggregation, not inference: it
 summarizes what participant-level ffrprep already computed and
 performs no group-level statistics (no hypothesis tests, no GLM).

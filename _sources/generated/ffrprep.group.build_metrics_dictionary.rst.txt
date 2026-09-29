@@ -1,0 +1,6 @@
+﻿ffrprep.group.build\_metrics\_dictionary
+========================================
+
+.. currentmodule:: ffrprep.group
+
+.. autofunction:: build_metrics_dictionary

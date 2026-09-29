@@ -45,13 +45,13 @@
   
   
   
-    <title>ffrprep.preproc &#8212; ffrprep 0.1.dev1+g29c38576b documentation</title>
+    <title>ffrprep.preproc &#8212; ffrprep 0.1.dev1+g626fc0d1d documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
     <link rel="stylesheet" type="text/css" href="../../_static/material.css?v=79c92029" />
     <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
-    <script src="../../_static/documentation_options.js?v=aca2d354"></script>
+    <script src="../../_static/documentation_options.js?v=40177eca"></script>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -82,7 +82,7 @@
   <nav class="md-header-nav md-grid">
     <div class="md-flex navheader">
       <div class="md-flex__cell md-flex__cell--shrink">
-        <a href="../../index.html" title="ffrprep 0.1.dev1+g29c38576b documentation"
+        <a href="../../index.html" title="ffrprep 0.1.dev1+g626fc0d1d documentation"
            class="md-header-nav__button md-logo">
           
             &nbsp;
@@ -168,7 +168,7 @@
   <nav class="md-tabs" data-md-component="tabs">
     <div class="md-tabs__inner md-grid">
       <ul class="md-tabs__list">
-          <li class="md-tabs__item"><a href="../../index.html" class="md-tabs__link">ffrprep 0.1.dev1+g29c38576b documentation</a></li>
+          <li class="md-tabs__item"><a href="../../index.html" class="md-tabs__link">ffrprep 0.1.dev1+g626fc0d1d documentation</a></li>
           <li class="md-tabs__item"><a href="../index.html" class="md-tabs__link">Module code</a></li>
       </ul>
     </div>
@@ -181,13 +181,13 @@
               <div class="md-sidebar__inner">
                 <nav class="md-nav md-nav--primary" data-md-level="0">
   <label class="md-nav__title md-nav__title--site" for="__drawer">
-    <a href="../../index.html" title="ffrprep 0.1.dev1+g29c38576b documentation" class="md-nav__button md-logo">
+    <a href="../../index.html" title="ffrprep 0.1.dev1+g626fc0d1d documentation" class="md-nav__button md-logo">
       
         <img src="../../_static/" alt=" logo" width="48" height="48">
       
     </a>
     <a href="../../index.html"
-       title="ffrprep 0.1.dev1+g29c38576b documentation">ffrprep</a>
+       title="ffrprep 0.1.dev1+g626fc0d1d documentation">ffrprep</a>
   </label>
     <div class="md-nav__source">
       <a href="https://github.com/sitek/ffrprep" title="Go to repository" class="md-source" data-md-source="github">
@@ -730,7 +730,8 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">filter_raw_file</span><span class="p">(</span>
-    <span class="n">input_raw_path</span><span class="p">,</span> <span class="n">high_pass</span><span class="p">,</span> <span class="n">low_pass</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">,</span> <span class="n">subject</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">task</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">session</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">run</span><span class="o">=</span><span class="kc">None</span>
+    <span class="n">input_raw_path</span><span class="p">,</span> <span class="n">high_pass</span><span class="p">,</span> <span class="n">low_pass</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">,</span> <span class="n">subject</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">task</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">session</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">run</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">filter_method</span><span class="o">=</span><span class="s2">"fir"</span><span class="p">,</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Load a raw FIF file, apply filtering, save filtered FIF. Returns path.</span>
@@ -744,7 +745,9 @@
     <span class="kn">from</span><span class="w"> </span><span class="nn">ffrprep.preproc</span><span class="w"> </span><span class="kn">import</span> <span class="n">filter_data</span> <span class="k">as</span> <span class="n">_filter_data</span>
     <span class="kn">from</span><span class="w"> </span><span class="nn">ffrprep.preproc</span><span class="w"> </span><span class="kn">import</span> <span class="n">save_raw_helper</span> <span class="k">as</span> <span class="n">_save_raw_helper</span>
 
-    <span class="n">filtered</span> <span class="o">=</span> <span class="n">_filter_data</span><span class="p">(</span><span class="n">raw</span><span class="p">,</span> <span class="n">high_pass</span><span class="o">=</span><span class="n">high_pass</span><span class="p">,</span> <span class="n">low_pass</span><span class="o">=</span><span class="n">low_pass</span><span class="p">)</span>
+    <span class="n">filtered</span> <span class="o">=</span> <span class="n">_filter_data</span><span class="p">(</span>
+        <span class="n">raw</span><span class="p">,</span> <span class="n">high_pass</span><span class="o">=</span><span class="n">high_pass</span><span class="p">,</span> <span class="n">low_pass</span><span class="o">=</span><span class="n">low_pass</span><span class="p">,</span> <span class="n">filter_method</span><span class="o">=</span><span class="n">filter_method</span><span class="p">,</span>
+    <span class="p">)</span>
 
     <span class="c1"># Derive identifiers from filename as in reference_raw_file</span>
     <span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
@@ -919,7 +922,7 @@
 
 <div class="viewcode-block" id="filter_data">
 <a class="viewcode-back" href="../../generated/ffrprep.preproc.filter_data.html#ffrprep.preproc.filter_data">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">filter_data</span><span class="p">(</span><span class="n">eeg_data</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">high_pass</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">low_pass</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">filter_data</span><span class="p">(</span><span class="n">eeg_data</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">high_pass</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">low_pass</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">filter_method</span><span class="o">=</span><span class="s2">"fir"</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Apply frequency filters to the provided EEG data object.</span>
 
@@ -933,6 +936,13 @@
 <span class="sd">    low_pass : float</span>
 <span class="sd">        Upper passband edge (in Hertz).</span>
 <span class="sd">        Default = None.</span>
+<span class="sd">    filter_method : {"fir", "iir"}</span>
+<span class="sd">        ``"fir"`` (default) uses MNE's zero-phase FIR design with automatic</span>
+<span class="sd">        transition bandwidths. ``"iir"`` applies zero-phase (forward-</span>
+<span class="sd">        backward) first-order Butterworth filters, a high-pass then a</span>
+<span class="sd">        low-pass, so the band-pass rolls off at 12 dB/octave overall.</span>
+<span class="sd">        This mirrors the ``butter``/``filtfilt`` pipeline used in some</span>
+<span class="sd">        published FFR analyses.</span>
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
@@ -958,7 +968,25 @@
 
     <span class="c1"># Apply filtering using MNE's filter method</span>
     <span class="c1"># l_freq is low-frequency cutoff (high-pass), h_freq is high-frequency cutoff (low-pass)  # noqa: E501</span>
-    <span class="n">filtered_eeg</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">l_freq</span><span class="o">=</span><span class="n">high_pass</span><span class="p">,</span> <span class="n">h_freq</span><span class="o">=</span><span class="n">low_pass</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">filter_method</span> <span class="o">==</span> <span class="s2">"fir"</span><span class="p">:</span>
+        <span class="n">filtered_eeg</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">l_freq</span><span class="o">=</span><span class="n">high_pass</span><span class="p">,</span> <span class="n">h_freq</span><span class="o">=</span><span class="n">low_pass</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">filter_method</span> <span class="o">==</span> <span class="s2">"iir"</span><span class="p">:</span>
+        <span class="c1"># Fresh iir_params per call: MNE writes the designed filter back</span>
+        <span class="c1"># into the dict it is given.</span>
+        <span class="k">if</span> <span class="n">high_pass</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">filtered_eeg</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span>
+                <span class="n">l_freq</span><span class="o">=</span><span class="n">high_pass</span><span class="p">,</span> <span class="n">h_freq</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">"iir"</span><span class="p">,</span>
+                <span class="n">iir_params</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">order</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">ftype</span><span class="o">=</span><span class="s2">"butter"</span><span class="p">),</span> <span class="n">phase</span><span class="o">=</span><span class="s2">"zero"</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">low_pass</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">filtered_eeg</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span>
+                <span class="n">l_freq</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">h_freq</span><span class="o">=</span><span class="n">low_pass</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">"iir"</span><span class="p">,</span>
+                <span class="n">iir_params</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">order</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">ftype</span><span class="o">=</span><span class="s2">"butter"</span><span class="p">),</span> <span class="n">phase</span><span class="o">=</span><span class="s2">"zero"</span><span class="p">,</span>
+            <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"filter_method must be 'fir' or 'iir', got </span><span class="si">{</span><span class="n">filter_method</span><span class="si">!r}</span><span class="s2">"</span>
+        <span class="p">)</span>
 
     <span class="c1"># Return the filtered data</span>
     <span class="k">return</span> <span class="n">filtered_eeg</span></div>
@@ -983,6 +1011,7 @@
     <span class="n">run</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="n">trial_types</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">reject_mode</span><span class="o">=</span><span class="s2">"ptp"</span><span class="p">,</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    Epoch the provided EEG data object based on events.</span>
@@ -1003,6 +1032,13 @@
 <span class="sd">        Start time before event (in seconds).</span>
 <span class="sd">    tmax : float, optional</span>
 <span class="sd">        End time after event (in seconds).</span>
+<span class="sd">    reject : dict, optional</span>
+<span class="sd">        Rejection thresholds in Volts, e.g. ``{"eeg": 75e-6}``.</span>
+<span class="sd">    reject_mode : {"ptp", "abs"}</span>
+<span class="sd">        How ``reject["eeg"]`` is interpreted. ``"ptp"`` (default) is MNE's</span>
+<span class="sd">        peak-to-peak criterion. ``"abs"`` drops any epoch whose absolute</span>
+<span class="sd">        amplitude reaches the threshold at any EEG sample (``max|x| &gt;=</span>
+<span class="sd">        threshold``); dropped epochs are logged with reason ``ABS_AMP``.</span>
 <span class="sd">    verbose : bool</span>
 <span class="sd">        Whether to print verbose output.</span>
 
@@ -1214,6 +1250,16 @@
             <span class="p">)</span>
         <span class="n">chosen_event_id</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">chosen_event_id</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">requested</span><span class="p">}</span>
 
+    <span class="k">if</span> <span class="n">reject_mode</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"ptp"</span><span class="p">,</span> <span class="s2">"abs"</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"reject_mode must be 'ptp' or 'abs', got </span><span class="si">{</span><span class="n">reject_mode</span><span class="si">!r}</span><span class="s2">"</span>
+        <span class="p">)</span>
+    <span class="n">abs_threshold</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">epochs_reject</span> <span class="o">=</span> <span class="n">reject</span>
+    <span class="k">if</span> <span class="n">reject_mode</span> <span class="o">==</span> <span class="s2">"abs"</span> <span class="ow">and</span> <span class="n">reject</span><span class="p">:</span>
+        <span class="n">abs_threshold</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">reject</span><span class="p">[</span><span class="s2">"eeg"</span><span class="p">])</span>
+        <span class="n">epochs_reject</span> <span class="o">=</span> <span class="kc">None</span>
+
     <span class="n">epoched_data</span> <span class="o">=</span> <span class="n">Epochs</span><span class="p">(</span>
         <span class="n">eeg_data</span><span class="p">,</span>
         <span class="n">events</span><span class="o">=</span><span class="n">events</span><span class="p">,</span>
@@ -1224,12 +1270,26 @@
         <span class="n">tmax</span><span class="o">=</span><span class="n">tmax</span><span class="p">,</span>
         <span class="n">baseline</span><span class="o">=</span><span class="n">baseline_window</span><span class="p">,</span>
         <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">,</span>
-        <span class="n">reject</span><span class="o">=</span><span class="n">reject</span><span class="p">,</span>
+        <span class="n">reject</span><span class="o">=</span><span class="n">epochs_reject</span><span class="p">,</span>
     <span class="p">)</span>
 
     <span class="c1"># drop_bad() will apply rejection heuristics and return the filtered</span>
     <span class="c1"># Epochs object; keep this separate for clarity and easier debugging.</span>
     <span class="n">epoched_data</span> <span class="o">=</span> <span class="n">epoched_data</span><span class="o">.</span><span class="n">drop_bad</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">abs_threshold</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">mne</span><span class="w"> </span><span class="kn">import</span> <span class="n">pick_types</span>
+
+        <span class="n">eeg_picks</span> <span class="o">=</span> <span class="n">pick_types</span><span class="p">(</span><span class="n">epoched_data</span><span class="o">.</span><span class="n">info</span><span class="p">,</span> <span class="n">eeg</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">eeg_picks</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">epoched_data</span><span class="p">):</span>
+            <span class="n">amplitude</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">epoched_data</span><span class="o">.</span><span class="n">get_data</span><span class="p">(</span><span class="n">picks</span><span class="o">=</span><span class="n">eeg_picks</span><span class="p">))</span>
+            <span class="n">too_large</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">flatnonzero</span><span class="p">(</span><span class="n">amplitude</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span> <span class="o">&gt;=</span> <span class="n">abs_threshold</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">too_large</span><span class="o">.</span><span class="n">size</span><span class="p">:</span>
+                <span class="n">epoched_data</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">too_large</span><span class="p">,</span> <span class="n">reason</span><span class="o">=</span><span class="s2">"ABS_AMP"</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="c1"># Read back by _save_one_preproc_epochs for the JSON sidecar</span>
+        <span class="c1"># (MNE's own ``reject`` attribute is None in this mode).</span>
+        <span class="n">epoched_data</span><span class="o">.</span><span class="n">ffrprep_reject_abs</span> <span class="o">=</span> <span class="n">abs_threshold</span>
 
     <span class="c1"># Per-condition trial counts for the sidecar. Local import: this</span>
     <span class="c1"># function runs as a Nipype Function node, where module globals are</span>
@@ -1449,6 +1509,8 @@
                 <span class="s2">"ref_channels"</span><span class="p">,</span>
                 <span class="s2">"high_pass"</span><span class="p">,</span>
                 <span class="s2">"low_pass"</span><span class="p">,</span>
+                <span class="s2">"filter_method"</span><span class="p">,</span>
+                <span class="s2">"reject_mode"</span><span class="p">,</span>
                 <span class="s2">"baseline"</span><span class="p">,</span>
                 <span class="s2">"tmin"</span><span class="p">,</span>
                 <span class="s2">"tmax"</span><span class="p">,</span>
@@ -1522,6 +1584,7 @@
                     <span class="s2">"task"</span><span class="p">,</span>
                     <span class="s2">"session"</span><span class="p">,</span>
                     <span class="s2">"run"</span><span class="p">,</span>
+                    <span class="s2">"filter_method"</span><span class="p">,</span>
                 <span class="p">],</span>
                 <span class="n">output_names</span><span class="o">=</span><span class="p">[</span><span class="s2">"filtered_raw_path"</span><span class="p">],</span>
                 <span class="n">function</span><span class="o">=</span><span class="n">filter_raw_file</span><span class="p">,</span>
@@ -1531,7 +1594,7 @@
     <span class="k">else</span><span class="p">:</span>
         <span class="n">filter_node</span> <span class="o">=</span> <span class="n">Node</span><span class="p">(</span>
             <span class="n">Function</span><span class="p">(</span>
-                <span class="n">input_names</span><span class="o">=</span><span class="p">[</span><span class="s2">"eeg_data"</span><span class="p">,</span> <span class="s2">"high_pass"</span><span class="p">,</span> <span class="s2">"low_pass"</span><span class="p">],</span>
+                <span class="n">input_names</span><span class="o">=</span><span class="p">[</span><span class="s2">"eeg_data"</span><span class="p">,</span> <span class="s2">"high_pass"</span><span class="p">,</span> <span class="s2">"low_pass"</span><span class="p">,</span> <span class="s2">"filter_method"</span><span class="p">],</span>
                 <span class="n">output_names</span><span class="o">=</span><span class="p">[</span><span class="s2">"filtered_data"</span><span class="p">],</span>
                 <span class="n">function</span><span class="o">=</span><span class="n">filter_data</span><span class="p">,</span>
             <span class="p">),</span>
@@ -1567,6 +1630,7 @@
                     <span class="s2">"task"</span><span class="p">,</span>
                     <span class="s2">"run"</span><span class="p">,</span>
                     <span class="s2">"trial_types"</span><span class="p">,</span>
+                    <span class="s2">"reject_mode"</span><span class="p">,</span>
                 <span class="p">],</span>
                 <span class="n">output_names</span><span class="o">=</span><span class="p">[</span><span class="s2">"epochs"</span><span class="p">,</span> <span class="s2">"time_window"</span><span class="p">],</span>
                 <span class="n">function</span><span class="o">=</span><span class="n">epoch_data</span><span class="p">,</span>
@@ -1591,6 +1655,7 @@
                     <span class="s2">"task"</span><span class="p">,</span>
                     <span class="s2">"run"</span><span class="p">,</span>
                     <span class="s2">"trial_types"</span><span class="p">,</span>
+                    <span class="s2">"reject_mode"</span><span class="p">,</span>
                 <span class="p">],</span>
                 <span class="n">output_names</span><span class="o">=</span><span class="p">[</span><span class="s2">"epochs"</span><span class="p">,</span> <span class="s2">"time_window"</span><span class="p">],</span>
                 <span class="n">function</span><span class="o">=</span><span class="n">epoch_data</span><span class="p">,</span>
@@ -1662,6 +1727,7 @@
                     <span class="p">[</span>
                         <span class="p">(</span><span class="s2">"high_pass"</span><span class="p">,</span> <span class="s2">"high_pass"</span><span class="p">),</span>
                         <span class="p">(</span><span class="s2">"low_pass"</span><span class="p">,</span> <span class="s2">"low_pass"</span><span class="p">),</span>
+                        <span class="p">(</span><span class="s2">"filter_method"</span><span class="p">,</span> <span class="s2">"filter_method"</span><span class="p">),</span>
                         <span class="p">(</span><span class="s2">"output_dir"</span><span class="p">,</span> <span class="s2">"output_dir"</span><span class="p">),</span>
                         <span class="p">(</span><span class="s2">"sub_label"</span><span class="p">,</span> <span class="s2">"subject"</span><span class="p">),</span>
                         <span class="p">(</span><span class="s2">"task_label"</span><span class="p">,</span> <span class="s2">"task"</span><span class="p">),</span>
@@ -1686,6 +1752,7 @@
                         <span class="p">(</span><span class="s2">"tmin"</span><span class="p">,</span> <span class="s2">"tmin"</span><span class="p">),</span>
                         <span class="p">(</span><span class="s2">"tmax"</span><span class="p">,</span> <span class="s2">"tmax"</span><span class="p">),</span>
                         <span class="p">(</span><span class="s2">"reject"</span><span class="p">,</span> <span class="s2">"reject"</span><span class="p">),</span>
+                        <span class="p">(</span><span class="s2">"reject_mode"</span><span class="p">,</span> <span class="s2">"reject_mode"</span><span class="p">),</span>
                         <span class="p">(</span><span class="s2">"picks"</span><span class="p">,</span> <span class="s2">"picks"</span><span class="p">),</span>
                         <span class="p">(</span><span class="s2">"on_missing"</span><span class="p">,</span> <span class="s2">"on_missing"</span><span class="p">),</span>
                         <span class="p">(</span><span class="s2">"event_id"</span><span class="p">,</span> <span class="s2">"event_id"</span><span class="p">),</span>
@@ -1746,7 +1813,15 @@
                 <span class="p">(</span><span class="n">inputnode</span><span class="p">,</span> <span class="n">reference_node</span><span class="p">,</span> <span class="p">[(</span><span class="s2">"ref_channels"</span><span class="p">,</span> <span class="s2">"ref_channels"</span><span class="p">)]),</span>
                 <span class="c1"># Connect reference to filter</span>
                 <span class="p">(</span><span class="n">reference_node</span><span class="p">,</span> <span class="n">filter_node</span><span class="p">,</span> <span class="p">[(</span><span class="s2">"referenced_data"</span><span class="p">,</span> <span class="s2">"eeg_data"</span><span class="p">)]),</span>
-                <span class="p">(</span><span class="n">inputnode</span><span class="p">,</span> <span class="n">filter_node</span><span class="p">,</span> <span class="p">[(</span><span class="s2">"high_pass"</span><span class="p">,</span> <span class="s2">"high_pass"</span><span class="p">),</span> <span class="p">(</span><span class="s2">"low_pass"</span><span class="p">,</span> <span class="s2">"low_pass"</span><span class="p">)]),</span>
+                <span class="p">(</span>
+                    <span class="n">inputnode</span><span class="p">,</span>
+                    <span class="n">filter_node</span><span class="p">,</span>
+                    <span class="p">[</span>
+                        <span class="p">(</span><span class="s2">"high_pass"</span><span class="p">,</span> <span class="s2">"high_pass"</span><span class="p">),</span>
+                        <span class="p">(</span><span class="s2">"low_pass"</span><span class="p">,</span> <span class="s2">"low_pass"</span><span class="p">),</span>
+                        <span class="p">(</span><span class="s2">"filter_method"</span><span class="p">,</span> <span class="s2">"filter_method"</span><span class="p">),</span>
+                    <span class="p">],</span>
+                <span class="p">),</span>
                 <span class="c1"># Connect filter to epoch</span>
                 <span class="p">(</span><span class="n">filter_node</span><span class="p">,</span> <span class="n">epoch_node</span><span class="p">,</span> <span class="p">[(</span><span class="s2">"filtered_data"</span><span class="p">,</span> <span class="s2">"eeg_data"</span><span class="p">)]),</span>
                 <span class="p">(</span>
@@ -1757,6 +1832,7 @@
                         <span class="p">(</span><span class="s2">"tmin"</span><span class="p">,</span> <span class="s2">"tmin"</span><span class="p">),</span>
                         <span class="p">(</span><span class="s2">"tmax"</span><span class="p">,</span> <span class="s2">"tmax"</span><span class="p">),</span>
                         <span class="p">(</span><span class="s2">"reject"</span><span class="p">,</span> <span class="s2">"reject"</span><span class="p">),</span>
+                        <span class="p">(</span><span class="s2">"reject_mode"</span><span class="p">,</span> <span class="s2">"reject_mode"</span><span class="p">),</span>
                         <span class="p">(</span><span class="s2">"picks"</span><span class="p">,</span> <span class="s2">"picks"</span><span class="p">),</span>
                         <span class="p">(</span><span class="s2">"on_missing"</span><span class="p">,</span> <span class="s2">"on_missing"</span><span class="p">),</span>
                         <span class="p">(</span><span class="s2">"event_id"</span><span class="p">,</span> <span class="s2">"event_id"</span><span class="p">),</span>
@@ -2237,7 +2313,12 @@
     <span class="k">if</span> <span class="n">raw_sources</span><span class="p">:</span>
         <span class="n">sidecar</span><span class="p">[</span><span class="s2">"Sources"</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="sa">f</span><span class="s2">"bids:raw:</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">"</span> <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">raw_sources</span><span class="p">]</span>
         <span class="n">sidecar</span><span class="p">[</span><span class="s2">"RawSources"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">raw_sources</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">reject_thresholds</span><span class="p">:</span>
+    <span class="n">abs_reject</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">epochs</span><span class="p">,</span> <span class="s2">"ffrprep_reject_abs"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">abs_reject</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">sidecar</span><span class="p">[</span><span class="s2">"RejectionMode"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"absolute-amplitude"</span>
+        <span class="n">sidecar</span><span class="p">[</span><span class="s2">"RejectionThresholds"</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"eeg"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">abs_reject</span><span class="p">)}</span>
+    <span class="k">elif</span> <span class="n">reject_thresholds</span><span class="p">:</span>
+        <span class="n">sidecar</span><span class="p">[</span><span class="s2">"RejectionMode"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"peak-to-peak"</span>
         <span class="n">sidecar</span><span class="p">[</span><span class="s2">"RejectionThresholds"</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
             <span class="n">k</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">reject_thresholds</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
         <span class="p">}</span>

@@ -46,13 +46,13 @@
   
   
   
-    <title>ffrprep.group.run_group_level &#8212; ffrprep 0.1.dev1+g29c38576b documentation</title>
+    <title>ffrprep.group.run_group_level &#8212; ffrprep 0.1.dev1+g626fc0d1d documentation</title>
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
     <link rel="stylesheet" type="text/css" href="../_static/material.css?v=79c92029" />
     <link rel="stylesheet" type="text/css" href="../_static/plot_directive.css" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
-    <script src="../_static/documentation_options.js?v=aca2d354"></script>
+    <script src="../_static/documentation_options.js?v=40177eca"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -85,7 +85,7 @@
   <nav class="md-header-nav md-grid">
     <div class="md-flex navheader">
       <div class="md-flex__cell md-flex__cell--shrink">
-        <a href="../index.html" title="ffrprep 0.1.dev1+g29c38576b documentation"
+        <a href="../index.html" title="ffrprep 0.1.dev1+g626fc0d1d documentation"
            class="md-header-nav__button md-logo">
           
             &nbsp;
@@ -171,7 +171,7 @@
   <nav class="md-tabs" data-md-component="tabs">
     <div class="md-tabs__inner md-grid">
       <ul class="md-tabs__list">
-          <li class="md-tabs__item"><a href="../index.html" class="md-tabs__link">ffrprep 0.1.dev1+g29c38576b documentation</a></li>
+          <li class="md-tabs__item"><a href="../index.html" class="md-tabs__link">ffrprep 0.1.dev1+g626fc0d1d documentation</a></li>
           <li class="md-tabs__item"><a href="../api_ref.html" class="md-tabs__link">Reference API</a></li>
       </ul>
     </div>
@@ -184,13 +184,13 @@
               <div class="md-sidebar__inner">
                 <nav class="md-nav md-nav--primary" data-md-level="0">
   <label class="md-nav__title md-nav__title--site" for="__drawer">
-    <a href="../index.html" title="ffrprep 0.1.dev1+g29c38576b documentation" class="md-nav__button md-logo">
+    <a href="../index.html" title="ffrprep 0.1.dev1+g626fc0d1d documentation" class="md-nav__button md-logo">
       
         <img src="../_static/" alt=" logo" width="48" height="48">
       
     </a>
     <a href="../index.html"
-       title="ffrprep 0.1.dev1+g29c38576b documentation">ffrprep</a>
+       title="ffrprep 0.1.dev1+g626fc0d1d documentation">ffrprep</a>
   </label>
     <div class="md-nav__source">
       <a href="https://github.com/sitek/ffrprep" title="Go to repository" class="md-source" data-md-source="github">
@@ -307,7 +307,14 @@ session, run) with at least two contributing subjects, writes them
 plus a group HTML report to <code class="docutils literal notranslate"><span class="pre">args.output_dir/ffrprep-group/</span></code>, and
 returns the list of output paths written.</p>
 <p>This step only aggregates outputs participant-level ffrprep has
-already computed; it does not run any group-level statistics.</p>
+already computed; it does not run any group-level statistics. When
+<code class="docutils literal notranslate"><span class="pre">args.f0</span></code> / <code class="docutils literal notranslate"><span class="pre">args.stimulus</span></code> are set, the metrics table also gets
+harmonic-amplitude and stimulus-to-response columns computed from the
+sum of the per-trial-type averages, and subject-level covariates from
+<code class="docutils literal notranslate"><span class="pre">&lt;bids_dir&gt;/participants.tsv</span></code> and <code class="docutils literal notranslate"><span class="pre">args.covariates</span></code> are joined onto
+the saved TSV (never used for inference here). <code class="docutils literal notranslate"><span class="pre">args.min_usable_pct</span></code> /
+<code class="docutils literal notranslate"><span class="pre">args.min_snr</span></code> add <code class="docutils literal notranslate"><span class="pre">qc_*</span></code> flag columns (see <a class="reference internal" href="ffrprep.group.add_qc_flags.html#ffrprep.group.add_qc_flags" title="ffrprep.group.add_qc_flags"><code class="xref py py-func docutils literal notranslate"><span class="pre">add_qc_flags()</span></code></a>);
+flagged subjects stay in the table and the grand averages.</p>
 </dd></dl>
 </section>
 

@@ -46,13 +46,13 @@
   
   
   
-    <title>Usage &#8212; ffrprep 0.1.dev1+g29c38576b documentation</title>
+    <title>Usage &#8212; ffrprep 0.1.dev1+g626fc0d1d documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
     <link rel="stylesheet" type="text/css" href="_static/material.css?v=79c92029" />
     <link rel="stylesheet" type="text/css" href="_static/plot_directive.css" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
-    <script src="_static/documentation_options.js?v=aca2d354"></script>
+    <script src="_static/documentation_options.js?v=40177eca"></script>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -85,7 +85,7 @@
   <nav class="md-header-nav md-grid">
     <div class="md-flex navheader">
       <div class="md-flex__cell md-flex__cell--shrink">
-        <a href="index.html" title="ffrprep 0.1.dev1+g29c38576b documentation"
+        <a href="index.html" title="ffrprep 0.1.dev1+g626fc0d1d documentation"
            class="md-header-nav__button md-logo">
           
             &nbsp;
@@ -171,7 +171,7 @@
   <nav class="md-tabs" data-md-component="tabs">
     <div class="md-tabs__inner md-grid">
       <ul class="md-tabs__list">
-          <li class="md-tabs__item"><a href="index.html" class="md-tabs__link">ffrprep 0.1.dev1+g29c38576b documentation</a></li>
+          <li class="md-tabs__item"><a href="index.html" class="md-tabs__link">ffrprep 0.1.dev1+g626fc0d1d documentation</a></li>
       </ul>
     </div>
   </nav>
@@ -183,13 +183,13 @@
               <div class="md-sidebar__inner">
                 <nav class="md-nav md-nav--primary" data-md-level="0">
   <label class="md-nav__title md-nav__title--site" for="__drawer">
-    <a href="index.html" title="ffrprep 0.1.dev1+g29c38576b documentation" class="md-nav__button md-logo">
+    <a href="index.html" title="ffrprep 0.1.dev1+g626fc0d1d documentation" class="md-nav__button md-logo">
       
         <img src="_static/" alt=" logo" width="48" height="48">
       
     </a>
     <a href="index.html"
-       title="ffrprep 0.1.dev1+g29c38576b documentation">ffrprep</a>
+       title="ffrprep 0.1.dev1+g626fc0d1d documentation">ffrprep</a>
   </label>
     <div class="md-nav__source">
       <a href="https://github.com/sitek/ffrprep" title="Go to repository" class="md-source" data-md-source="github">
@@ -245,6 +245,8 @@
         </li>
         <li class="md-nav__item"><a href="#ffrprep.ffrprep_cli-get_parser-analysis-options" class="md-nav__link">Analysis options</a>
         </li>
+        <li class="md-nav__item"><a href="#ffrprep.ffrprep_cli-get_parser-group-level-options" class="md-nav__link">Group-level options</a>
+        </li>
         <li class="md-nav__item"><a href="#example-call-s" class="md-nav__link">Example Call(s)</a><nav class="md-nav">
               <ul class="md-nav__list">
         <li class="md-nav__item"><a href="#example-1-basic-preprocessing" class="md-nav__link">Example 1 - Basic preprocessing</a>
@@ -268,6 +270,8 @@
         <li class="md-nav__item"><a href="#cluster-slurm-job-array" class="md-nav__link">Cluster (slurm job array)</a>
         </li>
         <li class="md-nav__item"><a href="#cluster-gnu-parallel-on-a-single-beefy-box" class="md-nav__link">Cluster (GNU parallel on a single beefy box)</a>
+        </li>
+        <li class="md-nav__item"><a href="#resuming-and-saving-disk-space" class="md-nav__link">Resuming and saving disk space</a>
         </li>
         <li class="md-nav__item"><a href="#failure-handling" class="md-nav__link">Failure handling</a>
         </li></ul>
@@ -352,6 +356,8 @@
         </li>
         <li class="md-nav__item"><a href="#ffrprep.ffrprep_cli-get_parser-analysis-options" class="md-nav__link">Analysis options</a>
         </li>
+        <li class="md-nav__item"><a href="#ffrprep.ffrprep_cli-get_parser-group-level-options" class="md-nav__link">Group-level options</a>
+        </li>
         <li class="md-nav__item"><a href="#example-call-s" class="md-nav__link">Example Call(s)</a><nav class="md-nav">
               <ul class="md-nav__list">
         <li class="md-nav__item"><a href="#example-1-basic-preprocessing" class="md-nav__link">Example 1 - Basic preprocessing</a>
@@ -375,6 +381,8 @@
         <li class="md-nav__item"><a href="#cluster-slurm-job-array" class="md-nav__link">Cluster (slurm job array)</a>
         </li>
         <li class="md-nav__item"><a href="#cluster-gnu-parallel-on-a-single-beefy-box" class="md-nav__link">Cluster (GNU parallel on a single beefy box)</a>
+        </li>
+        <li class="md-nav__item"><a href="#resuming-and-saving-disk-space" class="md-nav__link">Resuming and saving disk space</a>
         </li>
         <li class="md-nav__item"><a href="#failure-handling" class="md-nav__link">Failure handling</a>
         </li></ul>
@@ -472,14 +480,25 @@ augments every <code class="docutils literal notranslate"><span class="pre">sub-
                <span class="p">[</span><span class="o">--</span><span class="n">h_freq</span> <span class="n">H_FREQ</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="nb">filter</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">baseline</span> <span class="n">START</span> <span class="n">END</span><span class="p">]</span>
                <span class="p">[</span><span class="o">--</span><span class="n">picks</span> <span class="n">PICKS</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">on</span><span class="o">-</span><span class="n">missing</span> <span class="p">{</span><span class="n">warn</span><span class="p">,</span><span class="k">raise</span><span class="p">,</span><span class="n">ignore</span><span class="p">}]</span>
                <span class="p">[</span><span class="o">--</span><span class="n">event</span><span class="o">-</span><span class="nb">id</span> <span class="n">EVENT_ID</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">events</span><span class="o">-</span><span class="n">file</span> <span class="n">EVENTS_FILE</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">tmin</span> <span class="n">TMIN</span><span class="p">]</span>
-               <span class="p">[</span><span class="o">--</span><span class="n">tmax</span> <span class="n">TMAX</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">reject</span><span class="o">-</span><span class="n">eeg</span> <span class="n">REJECT_EEG</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">auto</span><span class="o">-</span><span class="n">reject</span><span class="p">]</span>
-               <span class="p">[</span><span class="o">--</span><span class="n">concat</span><span class="o">-</span><span class="n">runs</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">save</span><span class="o">-</span><span class="n">each</span><span class="o">-</span><span class="n">node</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">run</span> <span class="n">RUN</span> <span class="p">[</span><span class="n">RUN</span> <span class="o">...</span><span class="p">]]</span>
-               <span class="p">[</span><span class="o">--</span><span class="n">task</span> <span class="n">TASK</span> <span class="p">[</span><span class="n">TASK</span> <span class="o">...</span><span class="p">]]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">tmax</span> <span class="n">TMAX</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">reject</span><span class="o">-</span><span class="n">eeg</span> <span class="n">REJECT_EEG</span><span class="p">]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">reject</span><span class="o">-</span><span class="n">mode</span> <span class="p">{</span><span class="n">ptp</span><span class="p">,</span><span class="nb">abs</span><span class="p">}]</span> <span class="p">[</span><span class="o">--</span><span class="nb">filter</span><span class="o">-</span><span class="n">method</span> <span class="p">{</span><span class="n">fir</span><span class="p">,</span><span class="n">iir</span><span class="p">}]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">auto</span><span class="o">-</span><span class="n">reject</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">concat</span><span class="o">-</span><span class="n">runs</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">save</span><span class="o">-</span><span class="n">each</span><span class="o">-</span><span class="n">node</span><span class="p">]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">run</span> <span class="n">RUN</span> <span class="p">[</span><span class="n">RUN</span> <span class="o">...</span><span class="p">]]</span> <span class="p">[</span><span class="o">--</span><span class="n">task</span> <span class="n">TASK</span> <span class="p">[</span><span class="n">TASK</span> <span class="o">...</span><span class="p">]]</span>
                <span class="p">[</span><span class="o">--</span><span class="n">split</span><span class="o">-</span><span class="n">by</span><span class="o">-</span><span class="n">trial</span><span class="o">-</span><span class="nb">type</span> <span class="o">|</span> <span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">split</span><span class="o">-</span><span class="n">by</span><span class="o">-</span><span class="n">trial</span><span class="o">-</span><span class="nb">type</span><span class="p">]</span>
                <span class="p">[</span><span class="o">--</span><span class="n">trial</span><span class="o">-</span><span class="n">types</span> <span class="n">TRIAL_TYPES</span> <span class="p">[</span><span class="n">TRIAL_TYPES</span> <span class="o">...</span><span class="p">]]</span>
                <span class="p">[</span><span class="o">--</span><span class="n">difference</span><span class="o">-</span><span class="n">pairs</span> <span class="n">DIFFERENCE_PAIRS</span> <span class="p">[</span><span class="n">DIFFERENCE_PAIRS</span> <span class="o">...</span><span class="p">]]</span>
-               <span class="p">[</span><span class="o">--</span><span class="n">response</span><span class="o">-</span><span class="n">window</span> <span class="n">START</span> <span class="n">END</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">skip_bids_validation</span><span class="p">]</span>
-               <span class="p">[</span><span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">report</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">n_procs</span> <span class="n">N_PROCS</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">work_dir</span> <span class="n">WORK_DIR</span><span class="p">]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">response</span><span class="o">-</span><span class="n">window</span> <span class="n">START</span> <span class="n">END</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">f0</span> <span class="n">F0</span><span class="p">]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">n</span><span class="o">-</span><span class="n">harmonics</span> <span class="n">N_HARMONICS</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">harmonic</span><span class="o">-</span><span class="nb">bin</span><span class="o">-</span><span class="n">hz</span> <span class="n">HARMONIC_BIN_HZ</span><span class="p">]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">harmonic</span><span class="o">-</span><span class="n">window</span> <span class="n">START</span> <span class="n">END</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">stimulus</span> <span class="n">STIMULUS</span><span class="p">]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">xcorr</span><span class="o">-</span><span class="n">stim</span><span class="o">-</span><span class="n">window</span> <span class="n">START</span> <span class="n">END</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">xcorr</span><span class="o">-</span><span class="n">resp</span><span class="o">-</span><span class="n">window</span> <span class="n">START</span> <span class="n">END</span><span class="p">]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">xcorr</span><span class="o">-</span><span class="n">lag</span><span class="o">-</span><span class="nb">range</span> <span class="n">MIN_MS</span> <span class="n">MAX_MS</span><span class="p">]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">xcorr</span><span class="o">-</span><span class="n">lag</span><span class="o">-</span><span class="n">resp</span><span class="o">-</span><span class="n">window</span> <span class="n">START</span> <span class="n">END</span><span class="p">]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">n</span><span class="o">-</span><span class="n">trials</span><span class="o">-</span><span class="n">presented</span> <span class="n">N_TRIALS_PRESENTED</span><span class="p">]</span>
+               <span class="p">[</span><span class="o">--</span><span class="nb">min</span><span class="o">-</span><span class="n">usable</span><span class="o">-</span><span class="n">pct</span> <span class="n">MIN_USABLE_PCT</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="nb">min</span><span class="o">-</span><span class="n">snr</span> <span class="n">MIN_SNR</span><span class="p">]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">covariates</span> <span class="n">COVARIATES</span> <span class="p">[</span><span class="n">COVARIATES</span> <span class="o">...</span><span class="p">]]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">skip_bids_validation</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">report</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">skip</span><span class="o">-</span><span class="n">existing</span><span class="p">]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">clean</span><span class="o">-</span><span class="n">work</span><span class="o">-</span><span class="nb">dir</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">keep</span><span class="o">-</span><span class="n">epochs</span> <span class="o">|</span> <span class="o">--</span><span class="n">no</span><span class="o">-</span><span class="n">keep</span><span class="o">-</span><span class="n">epochs</span><span class="p">]</span>
+               <span class="p">[</span><span class="o">--</span><span class="n">n_procs</span> <span class="n">N_PROCS</span><span class="p">]</span> <span class="p">[</span><span class="o">--</span><span class="n">work_dir</span> <span class="n">WORK_DIR</span><span class="p">]</span>
                <span class="n">bids_dir</span> <span class="n">output_dir</span> <span class="p">{</span><span class="n">participant</span><span class="p">,</span><span class="n">group</span><span class="p">}</span>
 </pre></div>
 </div>
@@ -516,6 +535,15 @@ augments every <code class="docutils literal notranslate"><span class="pre">sub-
 </dd>
 <dt><kbd>--no-report</kbd></dt>
 <dd><p>Skip HTML report generation (preprocessing and analysis). Derivatives are still written. Useful for bulk runs over many subjects, where report figures dominate runtime.</p>
+</dd>
+<dt><kbd>--skip-existing</kbd></dt>
+<dd><p>Skip (task, run) iterations whose outputs already exist (matched on the JSON sidecars, so this still works after –no-keep-epochs). Makes an interrupted run resumable by re-issuing the same command.</p>
+</dd>
+<dt><kbd>--clean-work-dir</kbd></dt>
+<dd><p>Delete each iteration’s nipype working files once it succeeds (they can be several GB per subject); worker logs are kept. Work dirs of failed iterations are left in place for debugging.</p>
+</dd>
+<dt><kbd>--keep-epochs, --no-keep-epochs</kbd></dt>
+<dd><p>Keep the large preprocessed epochs (_epo.fif) files after the analysis stage. –no-keep-epochs deletes them (JSON sidecars stay) once analysis and its report are done; ignored with –stage preprocessing because analysis still needs them.</p>
 </dd>
 <dt><kbd>--n_procs</kbd></dt>
 <dd><p>Number of parallel (task, run) workers per subject. Each worker runs its own preprocessing or analysis workflow with the Linear plugin. Memory footprint scales linearly with this value. A failure in any worker aborts the run. Default: 1 (sequential). For multi-node / cluster scaling, run one ffrprep invocation per subject (e.g. via slurm array or GNU parallel) and use –n_procs to control intra-subject parallelism.</p>
@@ -569,7 +597,15 @@ augments every <code class="docutils literal notranslate"><span class="pre">sub-
 <dd><p>End time of epochs relative to event onset (s).</p>
 </dd>
 <dt><kbd>--reject-eeg</kbd></dt>
-<dd><p>Peak-to-peak rejection threshold for EEG channels in Volts. Set to 0 to disable automatic rejection.</p>
+<dd><p>Rejection threshold for EEG channels in Volts (peak-to-peak by default; see –reject-mode). Set to 0 to disable automatic rejection.</p>
+</dd>
+<dt><kbd>--reject-mode</kbd></dt>
+<dd><p>Possible choices: ptp, abs</p>
+<p>How –reject-eeg is applied: ‘ptp’ = MNE peak-to-peak criterion (default); ‘abs’ = drop epochs whose absolute amplitude reaches the threshold at any sample (max|x| &gt;= threshold), e.g. –reject-mode abs –reject-eeg 35e-6.</p>
+</dd>
+<dt><kbd>--filter-method</kbd></dt>
+<dd><p>Possible choices: fir, iir</p>
+<p>Band-pass filter design: ‘fir’ = MNE zero-phase FIR with automatic transition bandwidth (default); ‘iir’ = zero-phase first-order Butterworth high-pass then low-pass (12 dB/octave overall, forward-backward), as used in some published FFR pipelines.</p>
 </dd>
 <dt><kbd>--no-auto-reject</kbd></dt>
 <dd><p>Disable automatic amplitude-based epoch rejection.</p>
@@ -602,6 +638,51 @@ augments every <code class="docutils literal notranslate"><span class="pre">sub-
 </dd>
 <dt><kbd>--response-window</kbd></dt>
 <dd><p>Response window for RMS SNR and band-power summary metrics. Provide two numbers: START END in seconds, relative to the Evoked time axis (e.g. –response-window 0.1 0.2 for 100-200 ms).</p>
+</dd>
+</dl>
+</section>
+<section id="ffrprep.ffrprep_cli-get_parser-group-level-options">
+<h3 id="ffrprep.ffrprep_cli-get_parser-group-level-options">Group-level options<a class="headerlink" href="#ffrprep.ffrprep_cli-get_parser-group-level-options" title="Link to this heading">¶</a></h3>
+<p>Used with the ‘group’ analysis level. They add optional columns to the group metrics table; nothing here performs statistical inference.</p>
+<dl class="option-list">
+<dt><kbd>--f0</kbd></dt>
+<dd><p>Stimulus fundamental frequency in Hz. When set, the group metrics table gains rms_snr_polarity_sum, f0_uv and upper_harmonics_uv (band-averaged FFT amplitude at each harmonic, in microvolts) computed on the SUM of the two per-trial-type averages.</p>
+</dd>
+<dt><kbd>--n-harmonics</kbd></dt>
+<dd><p>Number of harmonics (including the fundamental) for –f0.</p>
+</dd>
+<dt><kbd>--harmonic-bin-hz</kbd></dt>
+<dd><p>Full width in Hz of the band averaged around each harmonic.</p>
+</dd>
+<dt><kbd>--harmonic-window</kbd></dt>
+<dd><p>Response window in seconds for the harmonic FFT.</p>
+</dd>
+<dt><kbd>--stimulus</kbd></dt>
+<dd><p>WAV file of the stimulus (t=0 at stimulus onset). When set, the group metrics table gains stim2resp_r / stim2resp_z / stim2resp_lag_ms: the maximum stimulus-to-response cross-correlation (‘coeff’ normalization, Fisher z) on the polarity-summed response. The stimulus is resampled to the EEG sampling rate.</p>
+</dd>
+<dt><kbd>--xcorr-stim-window</kbd></dt>
+<dd><p>Stimulus segment in seconds for –stimulus.</p>
+</dd>
+<dt><kbd>--xcorr-resp-window</kbd></dt>
+<dd><p>Response segment in seconds for –stimulus.</p>
+</dd>
+<dt><kbd>--xcorr-lag-range</kbd></dt>
+<dd><p>Additionally report the maximum correlation restricted to this lag window in ms (columns stim2resp_lim_*). Positive lag = response delayed relative to the stimulus, with both segments aligned at their start.</p>
+</dd>
+<dt><kbd>--xcorr-lag-resp-window</kbd></dt>
+<dd><p>Response segment in seconds for the lag-restricted correlation (defaults to –xcorr-resp-window).</p>
+</dd>
+<dt><kbd>--n-trials-presented</kbd></dt>
+<dd><p>Trials presented per recording; adds usable_pct (kept trials / presented) to the group metrics table.</p>
+</dd>
+<dt><kbd>--min-usable-pct</kbd></dt>
+<dd><p>QC threshold on usable_pct (needs –n-trials-presented). Adds qc_usable_pct_ok, qc_include and qc_reason columns; flagged subjects are kept in the table and grand averages.</p>
+</dd>
+<dt><kbd>--min-snr</kbd></dt>
+<dd><p>QC threshold on RMS SNR (polarity-sum when available). Adds qc_snr_ok, qc_include and qc_reason columns; flagged subjects are kept in the table and grand averages.</p>
+</dd>
+<dt><kbd>--covariates</kbd></dt>
+<dd><p>Extra subject-level TSV files (with a participant_id column) to join onto the group metrics table, in addition to &lt;bids_dir&gt;/participants.tsv.</p>
 </dd>
 </dl>
 </section>
@@ -776,6 +857,34 @@ recomputed from each subject’s saved evoked/epochs), and a single
 <code class="docutils literal notranslate"><span class="pre">/data/derivatives/ffrprep-group/</span></code>. <code class="docutils literal notranslate"><span class="pre">--participant_label</span></code> and
 <code class="docutils literal notranslate"><span class="pre">--task</span></code> restrict which subjects/tasks are aggregated, same as at
 the participant level.</p>
+<p>Optional metrics for FFR studies are switched on with flags. With
+<code class="docutils literal notranslate"><span class="pre">--f0</span></code> the metrics table gains <code class="docutils literal notranslate"><span class="pre">f0_uv</span></code> and <code class="docutils literal notranslate"><span class="pre">upper_harmonics_uv</span></code> (FFT
+amplitude, in microvolts, averaged in a 60 Hz band around each harmonic of
+the stimulus F0 over 60-180 ms) and <code class="docutils literal notranslate"><span class="pre">rms_snr_polarity_sum</span></code>, all computed
+on the <strong>sum</strong> of the two per-trial-type averages. With <code class="docutils literal notranslate"><span class="pre">--stimulus</span></code> (a
+WAV file) it also gains <code class="docutils literal notranslate"><span class="pre">stim2resp_r</span></code> / <code class="docutils literal notranslate"><span class="pre">stim2resp_z</span></code> /
+<code class="docutils literal notranslate"><span class="pre">stim2resp_lag_ms</span></code>, the maximum stimulus-to-response cross-correlation
+(<code class="docutils literal notranslate"><span class="pre">xcorr</span></code> “coeff” normalization, Fisher z). <code class="docutils literal notranslate"><span class="pre">participants.tsv</span></code> from the
+BIDS directory (plus any <code class="docutils literal notranslate"><span class="pre">--covariates</span></code> TSVs) is joined onto the saved
+table so downstream statistics have group, age, etc. alongside the metrics:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ffrprep<span class="w"> </span>/data<span class="w"> </span>/data/derivatives<span class="w"> </span>group<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--f0<span class="w"> </span><span class="m">100</span><span class="w"> </span>--n-harmonics<span class="w"> </span><span class="m">10</span><span class="w"> </span>--harmonic-window<span class="w"> </span><span class="m">0</span>.06<span class="w"> </span><span class="m">0</span>.18<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--stimulus<span class="w"> </span>/path/to/da.wav<span class="w"> </span>--xcorr-stim-window<span class="w"> </span><span class="m">0</span>.05<span class="w"> </span><span class="m">0</span>.17<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--xcorr-resp-window<span class="w"> </span><span class="m">0</span>.06<span class="w"> </span><span class="m">0</span>.18<span class="w"> </span>--n-trials-presented<span class="w"> </span><span class="m">6000</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">--min-usable-pct</span></code> and <code class="docutils literal notranslate"><span class="pre">--min-snr</span></code> add quality-control flag columns
+(<code class="docutils literal notranslate"><span class="pre">qc_usable_pct_ok</span></code>, <code class="docutils literal notranslate"><span class="pre">qc_snr_ok</span></code>, <code class="docutils literal notranslate"><span class="pre">qc_include</span></code> and a <code class="docutils literal notranslate"><span class="pre">qc_reason</span></code> text
+column) to the table. Subjects below a threshold are <strong>flagged, not removed</strong>:
+the table and the grand averages still contain them, and you decide
+downstream whether to filter on <code class="docutils literal notranslate"><span class="pre">qc_include</span></code>. <code class="docutils literal notranslate"><span class="pre">--min-usable-pct</span></code> needs
+<code class="docutils literal notranslate"><span class="pre">--n-trials-presented</span></code>; <code class="docutils literal notranslate"><span class="pre">--min-snr</span></code> uses <code class="docutils literal notranslate"><span class="pre">rms_snr_polarity_sum</span></code> when
+<code class="docutils literal notranslate"><span class="pre">--f0</span></code> is set and the combined-evoked <code class="docutils literal notranslate"><span class="pre">rms_snr</span></code> otherwise.</p>
+<p>Next to <code class="docutils literal notranslate"><span class="pre">*_metrics.tsv</span></code> the group step writes <code class="docutils literal notranslate"><span class="pre">*_metrics.json</span></code>, a
+BIDS-style data dictionary with a description and units for every column. It
+records the windows, harmonic settings and QC thresholds the run used, and
+copies the descriptions of joined covariates from the <code class="docutils literal notranslate"><span class="pre">.json</span></code> next to their
+TSV (for example <code class="docutils literal notranslate"><span class="pre">participants.json</span></code>) when there is one.</p>
 <p>This step only aggregates outputs participant-level ffrprep has
 already computed — it does not perform any group-level statistics
 (no hypothesis tests, no GLM). Downstream statistical analysis is
@@ -837,6 +946,32 @@ ffrprep<span class="w"> </span>/data<span class="w"> </span>/data/derivatives<sp
 <span class="w">  </span>:::<span class="w"> </span><span class="m">01</span><span class="w"> </span><span class="m">02</span><span class="w"> </span><span class="m">03</span><span class="w"> </span><span class="m">04</span><span class="w"> </span><span class="m">05</span><span class="w"> </span><span class="m">06</span><span class="w"> </span><span class="m">07</span><span class="w"> </span><span class="m">08</span>
 </pre></div>
 </div>
+</section>
+<section id="resuming-and-saving-disk-space">
+<h3 id="resuming-and-saving-disk-space">Resuming and saving disk space<a class="headerlink" href="#resuming-and-saving-disk-space" title="Link to this heading">¶</a></h3>
+<p>Large cohorts are limited by disk space more than by CPU: each subject’s
+Nipype working directory can hold several GB, and the epochs files are
+much larger than the evokeds. Three flags make bulk runs resumable and
+lean:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ffrprep<span class="w"> </span>/data<span class="w"> </span>/data/derivatives<span class="w"> </span>participant<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--participant_label<span class="w"> </span><span class="m">01</span><span class="w"> </span><span class="m">02</span><span class="w"> </span><span class="m">03</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--skip-existing<span class="w"> </span>--clean-work-dir<span class="w"> </span>--no-keep-epochs
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">--skip-existing</span></code> skips (task, run) iterations whose JSON sidecar
+outputs already exist, so an interrupted run can simply be started again.
+Completion is judged from the sidecars, so it still works after
+<code class="docutils literal notranslate"><span class="pre">--no-keep-epochs</span></code>. Iterations that are already complete build no
+report.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--clean-work-dir</span></code> deletes each iteration’s Nipype working files once
+it has succeeded. Worker logs are kept, and the working files of a failed
+iteration are kept for debugging.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--no-keep-epochs</span></code> deletes the <code class="docutils literal notranslate"><span class="pre">*_epo.fif</span></code> files after the analysis
+stage (evokeds and all JSON sidecars stay). It is ignored, with a
+warning, for <code class="docutils literal notranslate"><span class="pre">--stage</span> <span class="pre">preprocessing</span></code> because the analysis stage still
+needs the epochs.</p></li>
+</ul>
 </section>
 <section id="failure-handling">
 <h3 id="failure-handling">Failure handling<a class="headerlink" href="#failure-handling" title="Link to this heading">¶</a></h3>

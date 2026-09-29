@@ -1,0 +1,6 @@
+﻿ffrprep.analysis.resample\_signal
+=================================
+
+.. currentmodule:: ffrprep.analysis
+
+.. autofunction:: resample_signal

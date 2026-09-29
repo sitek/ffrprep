@@ -45,13 +45,13 @@
   
   
   
-    <title>ffrprep.analysis &#8212; ffrprep 0.1.dev1+g29c38576b documentation</title>
+    <title>ffrprep.analysis &#8212; ffrprep 0.1.dev1+g626fc0d1d documentation</title>
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
     <link rel="stylesheet" type="text/css" href="../../_static/material.css?v=79c92029" />
     <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
-    <script src="../../_static/documentation_options.js?v=aca2d354"></script>
+    <script src="../../_static/documentation_options.js?v=40177eca"></script>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -82,7 +82,7 @@
   <nav class="md-header-nav md-grid">
     <div class="md-flex navheader">
       <div class="md-flex__cell md-flex__cell--shrink">
-        <a href="../../index.html" title="ffrprep 0.1.dev1+g29c38576b documentation"
+        <a href="../../index.html" title="ffrprep 0.1.dev1+g626fc0d1d documentation"
            class="md-header-nav__button md-logo">
           
             &nbsp;
@@ -168,7 +168,7 @@
   <nav class="md-tabs" data-md-component="tabs">
     <div class="md-tabs__inner md-grid">
       <ul class="md-tabs__list">
-          <li class="md-tabs__item"><a href="../../index.html" class="md-tabs__link">ffrprep 0.1.dev1+g29c38576b documentation</a></li>
+          <li class="md-tabs__item"><a href="../../index.html" class="md-tabs__link">ffrprep 0.1.dev1+g626fc0d1d documentation</a></li>
           <li class="md-tabs__item"><a href="../index.html" class="md-tabs__link">Module code</a></li>
       </ul>
     </div>
@@ -181,13 +181,13 @@
               <div class="md-sidebar__inner">
                 <nav class="md-nav md-nav--primary" data-md-level="0">
   <label class="md-nav__title md-nav__title--site" for="__drawer">
-    <a href="../../index.html" title="ffrprep 0.1.dev1+g29c38576b documentation" class="md-nav__button md-logo">
+    <a href="../../index.html" title="ffrprep 0.1.dev1+g626fc0d1d documentation" class="md-nav__button md-logo">
       
         <img src="../../_static/" alt=" logo" width="48" height="48">
       
     </a>
     <a href="../../index.html"
-       title="ffrprep 0.1.dev1+g29c38576b documentation">ffrprep</a>
+       title="ffrprep 0.1.dev1+g626fc0d1d documentation">ffrprep</a>
   </label>
     <div class="md-nav__source">
       <a href="https://github.com/sitek/ffrprep" title="Go to repository" class="md-source" data-md-source="github">
@@ -1381,6 +1381,187 @@
         <span class="n">amplitude</span> <span class="o">=</span> <span class="n">amplitude</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span>
 
     <span class="k">return</span> <span class="n">freqs</span><span class="p">,</span> <span class="n">amplitude</span></div>
+
+
+
+<div class="viewcode-block" id="harmonic_amplitudes">
+<a class="viewcode-back" href="../../generated/ffrprep.analysis.harmonic_amplitudes.html#ffrprep.analysis.harmonic_amplitudes">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">harmonic_amplitudes</span><span class="p">(</span>
+    <span class="n">evoked</span><span class="p">,</span>
+    <span class="n">f0</span><span class="o">=</span><span class="mf">100.0</span><span class="p">,</span>
+    <span class="n">n_harmonics</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+    <span class="n">bin_hz</span><span class="o">=</span><span class="mf">60.0</span><span class="p">,</span>
+    <span class="n">tmin</span><span class="o">=</span><span class="mf">0.060</span><span class="p">,</span>
+    <span class="n">tmax</span><span class="o">=</span><span class="mf">0.180</span><span class="p">,</span>
+    <span class="n">pad_pow</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+    <span class="n">ch_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">unit_scale</span><span class="o">=</span><span class="mf">1e6</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Spectral amplitude of the fundamental and its harmonics in an FFR.</span>
+
+<span class="sd">    The steady-state portion of the response (``tmin``-``tmax``) is</span>
+<span class="sd">    Fourier transformed with zero padding to</span>
+<span class="sd">    ``2 ** (ceil(log2(L)) + pad_pow)`` points (``L`` = window length in</span>
+<span class="sd">    samples), converted to single-sided amplitude ``2 * |FFT| / L`` and,</span>
+<span class="sd">    for harmonic ``k`` (``k = 1 .. n_harmonics``, harmonic 1 = ``f0``),</span>
+<span class="sd">    averaged over all FFT points within ``k * f0 +/- bin_hz / 2``. The</span>
+<span class="sd">    defaults reproduce the /da/ (100 Hz F0) F0 / upper-harmonic measure of</span>
+<span class="sd">    Whiteford et al. (2025), which is computed on the *sum* of the two</span>
+<span class="sd">    polarity averages.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    evoked : mne.Evoked</span>
+<span class="sd">        Response to analyze (in Volts), e.g. the sum of the per-polarity</span>
+<span class="sd">        averages.</span>
+<span class="sd">    f0 : float, default=100.0</span>
+<span class="sd">        Fundamental frequency of the stimulus in Hz.</span>
+<span class="sd">    n_harmonics : int, default=10</span>
+<span class="sd">        Number of harmonics (including the fundamental) to evaluate.</span>
+<span class="sd">    bin_hz : float, default=60.0</span>
+<span class="sd">        Full width of the averaging band centred on each harmonic, in Hz.</span>
+<span class="sd">    tmin, tmax : float</span>
+<span class="sd">        Analysis window in seconds relative to the Evoked time axis</span>
+<span class="sd">        (inclusive at both ends).</span>
+<span class="sd">    pad_pow : int, default=2</span>
+<span class="sd">        Extra powers of two of zero padding beyond the next power of two.</span>
+<span class="sd">    ch_name : str, optional</span>
+<span class="sd">        Channel to analyze. Defaults to the first channel.</span>
+<span class="sd">    unit_scale : float, default=1e6</span>
+<span class="sd">        Multiplier applied to the data before the FFT (1e6 -&gt; microvolts).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    result : dict</span>
+<span class="sd">        ``"harmonics"`` : ndarray of shape (n_harmonics,) with the band-</span>
+<span class="sd">        averaged amplitude of each harmonic; ``"f0"`` : amplitude of the</span>
+<span class="sd">        first harmonic; ``"upper_harmonics"`` : sum of harmonics 2 to</span>
+<span class="sd">        ``n_harmonics`` (0.0 if ``n_harmonics`` is 1).</span>
+<span class="sd">    """</span>
+    <span class="n">sfreq</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">evoked</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s2">"sfreq"</span><span class="p">])</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">n_harmonics</span> <span class="o">*</span> <span class="n">f0</span> <span class="o">+</span> <span class="n">bin_hz</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">sfreq</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"Harmonic band up to </span><span class="si">{</span><span class="n">n_harmonics</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">f0</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">bin_hz</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">2.0</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2"> Hz "</span>
+            <span class="sa">f</span><span class="s2">"reaches the Nyquist frequency (</span><span class="si">{</span><span class="n">sfreq</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mf">2.0</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2"> Hz)."</span>
+        <span class="p">)</span>
+
+    <span class="n">picks</span> <span class="o">=</span> <span class="mi">0</span> <span class="k">if</span> <span class="n">ch_name</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">evoked</span><span class="o">.</span><span class="n">ch_names</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">ch_name</span><span class="p">)</span>
+    <span class="n">segment</span> <span class="o">=</span> <span class="n">evoked</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span><span class="o">.</span><span class="n">crop</span><span class="p">(</span><span class="n">tmin</span><span class="o">=</span><span class="n">tmin</span><span class="p">,</span> <span class="n">tmax</span><span class="o">=</span><span class="n">tmax</span><span class="p">)</span><span class="o">.</span><span class="n">data</span><span class="p">[</span><span class="n">picks</span><span class="p">]</span>
+    <span class="n">n_samples</span> <span class="o">=</span> <span class="n">segment</span><span class="o">.</span><span class="n">size</span>
+    <span class="k">if</span> <span class="n">n_samples</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Analysis window contains fewer than 2 samples."</span><span class="p">)</span>
+
+    <span class="n">n_fft</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">**</span> <span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log2</span><span class="p">(</span><span class="n">n_samples</span><span class="p">)))</span> <span class="o">+</span> <span class="nb">int</span><span class="p">(</span><span class="n">pad_pow</span><span class="p">))</span>
+    <span class="n">amplitude</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">rfft</span><span class="p">(</span><span class="n">segment</span> <span class="o">*</span> <span class="n">unit_scale</span><span class="p">,</span> <span class="n">n_fft</span><span class="p">))</span> <span class="o">/</span> <span class="n">n_samples</span>
+    <span class="n">freqs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fft</span><span class="o">.</span><span class="n">rfftfreq</span><span class="p">(</span><span class="n">n_fft</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="mf">1.0</span> <span class="o">/</span> <span class="n">sfreq</span><span class="p">)</span>
+
+    <span class="n">half_bin</span> <span class="o">=</span> <span class="n">bin_hz</span> <span class="o">/</span> <span class="mf">2.0</span> <span class="o">+</span> <span class="mf">1e-9</span>
+    <span class="n">harmonics</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+        <span class="n">amplitude</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">freqs</span> <span class="o">-</span> <span class="n">k</span> <span class="o">*</span> <span class="n">f0</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">half_bin</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_harmonics</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="p">])</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">"harmonics"</span><span class="p">:</span> <span class="n">harmonics</span><span class="p">,</span>
+        <span class="s2">"f0"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">harmonics</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span>
+        <span class="s2">"upper_harmonics"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">harmonics</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span><span class="o">.</span><span class="n">sum</span><span class="p">()),</span>
+    <span class="p">}</span></div>
+
+
+
+<div class="viewcode-block" id="stim_to_resp_xcorr">
+<a class="viewcode-back" href="../../generated/ffrprep.analysis.stim_to_resp_xcorr.html#ffrprep.analysis.stim_to_resp_xcorr">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">stim_to_resp_xcorr</span><span class="p">(</span><span class="n">stim</span><span class="p">,</span> <span class="n">resp</span><span class="p">,</span> <span class="n">sfreq</span><span class="p">,</span> <span class="n">lag_range_ms</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Maximum stimulus-to-response cross-correlation (coefficient form).</span>
+
+<span class="sd">    Both inputs must share the sampling rate ``sfreq`` and be already</span>
+<span class="sd">    cropped to the analysis windows (e.g. stimulus vowel 50-170 ms vs.</span>
+<span class="sd">    response 60-180 ms). The cross-correlation is normalized like MATLAB's</span>
+<span class="sd">    ``xcorr(..., 'coeff')``: divided by ``sqrt(sum(stim**2) *</span>
+<span class="sd">    sum(resp**2))`` with **no** mean removal. The reported value is the</span>
+<span class="sd">    maximum over lags (optionally restricted to ``lag_range_ms``).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    stim, resp : array-like</span>
+<span class="sd">        1-D stimulus and response waveforms sampled at ``sfreq``.</span>
+<span class="sd">    sfreq : float</span>
+<span class="sd">        Sampling frequency in Hz.</span>
+<span class="sd">    lag_range_ms : tuple of (float, float), optional</span>
+<span class="sd">        Inclusive lag window in ms in which to search for the maximum.</span>
+<span class="sd">        Positive lag means the response is delayed relative to the</span>
+<span class="sd">        stimulus. ``None`` searches all lags.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    r : float</span>
+<span class="sd">        Maximum correlation coefficient within the searched lags.</span>
+<span class="sd">    z : float</span>
+<span class="sd">        Fisher r-to-z transform of ``r`` (``arctanh``).</span>
+<span class="sd">    lag_ms : float</span>
+<span class="sd">        Lag in ms at which the maximum occurs.</span>
+<span class="sd">    """</span>
+    <span class="n">stim</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">stim</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+    <span class="n">resp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">resp</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">stim</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">resp</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"stim and resp must be non-empty."</span><span class="p">)</span>
+
+    <span class="n">denom</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">stim</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">resp</span> <span class="o">**</span> <span class="mi">2</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">denom</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="s2">"nan"</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="s2">"nan"</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="s2">"nan"</span><span class="p">)</span>
+
+    <span class="n">corr</span> <span class="o">=</span> <span class="n">signal</span><span class="o">.</span><span class="n">correlate</span><span class="p">(</span><span class="n">resp</span><span class="p">,</span> <span class="n">stim</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">"full"</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">"fft"</span><span class="p">)</span> <span class="o">/</span> <span class="n">denom</span>
+    <span class="n">lags_ms</span> <span class="o">=</span> <span class="n">signal</span><span class="o">.</span><span class="n">correlation_lags</span><span class="p">(</span><span class="n">resp</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">stim</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">"full"</span><span class="p">)</span> <span class="o">/</span> <span class="n">sfreq</span> <span class="o">*</span> <span class="mf">1000.0</span>
+
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">corr</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">lag_range_ms</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span> <span class="o">=</span> <span class="n">lag_range_ms</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">lags_ms</span> <span class="o">&gt;=</span> <span class="n">lo</span> <span class="o">-</span> <span class="mf">1e-9</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">lags_ms</span> <span class="o">&lt;=</span> <span class="n">hi</span> <span class="o">+</span> <span class="mf">1e-9</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">mask</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="s2">"nan"</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="s2">"nan"</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="s2">"nan"</span><span class="p">)</span>
+
+    <span class="n">masked_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">flatnonzero</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span>
+    <span class="n">best</span> <span class="o">=</span> <span class="n">masked_idx</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">corr</span><span class="p">[</span><span class="n">masked_idx</span><span class="p">])]</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">corr</span><span class="p">[</span><span class="n">best</span><span class="p">])</span>
+    <span class="k">with</span> <span class="n">np</span><span class="o">.</span><span class="n">errstate</span><span class="p">(</span><span class="n">divide</span><span class="o">=</span><span class="s2">"ignore"</span><span class="p">):</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arctanh</span><span class="p">(</span><span class="n">r</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">r</span><span class="p">,</span> <span class="n">z</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">lags_ms</span><span class="p">[</span><span class="n">best</span><span class="p">])</span></div>
+
+
+
+<div class="viewcode-block" id="load_wav_mono">
+<a class="viewcode-back" href="../../generated/ffrprep.analysis.load_wav_mono.html#ffrprep.analysis.load_wav_mono">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_wav_mono</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Read a WAV file as a float, mono (channel-averaged) waveform.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    data : ndarray</span>
+<span class="sd">        1-D float waveform (arbitrary amplitude scale).</span>
+<span class="sd">    sfreq : float</span>
+<span class="sd">        Sampling rate of the file in Hz.</span>
+<span class="sd">    """</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">scipy.io</span><span class="w"> </span><span class="kn">import</span> <span class="n">wavfile</span>
+
+    <span class="n">sfreq</span><span class="p">,</span> <span class="n">data</span> <span class="o">=</span> <span class="n">wavfile</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">))</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">data</span><span class="o">.</span><span class="n">ndim</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">data</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">sfreq</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="resample_signal">
+<a class="viewcode-back" href="../../generated/ffrprep.analysis.resample_signal.html#ffrprep.analysis.resample_signal">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">resample_signal</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">sfreq_in</span><span class="p">,</span> <span class="n">sfreq_out</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Polyphase-resample a 1-D signal (no-op if the rates match)."""</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">fractions</span><span class="w"> </span><span class="kn">import</span> <span class="n">Fraction</span>
+
+    <span class="k">if</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">sfreq_in</span><span class="p">))</span> <span class="o">==</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">sfreq_out</span><span class="p">)):</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">ratio</span> <span class="o">=</span> <span class="n">Fraction</span><span class="p">(</span><span class="n">sfreq_out</span> <span class="o">/</span> <span class="n">sfreq_in</span><span class="p">)</span><span class="o">.</span><span class="n">limit_denominator</span><span class="p">(</span><span class="mi">100000</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">signal</span><span class="o">.</span><span class="n">resample_poly</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">),</span> <span class="n">ratio</span><span class="o">.</span><span class="n">numerator</span><span class="p">,</span> <span class="n">ratio</span><span class="o">.</span><span class="n">denominator</span><span class="p">)</span></div>
 
 </pre></div>
 
