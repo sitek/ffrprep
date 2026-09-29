@@ -214,3 +214,167 @@ def test_response_consistency_single_epoch_returns_nan_and_empty():
         mean_r, r_vals = response_consistency(epochs)
     assert r_vals.size == 0
     assert np.isnan(mean_r)
+
+
+# ---------------------------------------------------------------------------
+# harmonic_amplitudes / stim_to_resp_xcorr / wav + resampling helpers
+# ---------------------------------------------------------------------------
+
+def _harmonic_evoked(amps_uv, f0=100.0, sfreq=16384.0, tmin=-0.04, tmax=0.213, phase=0.3):
+    """Evoked (Volts) made of sines at k*f0 with given amplitudes in microvolts."""
+    n = int(round((tmax - tmin) * sfreq)) + 1
+    times = tmin + np.arange(n) / sfreq
+    data = np.zeros(n)
+    for k, amp in enumerate(amps_uv, start=1):
+        data += amp * 1e-6 * np.sin(2 * np.pi * k * f0 * times + phase * k)
+    info = mne.create_info(["Cz"], sfreq, "eeg")
+    return mne.EvokedArray(data[np.newaxis, :], info, tmin=tmin, nave=1, verbose="ERROR")
+
+
+def _reference_harmonic_amplitudes(evoked, f0, n_harmonics, bin_hz, tmin, tmax, pad_pow):
+    """Straight-line restatement of the published MATLAB recipe (dataFFT.m)."""
+    sfreq = evoked.info["sfreq"]
+    # Nearest-sample, inclusive window (MATLAB-style index lookup).
+    first = int(round((tmin - evoked.tmin) * sfreq))
+    last = int(round((tmax - evoked.tmin) * sfreq))
+    x = evoked.data[0][first:last + 1] * 1e6
+    length = x.size
+    nfft = 2 ** (int(np.ceil(np.log2(length))) + pad_pow)
+    amp = 2 * np.abs(np.fft.fft(x, nfft) / length)
+    freqs = np.arange(nfft) * sfreq / nfft
+    out = []
+    for k in range(1, n_harmonics + 1):
+        band = (freqs >= k * f0 - bin_hz / 2) & (freqs <= k * f0 + bin_hz / 2)
+        out.append(amp[band].mean())
+    return np.array(out)
+
+
+def test_harmonic_amplitudes_matches_reference_recipe():
+    from ffrprep.analysis import harmonic_amplitudes
+
+    evoked = _harmonic_evoked([1.0, 0.5, 0.25, 0.1, 0.05])
+    result = harmonic_amplitudes(evoked)
+    expected = _reference_harmonic_amplitudes(
+        evoked, f0=100.0, n_harmonics=10, bin_hz=60.0, tmin=0.06, tmax=0.18, pad_pow=2,
+    )
+    np.testing.assert_allclose(result["harmonics"], expected, rtol=1e-12)
+    assert result["f0"] == pytest.approx(expected[0])
+    assert result["upper_harmonics"] == pytest.approx(expected[1:].sum())
+
+
+def test_harmonic_amplitudes_scales_linearly_and_reports_microvolts():
+    from ffrprep.analysis import harmonic_amplitudes
+
+    base = harmonic_amplitudes(_harmonic_evoked([1.0, 0.5]))
+    doubled = harmonic_amplitudes(_harmonic_evoked([2.0, 1.0]))
+    assert doubled["f0"] == pytest.approx(2 * base["f0"])
+    assert doubled["upper_harmonics"] == pytest.approx(2 * base["upper_harmonics"])
+    # A 1 uV tone yields a microvolt-scale (not volt-scale) amplitude.
+    assert 1e-3 < base["f0"] < 1.0
+
+    single_uv = harmonic_amplitudes(_harmonic_evoked([1.0]))
+    single_volts = harmonic_amplitudes(_harmonic_evoked([1.0]), unit_scale=1.0)
+    assert single_volts["f0"] == pytest.approx(single_uv["f0"] * 1e-6)
+
+
+def test_harmonic_amplitudes_separates_fundamental_from_upper_harmonics():
+    from ffrprep.analysis import harmonic_amplitudes
+
+    fundamental_only = harmonic_amplitudes(_harmonic_evoked([1.0]))
+    harmonics_only = harmonic_amplitudes(_harmonic_evoked([0.0, 1.0, 1.0, 1.0]))
+    assert fundamental_only["f0"] > fundamental_only["upper_harmonics"] * 5
+    assert harmonics_only["upper_harmonics"] > harmonics_only["f0"] * 5
+
+
+def test_harmonic_amplitudes_validates_inputs():
+    from ffrprep.analysis import harmonic_amplitudes
+
+    low_rate = _harmonic_evoked([1.0], sfreq=1000.0)
+    with pytest.raises(ValueError, match="Nyquist"):
+        harmonic_amplitudes(low_rate)
+    with pytest.raises(ValueError, match="fewer than 2 samples"):
+        harmonic_amplitudes(_harmonic_evoked([1.0]), tmin=0.1, tmax=0.1)
+
+
+def test_stim_to_resp_xcorr_recovers_delay_and_matches_numpy_reference():
+    from ffrprep.analysis import stim_to_resp_xcorr
+
+    rng = np.random.default_rng(4)
+    sfreq = 16384.0
+    stim = rng.normal(size=1967)
+    delay = 164  # samples (~10 ms)
+    resp = np.concatenate([np.zeros(delay), stim])[: stim.size] + 0.05 * rng.normal(size=stim.size)
+
+    r, z, lag_ms = stim_to_resp_xcorr(stim, resp, sfreq)
+
+    full = np.correlate(resp, stim, mode="full") / np.sqrt(np.sum(stim**2) * np.sum(resp**2))
+    assert r == pytest.approx(full.max())
+    assert z == pytest.approx(np.arctanh(r))
+    assert lag_ms == pytest.approx(delay / sfreq * 1000.0)
+
+
+def test_stim_to_resp_xcorr_does_not_remove_the_mean():
+    """'coeff' normalization (MATLAB xcorr) keeps DC: not a Pearson r."""
+    from ffrprep.analysis import stim_to_resp_xcorr
+
+    stim = np.ones(200)
+    resp = np.ones(200)
+    r, _, lag_ms = stim_to_resp_xcorr(stim, resp, 1000.0)
+    assert r == pytest.approx(1.0)
+    assert lag_ms == pytest.approx(0.0)
+
+
+def test_stim_to_resp_xcorr_lag_range_restricts_search():
+    from ffrprep.analysis import stim_to_resp_xcorr
+
+    rng = np.random.default_rng(6)
+    sfreq = 16384.0
+    stim = rng.normal(size=1500)
+    resp = np.concatenate([np.zeros(164), stim])[:1500]  # true lag ~ 10 ms
+    r_all, _, lag_all = stim_to_resp_xcorr(stim, resp, sfreq)
+    r_win, _, lag_win = stim_to_resp_xcorr(stim, resp, sfreq, lag_range_ms=(0.0, 5.0))
+    assert lag_all == pytest.approx(164 / sfreq * 1000)
+    assert 0.0 <= lag_win <= 5.0 + 1e-6
+    assert r_win < r_all
+    # Window containing the true lag finds it again.
+    r_in, _, lag_in = stim_to_resp_xcorr(stim, resp, sfreq, lag_range_ms=(6.9, 10.9))
+    assert lag_in == pytest.approx(lag_all)
+    assert r_in == pytest.approx(r_all)
+
+
+def test_stim_to_resp_xcorr_degenerate_inputs():
+    from ffrprep.analysis import stim_to_resp_xcorr
+
+    r, z, lag = stim_to_resp_xcorr(np.zeros(50), np.ones(50), 1000.0)
+    assert np.isnan(r) and np.isnan(z) and np.isnan(lag)
+    with pytest.raises(ValueError):
+        stim_to_resp_xcorr([], [1.0], 1000.0)
+    r, _, _ = stim_to_resp_xcorr(np.ones(10), np.ones(10), 1000.0, lag_range_ms=(500.0, 600.0))
+    assert np.isnan(r)
+
+
+def test_load_wav_mono_and_resample_signal(tmp_path):
+    from scipy.io import wavfile
+
+    from ffrprep.analysis import load_wav_mono, resample_signal
+
+    sfreq_in = 24414
+    t = np.arange(4151) / sfreq_in
+    left = (np.sin(2 * np.pi * 100 * t) * 20000).astype(np.int16)
+    right = (np.sin(2 * np.pi * 100 * t) * 10000).astype(np.int16)
+    path = tmp_path / "stim.wav"
+    wavfile.write(path, sfreq_in, np.column_stack([left, right]))
+
+    data, sfreq = load_wav_mono(path)
+    assert sfreq == sfreq_in
+    assert data.ndim == 1
+    np.testing.assert_allclose(data, (left.astype(float) + right.astype(float)) / 2)
+
+    out = resample_signal(data, sfreq_in, 16384.0)
+    assert out.size == pytest.approx(data.size * 16384 / sfreq_in, abs=2)
+    same = resample_signal(data, 16384.0, 16384.0)
+    np.testing.assert_array_equal(same, np.asarray(data, dtype=float))
+    # A 100 Hz tone stays a 100 Hz tone after resampling.
+    spectrum = np.abs(np.fft.rfft(out))
+    peak_hz = np.fft.rfftfreq(out.size, 1 / 16384.0)[np.argmax(spectrum)]
+    assert peak_hz == pytest.approx(100.0, abs=3.0)

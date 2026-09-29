@@ -62,6 +62,10 @@ Reference API
    corr_resp_to_resp
    response_consistency
    compute_fft
+   harmonic_amplitudes
+   stim_to_resp_xcorr
+   load_wav_mono
+   resample_signal
 
 
 .. _ref_reports:
@@ -108,6 +112,9 @@ Reference API
    discover_group_inputs
    compute_grand_average
    compute_subject_metrics
+   add_qc_flags
+   build_metrics_dictionary
+   merge_covariates
    save_group_outputs
    save_group_metrics
    run_group_level

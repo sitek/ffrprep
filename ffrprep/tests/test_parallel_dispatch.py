@@ -17,12 +17,22 @@ from pathlib import Path
 
 import pytest
 
+from unittest.mock import MagicMock, patch
+
 from ffrprep.ffrprep_cli import (
     IterationResult,
+    _analysis_done,
+    _analysis_outputs_complete,
     _dispatch,
+    _find_preproc_outputs,
     _make_analysis_payload,
     _make_concat_payload,
     _make_preproc_payload,
+    _preproc_done,
+    _preproc_iteration,
+    _remove_epoch_files,
+    _remove_workflow_files,
+    _select_pending,
     _setup_worker_log,
     _snapshot_args,
     _snapshot_deriv,
@@ -266,3 +276,122 @@ def test_dispatch_propagates_worker_exception_across_processes():
     ]
     with pytest.raises(RuntimeError, match="injected failure for task-X"):
         _dispatch(_fail_task_X, payloads, n_procs=2, kind_label="test")
+
+
+# ----- resume (--skip-existing) and cleanup (--clean-work-dir / --no-keep-epochs) helpers
+
+
+def _preproc_payload(out_dir, kind="per_run", run="1", task="da"):
+    return {"kind": kind, "subject": "01", "task_label": task, "run_label": run,
+            "output_dir": str(out_dir), "work_dir": str(out_dir / "work"),
+            "identifier": f"task-{task}_run-{run}"}
+
+
+def _touch(path, size=0):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b"x" * size)
+    return path
+
+
+def test_find_preproc_outputs_filters_by_run_and_suffix(tmp_path):
+    _touch(tmp_path / "sub-01_task-da_run-1_desc-preprocA_epo.fif")
+    _touch(tmp_path / "sub-01_task-da_run-1_desc-preprocA_epo.json")
+    _touch(tmp_path / "sub-01_task-da_run-2_desc-preprocA_epo.json")
+    _touch(tmp_path / "sub-01_task-other_run-1_desc-preprocA_epo.json")
+
+    payload = _preproc_payload(tmp_path, run="1")
+    assert [p.name for p in _find_preproc_outputs(payload)] == ["sub-01_task-da_run-1_desc-preprocA_epo.fif"]
+    assert [p.name for p in _find_preproc_outputs(payload, suffix=".json")] == [
+        "sub-01_task-da_run-1_desc-preprocA_epo.json",
+    ]
+
+
+def test_preproc_done_uses_sidecars_so_it_survives_removed_epochs(tmp_path):
+    payload = _preproc_payload(tmp_path, run="1")
+    assert not _preproc_done(payload)
+    _touch(tmp_path / "sub-01_task-da_run-1_desc-preprocA_epo.json")   # no .fif: epochs were deleted
+    assert _preproc_done(payload)
+    assert not _preproc_done(_preproc_payload(tmp_path, run="2"))
+
+
+def test_preproc_done_concat_ignores_per_run_outputs(tmp_path):
+    payload = _preproc_payload(tmp_path, kind="concat", run=["1", "2"])
+    _touch(tmp_path / "sub-01_task-da_run-1_desc-preprocA_epo.json")
+    assert not _preproc_done(payload)
+    _touch(tmp_path / "sub-01_task-da_desc-preprocA_epo.json")         # no run token = concatenated
+    assert _preproc_done(payload)
+
+
+def test_analysis_done_and_outputs_complete(tmp_path):
+    analysis_dir = tmp_path / "analysis" / "sub-01"
+    payload = {
+        "preproc_files": [str(tmp_path / "sub-01_task-da_run-1_desc-preprocA_epo.fif")],
+        "analysis_subject_dir": str(analysis_dir),
+    }
+    assert not _analysis_done(payload)
+    assert not _analysis_outputs_complete(analysis_dir)
+    _touch(analysis_dir / "sub-01_task-da_run-1_desc-evokedA.json")    # per-type only: not "complete"
+    assert not _analysis_done(payload)
+    _touch(analysis_dir / "sub-01_task-da_run-1_desc-evoked.json")
+    assert _analysis_done(payload)
+    assert _analysis_outputs_complete(analysis_dir)
+
+
+def test_select_pending_only_filters_when_skip_existing(tmp_path, capsys):
+    done = _preproc_payload(tmp_path, run="1")
+    todo = _preproc_payload(tmp_path, run="2")
+    _touch(tmp_path / "sub-01_task-da_run-1_desc-preprocA_epo.json")
+
+    assert _select_pending([done, todo], _preproc_done, False, "preprocessing") == [done, todo]
+    assert capsys.readouterr().out == ""
+    assert _select_pending([done, todo], _preproc_done, True, "preprocessing") == [todo]
+    assert "1/2 preprocessing iteration(s) already complete" in capsys.readouterr().out
+
+
+def test_remove_epoch_files_deletes_fif_but_keeps_sidecars(tmp_path):
+    _touch(tmp_path / "a_epo.fif", size=1000)
+    _touch(tmp_path / "b_epo.fif", size=500)
+    _touch(tmp_path / "a_epo.json")
+    _touch(tmp_path / "keep.log")
+
+    assert _remove_epoch_files(tmp_path) == (2, 1500)
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["a_epo.json", "keep.log"]
+    assert _remove_epoch_files(tmp_path) == (0, 0)
+
+
+def test_remove_workflow_files_keeps_logs_and_tolerates_missing_dirs(tmp_path):
+    _touch(tmp_path / "ffrprep_preproc" / "filter_data" / "result.pklz", size=10)
+    _touch(tmp_path / "iteration.log")
+    _remove_workflow_files(tmp_path, "ffrprep_preproc")
+    assert not (tmp_path / "ffrprep_preproc").exists()
+    assert (tmp_path / "iteration.log").exists()
+    _remove_workflow_files(tmp_path, "ffrprep_preproc")    # already gone: no error
+
+
+def _run_preproc_iteration(tmp_path, clean, check_raises=None):
+    payload = _preproc_payload(tmp_path)
+    payload["clean_work_dir"] = clean
+    work_dir = Path(payload["work_dir"])
+    _touch(work_dir / "ffrprep_preproc" / "epoch_data" / "result.pklz", size=10)
+    wf = MagicMock()
+    wf.name = "ffrprep_preproc"
+    with patch("ffrprep.ffrprep_cli._build_preproc_workflow", return_value=wf), \
+            patch("ffrprep.ffrprep_cli._check_preproc_output_or_raise",
+                  side_effect=check_raises, return_value=[]):
+        result = _preproc_iteration(payload)
+    return work_dir, result
+
+
+def test_preproc_iteration_cleans_work_dir_on_success_only_when_asked(tmp_path):
+    work_dir, _ = _run_preproc_iteration(tmp_path / "keep", clean=False)
+    assert (work_dir / "ffrprep_preproc").exists()
+
+    work_dir, result = _run_preproc_iteration(tmp_path / "clean", clean=True)
+    assert not (work_dir / "ffrprep_preproc").exists()
+    assert Path(result.log_path).exists()          # worker log survives the cleanup
+
+
+def test_preproc_iteration_keeps_work_dir_when_it_fails(tmp_path):
+    with pytest.raises(FileNotFoundError):
+        _run_preproc_iteration(tmp_path, clean=True, check_raises=FileNotFoundError("no outputs"))
+    assert (tmp_path / "work" / "ffrprep_preproc").exists()   # left for debugging

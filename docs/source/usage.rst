@@ -265,6 +265,38 @@ recomputed from each subject's saved evoked/epochs), and a single
 ``--task`` restrict which subjects/tasks are aggregated, same as at
 the participant level.
 
+Optional metrics for FFR studies are switched on with flags. With
+``--f0`` the metrics table gains ``f0_uv`` and ``upper_harmonics_uv`` (FFT
+amplitude, in microvolts, averaged in a 60 Hz band around each harmonic of
+the stimulus F0 over 60-180 ms) and ``rms_snr_polarity_sum``, all computed
+on the **sum** of the two per-trial-type averages. With ``--stimulus`` (a
+WAV file) it also gains ``stim2resp_r`` / ``stim2resp_z`` /
+``stim2resp_lag_ms``, the maximum stimulus-to-response cross-correlation
+(``xcorr`` "coeff" normalization, Fisher z). ``participants.tsv`` from the
+BIDS directory (plus any ``--covariates`` TSVs) is joined onto the saved
+table so downstream statistics have group, age, etc. alongside the metrics:
+
+.. code-block:: bash
+
+    ffrprep /data /data/derivatives group \
+      --f0 100 --n-harmonics 10 --harmonic-window 0.06 0.18 \
+      --stimulus /path/to/da.wav --xcorr-stim-window 0.05 0.17 \
+      --xcorr-resp-window 0.06 0.18 --n-trials-presented 6000
+
+``--min-usable-pct`` and ``--min-snr`` add quality-control flag columns
+(``qc_usable_pct_ok``, ``qc_snr_ok``, ``qc_include`` and a ``qc_reason`` text
+column) to the table. Subjects below a threshold are **flagged, not removed**:
+the table and the grand averages still contain them, and you decide
+downstream whether to filter on ``qc_include``. ``--min-usable-pct`` needs
+``--n-trials-presented``; ``--min-snr`` uses ``rms_snr_polarity_sum`` when
+``--f0`` is set and the combined-evoked ``rms_snr`` otherwise.
+
+Next to ``*_metrics.tsv`` the group step writes ``*_metrics.json``, a
+BIDS-style data dictionary with a description and units for every column. It
+records the windows, harmonic settings and QC thresholds the run used, and
+copies the descriptions of joined covariates from the ``.json`` next to their
+TSV (for example ``participants.json``) when there is one.
+
 This step only aggregates outputs participant-level ffrprep has
 already computed — it does not perform any group-level statistics
 (no hypothesis tests, no GLM). Downstream statistical analysis is
@@ -334,6 +366,33 @@ Cluster (GNU parallel on a single beefy box)
       "ffrprep /data /data/derivatives participant \
          --participant_label {} --n_procs 4" \
       ::: 01 02 03 04 05 06 07 08
+
+Resuming and saving disk space
+------------------------------
+
+Large cohorts are limited by disk space more than by CPU: each subject's
+Nipype working directory can hold several GB, and the epochs files are
+much larger than the evokeds. Three flags make bulk runs resumable and
+lean:
+
+.. code-block:: bash
+
+    ffrprep /data /data/derivatives participant \
+        --participant_label 01 02 03 \
+        --skip-existing --clean-work-dir --no-keep-epochs
+
+* ``--skip-existing`` skips (task, run) iterations whose JSON sidecar
+  outputs already exist, so an interrupted run can simply be started again.
+  Completion is judged from the sidecars, so it still works after
+  ``--no-keep-epochs``. Iterations that are already complete build no
+  report.
+* ``--clean-work-dir`` deletes each iteration's Nipype working files once
+  it has succeeded. Worker logs are kept, and the working files of a failed
+  iteration are kept for debugging.
+* ``--no-keep-epochs`` deletes the ``*_epo.fif`` files after the analysis
+  stage (evokeds and all JSON sidecars stay). It is ignored, with a
+  warning, for ``--stage preprocessing`` because the analysis stage still
+  needs the epochs.
 
 Failure handling
 ----------------

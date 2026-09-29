@@ -1060,3 +1060,172 @@ def compute_fft(signal_data, sfreq, fmin=None, fmax=None):
         amplitude = amplitude[mask]
 
     return freqs, amplitude
+
+
+def harmonic_amplitudes(
+    evoked,
+    f0=100.0,
+    n_harmonics=10,
+    bin_hz=60.0,
+    tmin=0.060,
+    tmax=0.180,
+    pad_pow=2,
+    ch_name=None,
+    unit_scale=1e6,
+):
+    """
+    Spectral amplitude of the fundamental and its harmonics in an FFR.
+
+    The steady-state portion of the response (``tmin``-``tmax``) is
+    Fourier transformed with zero padding to
+    ``2 ** (ceil(log2(L)) + pad_pow)`` points (``L`` = window length in
+    samples), converted to single-sided amplitude ``2 * |FFT| / L`` and,
+    for harmonic ``k`` (``k = 1 .. n_harmonics``, harmonic 1 = ``f0``),
+    averaged over all FFT points within ``k * f0 +/- bin_hz / 2``. The
+    defaults reproduce the /da/ (100 Hz F0) F0 / upper-harmonic measure of
+    Whiteford et al. (2025), which is computed on the *sum* of the two
+    polarity averages.
+
+    Parameters
+    ----------
+    evoked : mne.Evoked
+        Response to analyze (in Volts), e.g. the sum of the per-polarity
+        averages.
+    f0 : float, default=100.0
+        Fundamental frequency of the stimulus in Hz.
+    n_harmonics : int, default=10
+        Number of harmonics (including the fundamental) to evaluate.
+    bin_hz : float, default=60.0
+        Full width of the averaging band centred on each harmonic, in Hz.
+    tmin, tmax : float
+        Analysis window in seconds relative to the Evoked time axis
+        (inclusive at both ends).
+    pad_pow : int, default=2
+        Extra powers of two of zero padding beyond the next power of two.
+    ch_name : str, optional
+        Channel to analyze. Defaults to the first channel.
+    unit_scale : float, default=1e6
+        Multiplier applied to the data before the FFT (1e6 -> microvolts).
+
+    Returns
+    -------
+    result : dict
+        ``"harmonics"`` : ndarray of shape (n_harmonics,) with the band-
+        averaged amplitude of each harmonic; ``"f0"`` : amplitude of the
+        first harmonic; ``"upper_harmonics"`` : sum of harmonics 2 to
+        ``n_harmonics`` (0.0 if ``n_harmonics`` is 1).
+    """
+    sfreq = float(evoked.info["sfreq"])
+    if (n_harmonics * f0 + bin_hz / 2.0) >= sfreq / 2.0:
+        raise ValueError(
+            f"Harmonic band up to {n_harmonics * f0 + bin_hz / 2.0:g} Hz "
+            f"reaches the Nyquist frequency ({sfreq / 2.0:g} Hz)."
+        )
+
+    picks = 0 if ch_name is None else evoked.ch_names.index(ch_name)
+    segment = evoked.copy().crop(tmin=tmin, tmax=tmax).data[picks]
+    n_samples = segment.size
+    if n_samples < 2:
+        raise ValueError("Analysis window contains fewer than 2 samples.")
+
+    n_fft = 2 ** (int(np.ceil(np.log2(n_samples))) + int(pad_pow))
+    amplitude = 2.0 * np.abs(np.fft.rfft(segment * unit_scale, n_fft)) / n_samples
+    freqs = np.fft.rfftfreq(n_fft, d=1.0 / sfreq)
+
+    half_bin = bin_hz / 2.0 + 1e-9
+    harmonics = np.array([
+        amplitude[np.abs(freqs - k * f0) <= half_bin].mean()
+        for k in range(1, n_harmonics + 1)
+    ])
+    return {
+        "harmonics": harmonics,
+        "f0": float(harmonics[0]),
+        "upper_harmonics": float(harmonics[1:].sum()),
+    }
+
+
+def stim_to_resp_xcorr(stim, resp, sfreq, lag_range_ms=None):
+    """
+    Maximum stimulus-to-response cross-correlation (coefficient form).
+
+    Both inputs must share the sampling rate ``sfreq`` and be already
+    cropped to the analysis windows (e.g. stimulus vowel 50-170 ms vs.
+    response 60-180 ms). The cross-correlation is normalized like MATLAB's
+    ``xcorr(..., 'coeff')``: divided by ``sqrt(sum(stim**2) *
+    sum(resp**2))`` with **no** mean removal. The reported value is the
+    maximum over lags (optionally restricted to ``lag_range_ms``).
+
+    Parameters
+    ----------
+    stim, resp : array-like
+        1-D stimulus and response waveforms sampled at ``sfreq``.
+    sfreq : float
+        Sampling frequency in Hz.
+    lag_range_ms : tuple of (float, float), optional
+        Inclusive lag window in ms in which to search for the maximum.
+        Positive lag means the response is delayed relative to the
+        stimulus. ``None`` searches all lags.
+
+    Returns
+    -------
+    r : float
+        Maximum correlation coefficient within the searched lags.
+    z : float
+        Fisher r-to-z transform of ``r`` (``arctanh``).
+    lag_ms : float
+        Lag in ms at which the maximum occurs.
+    """
+    stim = np.asarray(stim, dtype=float).ravel()
+    resp = np.asarray(resp, dtype=float).ravel()
+    if stim.size == 0 or resp.size == 0:
+        raise ValueError("stim and resp must be non-empty.")
+
+    denom = np.sqrt(np.sum(stim ** 2) * np.sum(resp ** 2))
+    if denom == 0:
+        return float("nan"), float("nan"), float("nan")
+
+    corr = signal.correlate(resp, stim, mode="full", method="fft") / denom
+    lags_ms = signal.correlation_lags(resp.size, stim.size, mode="full") / sfreq * 1000.0
+
+    mask = np.ones(corr.shape, dtype=bool)
+    if lag_range_ms is not None:
+        lo, hi = lag_range_ms
+        mask = (lags_ms >= lo - 1e-9) & (lags_ms <= hi + 1e-9)
+        if not mask.any():
+            return float("nan"), float("nan"), float("nan")
+
+    masked_idx = np.flatnonzero(mask)
+    best = masked_idx[np.argmax(corr[masked_idx])]
+    r = float(corr[best])
+    with np.errstate(divide="ignore"):
+        z = float(np.arctanh(r))
+    return r, z, float(lags_ms[best])
+
+
+def load_wav_mono(path):
+    """Read a WAV file as a float, mono (channel-averaged) waveform.
+
+    Returns
+    -------
+    data : ndarray
+        1-D float waveform (arbitrary amplitude scale).
+    sfreq : float
+        Sampling rate of the file in Hz.
+    """
+    from scipy.io import wavfile
+
+    sfreq, data = wavfile.read(str(path))
+    data = np.asarray(data, dtype=float)
+    if data.ndim > 1:
+        data = data.mean(axis=1)
+    return data, float(sfreq)
+
+
+def resample_signal(data, sfreq_in, sfreq_out):
+    """Polyphase-resample a 1-D signal (no-op if the rates match)."""
+    from fractions import Fraction
+
+    if int(round(sfreq_in)) == int(round(sfreq_out)):
+        return np.asarray(data, dtype=float)
+    ratio = Fraction(sfreq_out / sfreq_in).limit_denominator(100000)
+    return signal.resample_poly(np.asarray(data, dtype=float), ratio.numerator, ratio.denominator)
