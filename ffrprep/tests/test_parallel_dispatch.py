@@ -12,9 +12,11 @@ semantics independently of the nipype workflow.
 """
 
 import argparse
+import json
 import logging
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 from unittest.mock import MagicMock, patch
@@ -22,9 +24,11 @@ from unittest.mock import MagicMock, patch
 from ffrprep.ffrprep_cli import (
     IterationResult,
     _analysis_done,
+    _analysis_iteration,
     _analysis_outputs_complete,
     _dispatch,
     _find_preproc_outputs,
+    _flag_stim_response_artifact,
     _make_analysis_payload,
     _make_concat_payload,
     _make_preproc_payload,
@@ -184,6 +188,9 @@ def test_make_analysis_payload_keys(tmp_path):
         "bids_dir": str(tmp_path / "bids"),
         "split_by_trial_type": False,
         "work_dir": None,
+        "stimulus": str(tmp_path / "stim.wav"),
+        "stim_artifact_lag_range": [-0.5, 0.5],
+        "max_stim_artifact_corr": 0.8,
     }
     deriv_snap = _snapshot_deriv({
         "derivatives_root": tmp_path / "deriv",
@@ -203,6 +210,25 @@ def test_make_analysis_payload_keys(tmp_path):
     assert payload["original_filename"] == "sub-01_task-active_run-1"
     assert "analysis_sub-01_task-active_run-1" in payload["identifier"]
     assert "sub-01_task-active_run-1" in payload["work_dir"]
+    assert payload["stimulus_path"] == str(tmp_path / "stim.wav")
+    assert payload["stim_artifact_lag_range_ms"] == (-0.5, 0.5)
+    assert payload["max_stim_artifact_corr"] == 0.8
+
+
+def test_make_analysis_payload_stim_artifact_defaults_when_unset(tmp_path):
+    args_snap = {"bids_dir": str(tmp_path / "bids"), "work_dir": None}
+    deriv_snap = _snapshot_deriv({
+        "derivatives_root": tmp_path / "deriv",
+        "preprocessing_dir": tmp_path / "deriv" / "ffrprep-preprocessing",
+        "preprocessing_subject_dir": tmp_path / "deriv" / "ffrprep-preprocessing" / "sub-01" / "eeg",
+        "analysis_dir": tmp_path / "deriv" / "ffrprep-analysis",
+        "analysis_subject_dir": tmp_path / "deriv" / "ffrprep-analysis" / "sub-01",
+    })
+    group = {"identifier": "sub-01_task-active_run-1", "preproc_files": []}
+    payload = _make_analysis_payload(args_snap, deriv_snap, "01", group)
+    assert payload["stimulus_path"] is None
+    assert payload["stim_artifact_lag_range_ms"] == (-0.5, 0.5)
+    assert payload["max_stim_artifact_corr"] == 0.8
 
 
 # ----- _setup_worker_log
@@ -395,3 +421,152 @@ def test_preproc_iteration_keeps_work_dir_when_it_fails(tmp_path):
     with pytest.raises(FileNotFoundError):
         _run_preproc_iteration(tmp_path, clean=True, check_raises=FileNotFoundError("no outputs"))
     assert (tmp_path / "work" / "ffrprep_preproc").exists()   # left for debugging
+
+
+# ----- stimulus-artifact QC check (_flag_stim_response_artifact, issue #54)
+
+
+def _write_artifact_test_evoked(analysis_dir, base_stem, condition, data, sfreq=1000.0):
+    import json
+
+    import mne
+
+    info = mne.create_info(ch_names=["Cz"], sfreq=sfreq, ch_types=["eeg"])
+    evoked = mne.EvokedArray(data[None, :], info, tmin=0.0, nave=20, verbose=False)
+    path = analysis_dir / f"{base_stem}_desc-evoked{condition}.fif"
+    evoked.save(path, overwrite=True)
+    path.with_suffix(".json").write_text(json.dumps({"Description": "test"}))
+    return path
+
+
+def test_flag_stim_response_artifact_flags_a_perfect_copy_of_the_stimulus(tmp_path):
+    sfreq = 1000.0
+    stim = np.sin(2 * np.pi * 20 * np.arange(500) / sfreq)
+    preproc_file = Path("sub-01_task-da_run-1_desc-preprocPos_epo.fif")
+    evoked_path = _write_artifact_test_evoked(tmp_path, "sub-01_task-da_run-1", "Pos", stim.copy(), sfreq)
+
+    _flag_stim_response_artifact(
+        preproc_file, tmp_path, "01", stim, sfreq, lag_range_ms=(-0.5, 0.5), threshold=0.8,
+    )
+
+    sidecar = json.loads(evoked_path.with_suffix(".json").read_text())
+    assert sidecar["StimResponseArtifactFlag"] is True
+    assert sidecar["StimResponseArtifactCorr"] == pytest.approx(1.0, abs=1e-6)
+    assert sidecar["StimResponseArtifactLagMs"] == pytest.approx(0.0)
+
+
+def test_flag_stim_response_artifact_flags_an_inverted_copy_too(tmp_path):
+    """The two polarities are inverted; abs(r), not r, is what should trigger the flag."""
+    sfreq = 1000.0
+    stim = np.sin(2 * np.pi * 20 * np.arange(500) / sfreq)
+    preproc_file = Path("sub-01_task-da_run-1_desc-preprocNeg_epo.fif")
+    evoked_path = _write_artifact_test_evoked(tmp_path, "sub-01_task-da_run-1", "Neg", -stim.copy(), sfreq)
+
+    _flag_stim_response_artifact(
+        preproc_file, tmp_path, "01", stim, sfreq, lag_range_ms=(-0.5, 0.5), threshold=0.8,
+    )
+
+    sidecar = json.loads(evoked_path.with_suffix(".json").read_text())
+    assert sidecar["StimResponseArtifactFlag"] is True
+    assert sidecar["StimResponseArtifactCorr"] == pytest.approx(-1.0, abs=1e-6)
+
+
+def test_flag_stim_response_artifact_does_not_flag_an_uncorrelated_response(tmp_path):
+    sfreq = 1000.0
+    stim = np.sin(2 * np.pi * 20 * np.arange(500) / sfreq)
+    noise = np.random.default_rng(0).normal(size=500)
+    preproc_file = Path("sub-01_task-da_run-1_desc-preprocPos_epo.fif")
+    evoked_path = _write_artifact_test_evoked(tmp_path, "sub-01_task-da_run-1", "Pos", noise, sfreq)
+
+    _flag_stim_response_artifact(
+        preproc_file, tmp_path, "01", stim, sfreq, lag_range_ms=(-0.5, 0.5), threshold=0.8,
+    )
+
+    sidecar = json.loads(evoked_path.with_suffix(".json").read_text())
+    assert sidecar["StimResponseArtifactFlag"] is False
+    assert abs(sidecar["StimResponseArtifactCorr"]) < 0.8
+
+
+def test_flag_stim_response_artifact_skips_the_combined_output(tmp_path):
+    sfreq = 1000.0
+    stim = np.sin(2 * np.pi * 20 * np.arange(500) / sfreq)
+    preproc_file = Path("sub-01_task-da_run-1_desc-preproc_epo.fif")  # no per-condition suffix
+    evoked_path = _write_artifact_test_evoked(tmp_path, "sub-01_task-da_run-1", "", stim.copy(), sfreq)
+
+    _flag_stim_response_artifact(
+        preproc_file, tmp_path, "01", stim, sfreq, lag_range_ms=(-0.5, 0.5), threshold=0.8,
+    )
+
+    sidecar = json.loads(evoked_path.with_suffix(".json").read_text())
+    assert "StimResponseArtifactFlag" not in sidecar
+
+
+def test_flag_stim_response_artifact_no_ops_when_evoked_is_missing(tmp_path):
+    sfreq = 1000.0
+    stim = np.sin(2 * np.pi * 20 * np.arange(500) / sfreq)
+    preproc_file = Path("sub-01_task-da_run-1_desc-preprocPos_epo.fif")
+
+    _flag_stim_response_artifact(  # no matching evoked/sidecar written: must not raise
+        preproc_file, tmp_path, "01", stim, sfreq, lag_range_ms=(-0.5, 0.5), threshold=0.8,
+    )
+
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_flag_stim_response_artifact_warns_when_flagged(tmp_path, capsys):
+    sfreq = 1000.0
+    stim = np.sin(2 * np.pi * 20 * np.arange(500) / sfreq)
+    preproc_file = Path("sub-01_task-da_run-1_desc-preprocPos_epo.fif")
+    _write_artifact_test_evoked(tmp_path, "sub-01_task-da_run-1", "Pos", stim.copy(), sfreq)
+
+    _flag_stim_response_artifact(
+        preproc_file, tmp_path, "01", stim, sfreq, lag_range_ms=(-0.5, 0.5), threshold=0.8,
+    )
+
+    assert "Warning: sub-01" in capsys.readouterr().out
+
+
+# ----- _analysis_iteration's stimulus-artifact call site
+
+
+def _run_analysis_iteration_with_stimulus(tmp_path, stimulus_path):
+    payload = {
+        "identifier": "analysis_sub-01_task-da_run-1",
+        "subject": "01",
+        "preproc_files": [
+            str(tmp_path / "sub-01_task-da_run-1_desc-preprocPos_epo.fif"),
+            str(tmp_path / "sub-01_task-da_run-1_desc-preprocNeg_epo.fif"),
+        ],
+        "original_filename": "sub-01_task-da_run-1",
+        "work_dir": str(tmp_path / "work"),
+        "bids_root": str(tmp_path / "bids"),
+        "by_event_type": True,
+        "difference_pairs": None,
+        "analysis_subject_dir": str(tmp_path / "analysis"),
+        "derivatives_root": str(tmp_path / "deriv"),
+        "clean_work_dir": False,
+        "stimulus_path": stimulus_path,
+        "stim_artifact_lag_range_ms": (-0.5, 0.5),
+        "max_stim_artifact_corr": 0.8,
+    }
+    epochs = MagicMock()
+    wf = MagicMock()
+    with patch("mne.read_epochs", return_value=epochs), \
+            patch("mne.concatenate_epochs", return_value=epochs), \
+            patch("ffrprep.ffrprep_cli._restore_epochs_baseline", return_value=epochs), \
+            patch("ffrprep.ffrprep_cli.create_analysis_workflow", return_value=wf), \
+            patch("ffrprep.ffrprep_cli._propagate_run_provenance"), \
+            patch("ffrprep.ffrprep_cli._flag_stim_response_artifact") as mock_flag, \
+            patch("ffrprep.analysis.load_wav_mono", return_value=(np.zeros(10), 1000.0)):
+        _analysis_iteration(payload)
+    return mock_flag
+
+
+def test_analysis_iteration_runs_artifact_check_once_per_preproc_file_when_stimulus_set(tmp_path):
+    mock_flag = _run_analysis_iteration_with_stimulus(tmp_path, str(tmp_path / "stim.wav"))
+    assert mock_flag.call_count == 2
+
+
+def test_analysis_iteration_skips_artifact_check_without_a_stimulus(tmp_path):
+    mock_flag = _run_analysis_iteration_with_stimulus(tmp_path, None)
+    mock_flag.assert_not_called()

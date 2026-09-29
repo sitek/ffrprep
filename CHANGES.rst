@@ -216,6 +216,20 @@ Analysis
   per-(task, run) group. ``_collect_analysis_groups`` stitches
   per-condition preproc files via ``mne.concatenate_epochs`` (with
   ``event_id`` preserved) and the workflow runs once per group.
+- New participant-level QC check (needs ``--stimulus``): for each
+  per-trial-type evoked, the maximum stimulus-to-response correlation
+  within ``--stim-artifact-lag-range`` (default -0.5 to 0.5 ms) of zero
+  lag, over the whole stimulus from onset onward. A real FFR has a
+  conduction delay and shouldn't correlate this strongly at zero lag; a
+  high value suggests stimulus or electrical artifact, the same
+  contamination the two-polarity sum used elsewhere is meant to cancel.
+  Written to the evoked's sidecar as ``StimResponseArtifactCorr`` /
+  ``StimResponseArtifactLagMs`` / ``StimResponseArtifactFlag``, and
+  printed as a warning when it exceeds ``--max-stim-artifact-corr``
+  (default 0.8). Runs during the analysis stage regardless of
+  ``--no-report``; subjects are flagged, never dropped. The report gains
+  a matching stimulus-vs-response waveform plot for each per-trial-type
+  evoked.
 
 Reporting
 ---------

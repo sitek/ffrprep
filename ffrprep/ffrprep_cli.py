@@ -383,6 +383,78 @@ def _condition_from_preproc_filename(name):
     return after  # empty string for the combined / un-split case
 
 
+def _flag_stim_response_artifact(
+    preproc_file, analysis_dir, subject, stim, stim_sfreq, lag_range_ms, threshold,
+):
+    """Flag a per-polarity evoked whose stimulus correlation near zero lag is too high.
+
+    A genuine FFR has a conduction delay; stimulus or electrical artifact
+    that leaks directly into the recording does not, so it shows up as an
+    unusually high correlation with the stimulus at (near) zero lag. This
+    is exactly what summing the two stimulus polarities (used elsewhere in
+    ffrprep, e.g. :func:`ffrprep.group._load_polarity_sum`) is meant to
+    cancel, so checking a single polarity here is deliberate. See
+    https://github.com/sitek/ffrprep/issues/54.
+
+    No-op for the combined output (``preproc_file`` has no per-condition
+    suffix) or when the matching per-type evoked/sidecar isn't found.
+    Patches the evoked's own sidecar JSON with ``StimResponseArtifactCorr``,
+    ``StimResponseArtifactLagMs`` and ``StimResponseArtifactFlag`` (rows
+    are flagged, never dropped). Prints a warning when flagged, matching
+    :func:`ffrprep.group.add_qc_flags`'s "flag, don't drop" convention.
+    """
+    import json
+    import math
+
+    import mne
+
+    from ffrprep.analysis import resample_signal, stim_to_resp_xcorr
+
+    condition = _condition_from_preproc_filename(preproc_file.name)
+    if not condition:
+        return  # combined output: the check is inherently single-polarity
+
+    base_stem, _, _ = preproc_file.stem.partition("_desc-preproc")
+    evoked_path = analysis_dir / f"{base_stem}_desc-evoked{condition}.fif"
+    sidecar_path = evoked_path.with_suffix(".json")
+    if not evoked_path.exists() or not sidecar_path.exists():
+        return
+
+    evoked = mne.read_evokeds(str(evoked_path), condition=0, verbose=False)
+    sfreq = float(evoked.info["sfreq"])
+    if sfreq != stim_sfreq:
+        stim = resample_signal(stim, stim_sfreq, sfreq)
+
+    # Whole stimulus from onset onward, not the steady-state window the
+    # main F0/xcorr metric uses — the near-zero-lag artifact check wants
+    # the full waveform, including onset. ``.crop()`` (not raw array
+    # slicing) correctly handles the evoked's own possibly-negative tmin.
+    duration = (len(stim) - 1) / sfreq
+    resp_seg = evoked.copy().crop(tmin=0.0, tmax=duration).data[0]
+    r, _z, lag_ms = stim_to_resp_xcorr(stim, resp_seg, sfreq, lag_range_ms=lag_range_ms)
+
+    # The two stimulus polarities are inverted, so pure artifact shows up
+    # as a strong positive correlation on one and a strong negative one
+    # on the other against the same stimulus file — only the magnitude
+    # is diagnostic here.
+    flagged = not math.isnan(r) and abs(r) >= threshold
+
+    with open(sidecar_path) as f:
+        data = json.load(f)
+    data["StimResponseArtifactCorr"] = None if math.isnan(r) else float(r)
+    data["StimResponseArtifactLagMs"] = None if math.isnan(lag_ms) else float(lag_ms)
+    data["StimResponseArtifactFlag"] = flagged
+    with open(sidecar_path, "w") as f:
+        json.dump(data, f, indent=2)
+
+    if flagged:
+        print(
+            f"Warning: sub-{subject} condition {condition}: stimulus-response "
+            f"correlation {r:.2f} within {lag_range_ms} ms of zero lag exceeds "
+            f"{threshold:g}; possible stimulus/electrical artifact contamination."
+        )
+
+
 def _collect_evoked_groups(analysis_dir):
     """Group analysis-output files by (subject, task, session, run).
 
@@ -509,6 +581,11 @@ def _make_analysis_payload(args_snap, deriv_snap, subject, group):
         "analysis_subject_dir": str(deriv_snap["analysis_subject_dir"]),
         "derivatives_root": str(deriv_snap.get("derivatives_root", "")),
         "clean_work_dir": bool(args_snap.get("clean_work_dir", False)),
+        "stimulus_path": args_snap.get("stimulus"),
+        "stim_artifact_lag_range_ms": tuple(
+            args_snap.get("stim_artifact_lag_range") or (-0.5, 0.5)
+        ),
+        "max_stim_artifact_corr": args_snap.get("max_stim_artifact_corr", 0.8),
     }
 
 
@@ -1122,6 +1199,95 @@ def _compute_stim_correlation(evoked, stim, stim_sfreq, *, label=None,
     }
 
 
+def _plot_stim_response_overlay(evoked, stim, stim_sfreq, *, lag_range_ms, r, flagged, condition_label):
+    """Waveform overlay for the stimulus-artifact check (issue #54).
+
+    Unlike :func:`_compute_stim_correlation`'s lag-vs-correlation curve,
+    this plots the stimulus and the single-polarity response directly
+    against each other in time, over the same "whole stimulus from onset
+    onward" window the check itself used, so the artifact (if any) is
+    visible by eye. Both traces are z-scored independently before
+    plotting — a correlation coefficient is sensitive to shape, not
+    absolute amplitude, and the two are on incomparable scales (EEG
+    microvolts vs. arbitrary stimulus units).
+
+    Returns the same ``{"title", "caption", "data_uri"}`` shape as
+    :func:`_compute_stim_correlation`, so it drops straight into
+    ``extra_figures``.
+    """
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    from ffrprep.reports import _fig_to_data_uri
+
+    evoked_sfreq = float(evoked.info["sfreq"])
+    stim = _resample_stim_to_evoked_sfreq(stim, stim_sfreq, evoked_sfreq)
+    duration = (len(stim) - 1) / evoked_sfreq
+    resp = evoked.copy().crop(tmin=0.0, tmax=duration).data[0]
+    # The evoked's epoch window may end before the stimulus does (crop()
+    # then just returns what's available); align both traces to whichever
+    # is shorter rather than assuming they match stim's own length.
+    n = min(len(stim), len(resp))
+    stim, resp = stim[:n], resp[:n]
+    times_ms = np.arange(n) / evoked_sfreq * 1000
+
+    def _zscore(x):
+        std = x.std()
+        return (x - x.mean()) / std if std > 0 else x - x.mean()
+
+    title = f"Stimulus vs response waveform ({condition_label})"
+    flag_text = " — FLAGGED" if flagged else ""
+    full_title = f"{title}, r = {r:.2f} within {lag_range_ms} ms{flag_text}"
+
+    fig, ax = plt.subplots(figsize=(12, 4))
+    ax.plot(times_ms, _zscore(stim), color="#0173B2", linewidth=1.0, label="Stimulus")
+    ax.plot(times_ms, _zscore(resp), color="#D55E00", linewidth=1.0, label="Response", alpha=0.85)
+    ax.set_xlabel("Time from stimulus onset (ms)", fontsize=10)
+    ax.set_ylabel("Normalized amplitude (z-score)", fontsize=10)
+    ax.set_title(full_title, fontsize=11, fontweight="bold")
+    ax.legend(fontsize=9, loc="upper right")
+    ax.grid(True, alpha=0.3)
+    plt.tight_layout()
+    figure = {
+        "title": title,
+        "caption": (
+            f"Stimulus and response (z-scored), whole stimulus from onset "
+            f"onward; correlation {r:.2f} within {lag_range_ms} ms of zero "
+            f"lag{flag_text}."
+        ),
+        "data_uri": _fig_to_data_uri(fig),
+    }
+    plt.close(fig)
+    return figure
+
+
+def _add_stim_artifact_data(stim_data, evo_meta, evoked, stim_for_artifact, *, lag_range_ms, condition_label):
+    """Fold the stimulus-artifact check's sidecar fields into a per-type ``stim_data`` dict.
+
+    ``evo_meta`` is the evoked's already-loaded sidecar JSON;
+    ``StimResponseArtifactCorr``/``Flag`` were written by
+    :func:`_flag_stim_response_artifact` during the analysis stage. No-op
+    (returns ``stim_data`` unchanged) when the check wasn't run for this
+    evoked. ``stim_for_artifact`` is the ``(array, sfreq)`` tuple already
+    loaded once per subject in :func:`_build_analysis_report`, or ``None``.
+    """
+    artifact_corr = evo_meta.get("StimResponseArtifactCorr")
+    if artifact_corr is None:
+        return stim_data
+
+    flagged = bool(evo_meta.get("StimResponseArtifactFlag", False))
+    summary = dict(stim_data.get("summary") or {})
+    summary["Stim artifact corr (0 lag)"] = f"{artifact_corr:.2f}" + (" — FLAGGED" if flagged else "")
+    figures = list(stim_data.get("figures") or [])
+    if stim_for_artifact is not None:
+        stim_arr, stim_sfreq = stim_for_artifact
+        figures.append(_plot_stim_response_overlay(
+            evoked, stim_arr, stim_sfreq, lag_range_ms=lag_range_ms,
+            r=artifact_corr, flagged=flagged, condition_label=condition_label,
+        ))
+    return {"summary": summary, "figures": figures}
+
+
 def _stim_correlation_data(evoked, events_fpath, bids_root, trial_type):
     """Compute stim-vs-response correlation for a per-trial-type Evoked.
 
@@ -1215,6 +1381,15 @@ def _build_analysis_report(args, derivatives_info, subject):
     analysis_dir = Path(derivatives_info["analysis_subject_dir"])
     preproc_subject_dir = Path(derivatives_info["preprocessing_subject_dir"])
 
+    # Loaded once for the stimulus-artifact waveform plot below (issue
+    # #54); the correlation itself was already computed and flagged in
+    # _analysis_iteration and lives in the evoked's own sidecar.
+    stim_for_artifact = None
+    if getattr(args, "stimulus", None):
+        from ffrprep.analysis import load_wav_mono
+
+        stim_for_artifact = load_wav_mono(args.stimulus)
+
     groups_meta = _collect_evoked_groups(analysis_dir)
     if not groups_meta:
         print(f"No analysis outputs found for sub-{subject}; "
@@ -1243,13 +1418,12 @@ def _build_analysis_report(args, derivatives_info, subject):
             # on evoked.baseline is not None) would silently
             # disappear from the report.
             evo_sidecar = evo_fpath.with_suffix(".json")
-            if evo_sidecar.exists():
-                evo_meta = json.loads(evo_sidecar.read_text())
-                baseline = evo_meta.get("Baseline")
-                if baseline is not None:
-                    for ev in evoked_list:
-                        if ev.baseline is None:
-                            ev.apply_baseline(tuple(baseline))
+            evo_meta = json.loads(evo_sidecar.read_text()) if evo_sidecar.exists() else {}
+            baseline = evo_meta.get("Baseline")
+            if baseline is not None:
+                for ev in evoked_list:
+                    if ev.baseline is None:
+                        ev.apply_baseline(tuple(baseline))
             for ev_idx, evoked in enumerate(evoked_list):
                 raw_cond = evoked.comment or f"condition-{ev_idx}"
                 cond = _resolve_condition_labels(raw_cond, events_fpath)
@@ -1270,6 +1444,11 @@ def _build_analysis_report(args, derivatives_info, subject):
                 elif raw_cond:
                     stim_data = _stim_correlation_data(
                         evoked, events_fpath, bids_root, raw_cond,
+                    )
+                    stim_data = _add_stim_artifact_data(
+                        stim_data, evo_meta, evoked, stim_for_artifact,
+                        lag_range_ms=tuple(args.stim_artifact_lag_range),
+                        condition_label=cond,
                     )
                 else:
                     stim_data = {}
@@ -1528,6 +1707,24 @@ def _analysis_iteration(payload):
             preproc_file=preproc_file,
             analysis_dir=Path(payload["analysis_subject_dir"]),
         )
+
+    # Stimulus-artifact QC check (opt-in via --stimulus; see issue #54).
+    # Runs regardless of --no-report so bulk runs still get flagged/warned.
+    if payload.get("stimulus_path"):
+        from ffrprep.analysis import load_wav_mono
+
+        stim, stim_sfreq = load_wav_mono(payload["stimulus_path"])
+        for preproc_file in preproc_files:
+            _flag_stim_response_artifact(
+                preproc_file=preproc_file,
+                analysis_dir=Path(payload["analysis_subject_dir"]),
+                subject=payload["subject"],
+                stim=stim,
+                stim_sfreq=stim_sfreq,
+                lag_range_ms=payload["stim_artifact_lag_range_ms"],
+                threshold=payload["max_stim_artifact_corr"],
+            )
+
     return IterationResult(
         identifier=payload["identifier"],
         log_path=str(log_path),
@@ -1880,6 +2077,36 @@ def get_parser():
         metavar=("START", "END"),
         default=[0.100, 0.200],
     )
+    analysis_group.add_argument(
+        "--stim-artifact-lag-range",
+        dest="stim_artifact_lag_range",
+        nargs=2,
+        type=float,
+        metavar=("MIN_MS", "MAX_MS"),
+        default=[-0.5, 0.5],
+        help=(
+            "Lag window in ms, centered on zero, used by the stimulus-artifact "
+            "check below (needs --stimulus)."
+        ),
+    )
+    analysis_group.add_argument(
+        "--max-stim-artifact-corr",
+        dest="max_stim_artifact_corr",
+        type=float,
+        default=0.8,
+        help=(
+            "QC check (needs --stimulus): for each per-trial-type evoked, the "
+            "maximum stimulus-to-response correlation within "
+            "--stim-artifact-lag-range of zero lag, over the whole stimulus "
+            "from onset onward. A real FFR has a conduction delay and should "
+            "not correlate this strongly at zero lag; a high value suggests "
+            "stimulus or electrical artifact, which the two-polarity sum used "
+            "elsewhere is meant to cancel. Unlike other QC thresholds in "
+            "ffrprep, exceeding this one is what triggers the flag. Written "
+            "to the evoked's sidecar (StimResponseArtifactCorr/Flag); "
+            "subjects are flagged, never dropped."
+        ),
+    )
 
     # Group-level options
     group_group = parser.add_argument_group(
@@ -1931,7 +2158,8 @@ def get_parser():
             "stim2resp_lag_ms: the maximum stimulus-to-response "
             "cross-correlation ('coeff' normalization, Fisher z) on the "
             "polarity-summed response. The stimulus is resampled to the EEG "
-            "sampling rate."
+            "sampling rate. Also used at the participant level for the "
+            "stimulus-artifact check (see --max-stim-artifact-corr)."
         ),
     )
     group_group.add_argument(

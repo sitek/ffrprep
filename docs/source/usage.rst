@@ -283,6 +283,18 @@ table so downstream statistics have group, age, etc. alongside the metrics:
       --stimulus /path/to/da.wav --xcorr-stim-window 0.05 0.17 \
       --xcorr-resp-window 0.06 0.18 --n-trials-presented 6000
 
+``--stimulus`` is also read at the **participant** level (``--stage analysis``
+or ``both``): for each per-trial-type evoked, ffrprep checks the maximum
+stimulus-to-response correlation within ``--stim-artifact-lag-range`` (default
+-0.5 to 0.5 ms) of zero lag. A real FFR has a conduction delay and shouldn't
+correlate this strongly at zero lag; a high value suggests stimulus or
+electrical artifact, the same contamination the group-level polarity sum
+above is meant to cancel. The result is written to the evoked's sidecar
+(``StimResponseArtifactCorr`` / ``...LagMs`` / ``...Flag``), a warning is
+printed above ``--max-stim-artifact-corr`` (default 0.8), and the analysis
+report gains a stimulus-vs-response waveform plot. This runs regardless of
+``--no-report``, and subjects are flagged, never dropped.
+
 ``--min-usable-pct`` and ``--min-snr`` add quality-control flag columns
 (``qc_usable_pct_ok``, ``qc_snr_ok``, ``qc_include`` and a ``qc_reason`` text
 column) to the table. Subjects below a threshold are **flagged, not removed**:
