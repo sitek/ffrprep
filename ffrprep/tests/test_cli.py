@@ -164,6 +164,22 @@ def test_response_window_custom_values():
     assert args.response_window == [0.05, 0.15]
 
 
+def test_stim_artifact_flags_default_and_parse():
+    """--stim-artifact-lag-range / --max-stim-artifact-corr (issue #54)."""
+    parser = get_parser()
+    args = parser.parse_args(["/bids", "/output", "participant"])
+    assert args.stim_artifact_lag_range == [-0.5, 0.5]
+    assert args.max_stim_artifact_corr == 0.8
+
+    args = parser.parse_args([
+        "/bids", "/output", "participant",
+        "--stim-artifact-lag-range", "-1", "1",
+        "--max-stim-artifact-corr", "0.9",
+    ])
+    assert args.stim_artifact_lag_range == [-1.0, 1.0]
+    assert args.max_stim_artifact_corr == 0.9
+
+
 def test_by_event_type_deprecated_alias():
     """--by_event_type is preserved as a deprecated alias.
 
@@ -350,6 +366,7 @@ def test_run_ffrprep_both_stages(
         mock_args.skip_existing = False
         mock_args.clean_work_dir = False
         mock_args.keep_epochs = True
+        mock_args.stimulus = None
 
         mock_parser.return_value.parse_args.return_value = mock_args
         mock_get_participants.return_value = ["01"]
@@ -631,6 +648,7 @@ def _resume_flow_args(tmp_dir, **overrides):
     mock_args.skip_existing = False
     mock_args.clean_work_dir = False
     mock_args.keep_epochs = True
+    mock_args.stimulus = None
     for key, value in overrides.items():
         setattr(mock_args, key, value)
     return mock_args
@@ -1653,3 +1671,69 @@ def test_stim_correlation_data_diff_returns_empty_when_stim_missing(tmp_path):
     evoked = _synthetic_evoked()
     bogus_events = tmp_path / "nope.tsv"
     assert _stim_correlation_data_diff(evoked, bogus_events, tmp_path) == {}
+
+
+# ---------------------------------------------------------------------------
+# Stimulus-artifact report wiring (issue #54): _add_stim_artifact_data,
+# _plot_stim_response_overlay
+# ---------------------------------------------------------------------------
+
+def test_plot_stim_response_overlay_returns_a_figure_dict():
+    import numpy as np
+
+    from ffrprep.ffrprep_cli import _plot_stim_response_overlay
+
+    evoked = _synthetic_evoked(sfreq=1000.0, n_times=500)
+    evoked.data[0] = np.sin(2 * np.pi * 20 * evoked.times)
+    stim = np.sin(2 * np.pi * 20 * np.arange(500) / 1000.0)
+
+    figure = _plot_stim_response_overlay(
+        evoked, stim, 1000.0, lag_range_ms=(-0.5, 0.5), r=0.91, flagged=True,
+        condition_label="Pos",
+    )
+    assert figure["title"] == "Stimulus vs response waveform (Pos)"
+    assert "FLAGGED" in figure["caption"]
+    assert figure["data_uri"].startswith("data:image/png;base64,")
+
+
+def test_add_stim_artifact_data_is_a_no_op_when_the_check_was_not_run():
+    from ffrprep.ffrprep_cli import _add_stim_artifact_data
+
+    evoked = _synthetic_evoked()
+    stim_data = {"summary": {"Stim correlation (peak r)": "0.10"}, "figures": []}
+    result = _add_stim_artifact_data(
+        stim_data, {}, evoked, None, lag_range_ms=(-0.5, 0.5), condition_label="Pos",
+    )
+    assert result is stim_data
+
+
+def test_add_stim_artifact_data_adds_summary_row_and_plot_when_flagged():
+    import numpy as np
+
+    from ffrprep.ffrprep_cli import _add_stim_artifact_data
+
+    evoked = _synthetic_evoked(sfreq=1000.0, n_times=500)
+    evoked.data[0] = np.sin(2 * np.pi * 20 * evoked.times)
+    stim = np.sin(2 * np.pi * 20 * np.arange(500) / 1000.0)
+    evo_meta = {"StimResponseArtifactCorr": 0.95, "StimResponseArtifactFlag": True}
+
+    result = _add_stim_artifact_data(
+        {}, evo_meta, evoked, (stim, 1000.0),
+        lag_range_ms=(-0.5, 0.5), condition_label="Pos",
+    )
+    assert "0.95" in result["summary"]["Stim artifact corr (0 lag)"]
+    assert "FLAGGED" in result["summary"]["Stim artifact corr (0 lag)"]
+    assert len(result["figures"]) == 1
+
+
+def test_add_stim_artifact_data_skips_the_plot_without_a_loaded_stimulus():
+    from ffrprep.ffrprep_cli import _add_stim_artifact_data
+
+    evoked = _synthetic_evoked()
+    evo_meta = {"StimResponseArtifactCorr": 0.2, "StimResponseArtifactFlag": False}
+
+    result = _add_stim_artifact_data(
+        {}, evo_meta, evoked, None, lag_range_ms=(-0.5, 0.5), condition_label="Pos",
+    )
+    assert "FLAGGED" not in result["summary"]["Stim artifact corr (0 lag)"]
+    assert result["figures"] == []

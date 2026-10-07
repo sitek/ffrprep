@@ -301,6 +301,18 @@ self-describing sidecar per file.
      ``ConcatenatedRuns`` provenance.
    - Initialize the per-derivatives ``dataset_description.json`` if
      missing.
+   - With ``--stimulus``, each per-trial-type sidecar also gets a
+     stimulus-artifact QC check (``_flag_stim_response_artifact``, run
+     after the workflow rather than inside it): the maximum
+     stimulus-to-response correlation within ``--stim-artifact-lag-range``
+     of zero lag, over the whole stimulus from onset onward. A real FFR
+     has a conduction delay and shouldn't correlate this strongly at
+     zero lag; a high value suggests stimulus or electrical artifact,
+     the contamination the two-polarity sum elsewhere is meant to
+     cancel. Adds ``StimResponseArtifactCorr`` / ``...LagMs`` /
+     ``...Flag`` to the sidecar and prints a warning above
+     ``--max-stim-artifact-corr`` (default 0.8); subjects are flagged,
+     never dropped, and this runs regardless of ``--no-report``.
 
 *Output Structure (default split-by-trial-type, 2-trial-type
 dataset):* ::
